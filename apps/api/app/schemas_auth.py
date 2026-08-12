@@ -9,6 +9,16 @@ class SignupRequest(BaseModel):
     password: str = Field(min_length=8, max_length=200)
 
 
+class CoachSignupRequest(BaseModel):
+    """A coach account is a coach account from creation — see app.models.CoachProfile. There
+    is no separate "become a coach" upgrade path on an existing (singer) account."""
+
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+    display_name: str = Field(min_length=1, max_length=200)
+    studio_name: str | None = Field(default=None, max_length=200)
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

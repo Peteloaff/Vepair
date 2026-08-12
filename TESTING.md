@@ -1170,3 +1170,92 @@ Postgres, and a real Next.js dev server.
 Every piece of the confirmed scope — score history, training consistency, consolidated exercise
 trends — works as specified against real endpoints and a real browser session. No bugs found
 during this stage's development or testing pass. No user-facing critical bugs remain open.
+
+## 16. Stage 12, Phase II test plan — VepAIr Coach pilot (dev-only)
+
+**Scope, per the approved plan (`C:\Users\ADMIN\.claude\plans\linear-plotting-garden.md`):**
+invite lifecycle, per-category revocable consent, a read-only coach dashboard that reuses the
+singer's own scoring functions, training assignment that can never bypass an existing safety
+cap, recording comparison, and professional notes with concrete clinical-language mitigations.
+**Built and tested dev-only, per explicit founder instruction — nothing in this section ran
+against production Supabase or the deployed app; all of it ran against local dev Postgres and
+`npm run dev`/`uvicorn --reload`, same as every prior stage's verification pattern.**
+
+**PASS criteria:** every authorization boundary holds (a coach can only ever read a singer who
+granted them access, only for granted categories); the coach dashboard's numbers are provably
+identical to the singer's own, not a re-derived copy; a coach assignment can never push a routine
+past today's existing safety cap, confirmed even when a coach actively tries to; hardcoded
+free-text fields never appear in any coach-facing response regardless of category grants; revoke
+is immediate for future access and forward-only for the past, exactly as the UI claims.
+
+**Actual results:** recorded below, run 2026-08-12 against the real running backend, real local
+Postgres, and a real Next.js dev server (no mocks).
+
+### Automated
+
+- [x] **Coach auth boundary**: 403 `not_a_coach` for a singer calling any `/api/v1/coach/*`
+      endpoint; 403 `no_active_access` with no/revoked `CoachAccess`; 403 `category_not_shared`
+      for an ungranted category — `tests/integration/test_coach_auth.py`
+- [x] **Invite lifecycle**: invite-by-email happy path; 404 on a nonexistent email; no duplicate
+      pending invites (409); accept requires ≥1 category; decline creates no `CoachAccess`;
+      cancel; **a second singer cannot accept an invite addressed to someone else**;
+      **cannot accept a second invite while one coach is already active** (409, backed by the DB
+      partial unique index, not just the application check); **the singer list returns real
+      identifying info (email, granted categories, granted-at), never bare UUIDs** — this guards
+      a real bug caught and fixed before the frontend was built around the broken shape —
+      `tests/integration/test_coach_invites.py` (12 tests)
+- [x] **Coach dashboard reuse, the centerpiece regression tests**:
+      `test_coach_dashboard_recovery_score_matches_singers_own_endpoint` and
+      `test_coach_vocal_range_summary_matches_singers_own_endpoint` call both the singer's own
+      endpoint and the coach's endpoint, as two different authenticated actors, for the same
+      user/date, and assert byte-identical JSON — proves the coach dashboard calls the same
+      scoring functions rather than a re-derived copy; category gating (recordings denied when
+      only trends granted); coach A cannot read coach B's singer; **`DailyCheckIn` free-text
+      fields never appear in any coach response**, asserted as a negative-content check, same
+      style as Stage 10's share-progress regression; every consent change appends a new
+      `ConsentRecord`; category toggle-off blocks only that category; revoke immediately blocks
+      reads but not previously-written notes — `tests/integration/test_coach_access.py` (11
+      tests)
+- [x] **Recording comparison**: category-gated playback, 404 for a recording belonging to a
+      different singer, structured audit log line confirmed on a real access —
+      `tests/integration/test_coach_recordings.py` (4 tests)
+- [x] **Training assignment — the highest-risk regression in this stage**:
+      `test_discomfort_hard_override_cannot_be_bypassed_by_coach_assignment` and five further
+      cases in `TestCoachAssignment` (`tests/unit/test_exercise_routine.py`) confirm an assigned
+      exercise is included only when it's already in the safety-filtered `allowed` list, excluded
+      with a visible reason when it isn't, and never changes the computed intensity cap itself;
+      end-to-end: a real routine reflects an active assignment, a revoked `CoachAccess` stops
+      influencing the routine immediately, a new assignment supersedes rather than deletes the
+      old one — `tests/integration/test_coach_assignments.py` (5 tests)
+- [x] **Professional notes**: blocklist match still saves the note (flags, never blocks); no
+      warning without a trigger word; over-2000-char rejected (422); the singer can read notes
+      about them, another singer cannot; soft-delete removes a note from the coach's list but
+      never from the singer's read access — `tests/integration/test_coach_notes.py` (8 tests)
+- [x] **398 backend tests pass** (up from 339 before this stage — 59 new), `ruff check .` clean
+      (migration files excluded, same pre-existing exception as every prior migration),
+      `alembic check` reports no drift against the applied local migration
+- [x] Frontend: `tsc --noEmit` clean, `eslint` clean (two stray `eslint-disable` comments left
+      over from defensive copy-paste were caught and removed — the rule never actually fired at
+      those two call sites), `vitest` — **63/63 passing**, `next build` succeeds and registers
+      every new coach route (`/coach`, `/coach-signup`, `/coach-access`, `/coach/invite`,
+      `/coach/singers/[singerId]` + its three sub-routes)
+
+### Manual
+
+**Not yet performed as of this report** — the plan's Verification section calls for a live,
+two-real-account pass (sign up a second account as a coach, invite the first, accept with a
+subset of categories, confirm the coach dashboard matches the singer's own dashboard exactly,
+assign an exercise and confirm safe inclusion/exclusion in the singer's next routine, write a
+blocklisted-term note and confirm the warn-but-save behavior, then revoke and confirm the coach
+is immediately locked out while the singer still sees the note history). This is explicitly
+deferred: the dev-only build constraint means this pass happens against local dev, not the live
+app, and is the founder's to run (or request) before deciding whether to move Phase II toward
+real pilot coaches — recorded here as an open item, not silently skipped.
+
+### Result: PASS on everything automated; manual end-to-end pass still pending
+
+Every authorization boundary, reuse-regression, safety-cap regression, and privacy-boundary test
+from the approved plan passes against the real endpoints (not mocks). No user-facing critical
+bugs found during this stage's development. The one explicitly open item is the founder's own
+manual two-account walkthrough, which by design hasn't run yet — this stage stays dev-only,
+unmerged, and undeployed until that happens and an explicit go-ahead is given.

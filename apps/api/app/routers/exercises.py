@@ -94,6 +94,7 @@ def get_routine(
         safety_message=result.safety_message,
         reasons=result.reasons,
         items=[ExerciseOut(audio_demo_url=None, **vars(item)) for item in result.items],
+        assigned_exercise_ids=result.assigned_exercise_ids,
     )
 
 

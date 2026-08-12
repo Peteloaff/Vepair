@@ -120,7 +120,44 @@ with the same visual confidence as a validated acoustic measurement.
 - No register classification, diagnosis, or population-comparison language may appear on either
   exported image — the same Section 1/2 rules apply, unmodified, to this feature.
 
-## 11. Enforcement
+## 12. VepAIr Coach professional notes (Stage 12, Phase II)
+
+Coach-authored freeform notes are a genuinely new risk surface: everywhere else in the app,
+clinical-sounding language is prevented by controlling VepAIr's own copy (Sections 1-2). A
+coach's notes are the first place a human, not VepAIr, writes freeform text another user reads —
+this section documents the real, concrete mitigations, not just the intent to have some.
+
+- **Non-dismissible disclaimer**, shown above the note composer and above the singer's note
+  list, every time: *"Notes are for coaching purposes only — not a medical or clinical record.
+  Do not record diagnoses, medical history, or clinical assessments here. The singer can read
+  every note you write."*
+- **Server-side blocklist** (`apps/api/app/coach_notes.py`'s `BLOCKED_TERMS`), mirroring Section
+  1's prohibited-pattern list (`nodule`, `dysphonia`, `vocal fold`, `vocal cord`, `diagnos`,
+  `damaged`, `polyp`, `lesion`, `paralysis`, `paresis`). A match returns the flagged terms to the
+  frontend as a warning **but the note still saves** — this is friction, not a hard block,
+  because legitimate escalation language ("this sounds like something to have an ENT look at,"
+  consistent with Section 3) must never be prevented by the same mechanism meant to discourage
+  a coach writing a diagnosis.
+- **2000-character server-enforced limit** (Pydantic `max_length`, 422 if exceeded) — keeps notes
+  to short coaching observations by construction, not just by convention.
+- **Immutable, soft-delete only**: a note is never edited in place; a mistake is deleted (never
+  physically removed — the singer's read access to their own history is never revoked) rather
+  than silently rewritten, so there is always an honest record of what was actually written and
+  read.
+- **Operational review, sized for pilot scale, not decorative**: `coach_notes WHERE
+  flagged_terms IS NOT NULL` is a two-line SQL query the founder can run periodically during the
+  pilot to see what triggered the blocklist. This is deliberately not a moderation UI or
+  automated escalation — a small, unpaid pilot with a handful of real coaches does not need one
+  yet; building one before real usage data exists would be guessing at a problem's actual shape.
+  Revisit if Phase III (paid) scales this past what manual review can keep up with.
+
+None of this makes coach notes a clinical record — Sections 1-2's prohibitions apply to this
+surface exactly as they apply to VepAIr's own generated copy. The difference here is enforcement
+mechanism: VepAIr's own copy is controlled by not writing prohibited language in the first place;
+a coach's freeform text can't be pre-controlled the same way, so the mitigations above are the
+next-best real defenses, not a weaker standard.
+
+## 13. Enforcement
 
 - This file is reviewed at the end of every stage as part of the stage completion checklist.
 - Any UI copy, AI-generated explanation, or analysis label that could be read as a diagnosis is a

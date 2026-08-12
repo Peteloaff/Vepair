@@ -1,0 +1,153 @@
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, EmailStr, Field
+
+from app.schemas_exercise import RoutineOut
+from app.schemas_exercise_trend import ExerciseTrendOut
+from app.schemas_recording import RecordingOut
+from app.schemas_recovery_score import RecoveryScoreOut
+from app.schemas_training_consistency import TrainingConsistencyOut
+from app.schemas_vocal_range import VocalRangeSummaryOut
+
+# Kept in sync with app.coach_auth's usage and PRIVACY.md's per-category sharing requirement —
+# a whitelist, not free text, so a category can't be silently invented that no code enforces.
+# DailyCheckIn free-text fields and any live-coach session transcript are a hardcoded omission
+# from every coach-facing response, never a togglable category — see app/coach.py.
+COACH_SHARE_CATEGORIES = {
+    "recovery_trends",
+    "vocal_range",
+    "exercise_history",
+    "recordings",
+}
+
+
+class CoachProfileOut(BaseModel):
+    id: uuid.UUID
+    display_name: str
+    studio_name: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CoachInviteCreate(BaseModel):
+    singer_email: EmailStr
+    message: str | None = Field(default=None, max_length=1000)
+
+
+class CoachInviteOut(BaseModel):
+    """A coach's own view of an invite they sent."""
+
+    id: uuid.UUID
+    singer_email: str
+    status: str
+    message: str | None
+    created_at: datetime
+    responded_at: datetime | None
+
+
+class SingerInviteOut(BaseModel):
+    """A singer's view of an invite they received — coach identity, not the coach's user id."""
+
+    id: uuid.UUID
+    coach_display_name: str
+    coach_studio_name: str | None
+    message: str | None
+    created_at: datetime
+
+
+class InviteAcceptIn(BaseModel):
+    granted_categories: list[str] = Field(min_length=1)
+
+
+class CategoryToggleIn(BaseModel):
+    category: str
+    granted: bool
+
+
+class CoachConnectionOut(BaseModel):
+    """A singer's own 'manage access' list item — one active or past connection."""
+
+    id: uuid.UUID
+    coach_display_name: str
+    coach_studio_name: str | None
+    status: str
+    granted_categories: list[str]
+    granted_at: datetime
+    revoked_at: datetime | None
+
+
+class CoachSingerSummaryOut(BaseModel):
+    """Every field is None unless the singer granted that specific category — never a blanket
+    all-or-nothing gate. Each populated field is built from the exact same response schema
+    (RecoveryScoreOut, VocalRangeSummaryOut, etc.) the singer's own endpoints already return,
+    via the exact same pure functions (app.recovery_score, app.vocal_range, ...) — see
+    app/routers/coach.py. This is what "one shared Voice Intelligence engine" means in code,
+    not just in ROADMAP.md prose."""
+
+    singer_id: uuid.UUID
+    granted_categories: list[str]
+    recovery_score: RecoveryScoreOut | None
+    vocal_range: VocalRangeSummaryOut | None
+    exercise_trends: list[ExerciseTrendOut] | None
+    training_consistency: TrainingConsistencyOut | None
+    todays_routine: RoutineOut | None
+
+
+class CoachSingerListItemOut(BaseModel):
+    """A coach's own singer roster entry — enough to identify who's who and what's shared,
+    without pulling their full dashboard (see CoachSingerSummaryOut for that)."""
+
+    singer_user_id: uuid.UUID
+    singer_email: str
+    coach_access_id: uuid.UUID
+    granted_categories: list[str]
+    granted_at: datetime
+
+
+class CoachAssignmentCreate(BaseModel):
+    exercise_ids: list[uuid.UUID] = Field(min_length=1)
+    note_to_singer: str | None = Field(default=None, max_length=1000)
+
+
+class CoachAssignmentOut(BaseModel):
+    id: uuid.UUID
+    exercise_ids: list[uuid.UUID]
+    note_to_singer: str | None
+    status: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CoachNoteCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CoachNoteOut(BaseModel):
+    """Not a clinical record — see MEDICAL_SAFETY.md. `flagged_terms` is non-empty when
+    app.coach_notes's blocklist matched; the note is saved regardless (see
+    app/routers/coach.py's create_note)."""
+
+    id: uuid.UUID
+    body: str
+    flagged_terms: list[str] | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CoachVoiceSessionOut(BaseModel):
+    """Same shape as VoiceSessionWithRecordingsOut minus `notes` — VoiceSession.notes is
+    user free-text, the same category of field DailyCheckIn's illness_symptoms/reflux_symptoms/
+    notes are hardcoded out of every coach-facing response for. Built explicitly in
+    app/routers/coach.py rather than via VoiceSessionWithRecordingsOut.model_validate(...), so
+    `notes` can never leak through by accident even if a future field gets added to that
+    schema without this one being updated to match."""
+
+    id: uuid.UUID
+    started_at: datetime
+    completed_at: datetime | None
+    device_metadata_id: uuid.UUID | None
+    recordings: list[RecordingOut] = []

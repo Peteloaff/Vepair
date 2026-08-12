@@ -9,8 +9,9 @@ from app.auth import create_access_token, get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.email import send_password_reset_email
-from app.models import AuthCredential, PasswordResetToken, RefreshToken, User
+from app.models import AuthCredential, CoachProfile, PasswordResetToken, RefreshToken, User
 from app.schemas_auth import (
+    CoachSignupRequest,
     LoginRequest,
     LogoutRequest,
     PasswordResetConfirmSchema,
@@ -71,6 +72,36 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> TokenRespon
         ) from None
 
     db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
+    db.commit()
+    db.refresh(user)
+
+    return _issue_tokens(db, user)
+
+
+@router.post("/coach-signup", response_model=TokenResponse, status_code=201)
+def coach_signup(payload: CoachSignupRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    """Stage 12 Phase II. Creates the User, AuthCredential, and CoachProfile together in one
+    transaction — a coach account is a coach account from creation, never a later upgrade on
+    an existing singer account (see CoachSignupRequest's docstring)."""
+    user = User(email=payload.email.lower())
+    db.add(user)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "email_taken", "message": "An account with this email already exists."},
+        ) from None
+
+    db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
+    db.add(
+        CoachProfile(
+            user_id=user.id,
+            display_name=payload.display_name,
+            studio_name=payload.studio_name,
+        )
+    )
     db.commit()
     db.refresh(user)
 

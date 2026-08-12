@@ -303,3 +303,91 @@ class TestTrackChallengeMode:
             exercises, 10, healthy_signals(track="improvement", recovery_status="red")
         )
         assert result.intensity_cap == "low"
+
+
+class TestCoachAssignment:
+    """Stage 12 Phase II — a coach's exercise assignment must never be able to bypass the
+    intensity-cap safety filter every adaptively-chosen exercise already goes through."""
+
+    def _by_name(self, exercises: list[ExerciseInfo], name: str) -> ExerciseInfo:
+        return next(e for e in exercises if e.name == name)
+
+    def test_coach_assigned_exercise_is_included_when_safe(self) -> None:
+        exercises = make_exercises()
+        assigned = self._by_name(exercises, "Gentle hum on a comfortable pitch")  # low
+        result = generate_routine(
+            exercises, 20, healthy_signals(coach_assigned_exercise_ids=[assigned.id])
+        )
+        assert assigned.id in {item.id for item in result.items}
+        assert assigned.id in result.assigned_exercise_ids
+        assert any("assigned specific exercises" in r for r in result.reasons)
+
+    def test_coach_assigned_exercise_excluded_when_it_exceeds_todays_cap(self) -> None:
+        """The central regression: today's discomfort forces a "low" cap, and the coach
+        assigned a "high"-intensity exercise — it must never appear in the routine."""
+        exercises = make_exercises()
+        assigned = self._by_name(exercises, "Comfortable range exploration")  # high
+        result = generate_routine(
+            exercises,
+            20,
+            healthy_signals(throat_discomfort=9, coach_assigned_exercise_ids=[assigned.id]),
+        )
+        assert result.intensity_cap == "low"
+        assert assigned.id not in {item.id for item in result.items}
+        assert assigned.id not in result.assigned_exercise_ids
+        for item in result.items:
+            assert CATEGORY_INTENSITY[item.category] == "low"
+
+    def test_discomfort_hard_override_cannot_be_bypassed_by_coach_assignment(self) -> None:
+        """Same guarantee, phrased as the hard-override test this class exists to protect —
+        mirrors TestHighDiscomfort.test_never_recommends_high_intensity_exercise, but with a
+        coach assignment actively trying to push a high-intensity exercise in."""
+        exercises = make_exercises()
+        assigned_high = self._by_name(exercises, "Two-octave-feel glide")  # high
+        assigned_moderate = self._by_name(
+            exercises, "Lip trill on a comfortable pitch"
+        )  # moderate
+        result = generate_routine(
+            exercises,
+            20,
+            healthy_signals(
+                throat_discomfort=9,
+                coach_assigned_exercise_ids=[assigned_high.id, assigned_moderate.id],
+            ),
+        )
+        assert result.intensity_cap == "low"
+        for item in result.items:
+            assert CATEGORY_INTENSITY[item.category] == "low"
+        assert result.assigned_exercise_ids == []
+        assert any("kept the routine to gentler options" in r for r in result.reasons)
+
+    def test_coach_assignment_never_changes_the_computed_intensity_cap(self) -> None:
+        exercises = make_exercises()
+        assigned = self._by_name(exercises, "Comfortable range exploration")
+        without_assignment = generate_routine(exercises, 20, healthy_signals(fatigue=8))
+        with_assignment = generate_routine(
+            exercises,
+            20,
+            healthy_signals(fatigue=8, coach_assigned_exercise_ids=[assigned.id]),
+        )
+        assert without_assignment.intensity_cap == with_assignment.intensity_cap
+
+    def test_routine_unchanged_when_coach_assigned_exercise_ids_is_none(self) -> None:
+        exercises = make_exercises()
+        with_none = generate_routine(
+            exercises, 10, healthy_signals(coach_assigned_exercise_ids=None)
+        )
+        without_field = generate_routine(exercises, 10, healthy_signals())
+        assert [i.id for i in with_none.items] == [i.id for i in without_field.items]
+        assert with_none.assigned_exercise_ids == []
+
+    def test_assigned_exercise_gets_priority_within_the_budget(self) -> None:
+        """A short routine that would normally never reach Range exploration (last in
+        MIDDLE_CATEGORY_ORDER) should still include it when assigned, since assigned
+        exercises are tried right after the opening exercise, ahead of the adaptive fill."""
+        exercises = make_exercises()
+        assigned = self._by_name(exercises, "Comfortable range exploration")
+        result = generate_routine(
+            exercises, 5, healthy_signals(coach_assigned_exercise_ids=[assigned.id])
+        )
+        assert assigned.id in {item.id for item in result.items}

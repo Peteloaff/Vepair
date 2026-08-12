@@ -29,7 +29,7 @@ PASS test report and explicit approval from the founder (Pete).**
 | 10 | Share My Progress | ✅ Built and awaiting approval |
 | 11 | Progress Dashboard | ✅ Built and awaiting approval |
 | — | **Deployment milestone**: move to Supabase dev/prod, set up the GitHub workflow, prepare for Google Play submission | ⚪ Happens after Stage 11 is approved, before Stage 12 begins — see "Deployment milestone" below |
-| 12 | VepAIr Coach (Professional SaaS for vocal coaches/studios) | ⚪ Not started — high-level phases scoped below from the founder's monetization strategy doc; detailed design deferred until Stage 11 is beta-tested |
+| 12 | VepAIr Coach (Professional SaaS for vocal coaches/studios) | 🟡 Phase II (Coach pilot) built on `feature/coach-portal`, dev-only, not yet merged/deployed — see below |
 
 **Backlog (deprioritized, not scheduled):** Computer Vision Coach (optional/experimental),
 Wearables + Vocal Load. Revisited only if they become a priority — removed from the numbered
@@ -55,7 +55,13 @@ Phases:
    baselines, validated measurements, range/endurance tracking (Stages 1-10).
 2. **Phase II — Coach pilot.** Singer dashboard, training assignment, progress tracking,
    recording comparison, professional notes — unpaid, with a small number of real coaches, to
-   test whether they actually use it.
+   test whether they actually use it. **Built** on `feature/coach-portal` (invite/accept
+   lifecycle, per-category revocable consent, read-only dashboard reusing the singer's own
+   scoring functions, training assignment that can never bypass an existing safety cap,
+   coach-signup flow, professional notes with blocklist + disclaimer mitigations) — see
+   `ARCHITECTURE.md` §6m, `MEDICAL_SAFETY.md` §12, `PRIVACY.md` §3/§6, `TESTING.md` §16. **Not
+   yet merged to `main` or deployed** — stays dev-only until the founder gives an explicit
+   go-ahead to invite real pilot coaches.
 3. **Phase III — Paid VepAIr Coach.** Professional subscriptions for independent coaches/singing
    teachers first (~$79-149/mo per the doc's proposed range — to be validated, not fixed).
 4. **Phase IV — VepAIr Studio.** Multiple coaches, seat management, centralized billing,
