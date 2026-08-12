@@ -27,3 +27,59 @@ export function isBlackKey(midi: number): boolean {
 export function isNaturalNote(midi: number): boolean {
   return !isBlackKey(midi);
 }
+
+/** Equal-temperament frequency for a MIDI note number (A4 = MIDI 69 = 440Hz). */
+export function midiToFrequency(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+export interface ReferenceNote {
+  label: string;
+  midi: number;
+  frequencyHz: number;
+}
+
+/** A generic reference range spanning octaves 3-4 by default (roughly bass to soprano
+ * speaking/singing pitch) — deliberately not personalized to any one user's measured vocal
+ * range, since this is a general-purpose "what note is that?" reference, not a claim about
+ * what any specific user should be singing. */
+export function buildReferenceRange(startOctave = 3, octaveCount = 2): ReferenceNote[] {
+  const notes: ReferenceNote[] = [];
+  const startMidi = noteNameToMidi(`C${startOctave}`);
+  for (let midi = startMidi; midi < startMidi + octaveCount * 12; midi++) {
+    notes.push({ label: midiToNoteName(midi), midi, frequencyHz: midiToFrequency(midi) });
+  }
+  return notes;
+}
+
+/** Plays a short pure tone via the Web Audio API with a brief fade in/out to avoid clicks. */
+export function playTone(frequencyHz: number, durationMs = 2000): Promise<void> {
+  const AudioContextCtor =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new AudioContextCtor();
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = "sine";
+  oscillator.frequency.value = frequencyHz;
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+
+  const now = ctx.currentTime;
+  const fadeSeconds = 0.03;
+  const durationSeconds = durationMs / 1000;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(0.2, now + fadeSeconds);
+  gain.gain.setValueAtTime(0.2, now + Math.max(fadeSeconds, durationSeconds - fadeSeconds));
+  gain.gain.linearRampToValueAtTime(0, now + durationSeconds);
+
+  oscillator.start(now);
+  oscillator.stop(now + durationSeconds);
+
+  return new Promise((resolve) => {
+    oscillator.onended = () => {
+      ctx.close();
+      resolve();
+    };
+  });
+}

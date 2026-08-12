@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
+import { ReferenceTonePlayer } from "@/components/ReferenceTonePlayer";
 import { coachingProfileForCategory, type FeedbackContext } from "@/lib/feedbackEngine";
 import {
   LiveCoachSession,
@@ -363,6 +364,8 @@ function ExercisesFlow() {
             {exercise.contraindications}
           </div>
         )}
+
+        {profile !== "none" && <ReferenceTonePlayer />}
 
         <p className="mb-2 text-center font-mono text-3xl tabular-nums text-neutral-200">
           {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
