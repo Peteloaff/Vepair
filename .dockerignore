@@ -1,0 +1,24 @@
+# Used when building apps/api/Dockerfile with the repo root as context (see docker-compose.yml
+# and deploy instructions) — apps/api needs the sibling packages/audio-engine package, so the
+# build context can't be scoped to apps/api alone. Keeps everything irrelevant to that build
+# out of the upload.
+
+.git
+.claude
+node_modules
+.next
+apps/web
+apps/api/.venv
+apps/api/tests
+apps/api/var/recordings/*
+packages/audio-engine/.venv
+packages/audio-engine/tests
+data
+docs
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.env
+.env.local
+*.docx

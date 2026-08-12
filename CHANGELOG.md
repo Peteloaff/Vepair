@@ -2,6 +2,25 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Fixed — apps/api's Docker image never actually included its own dependency (2026-08-12)
+
+**Found deploying to Cloud Run, not by any test — Docker was never exercised before this**:
+`app/baseline.py` (and others) import `vepair_audio_engine` from the sibling
+`packages/audio-engine` package, but `apps/api/Dockerfile` only ever copied `apps/api` itself
+into the image and never installed `packages/audio-engine` at all — a `ModuleNotFoundError` on
+every startup. This was latent since Stage 0: local dev always ran directly in the shared
+`.venv` (both packages installed together via `scripts/setup.ps1`), and `docker-compose.yml`'s
+`build: ./apps/api` scoped the Docker build context to `apps/api` alone, so the sibling package
+was never even reachable to copy in the first place.
+
+Fixed by widening the build context to the **repo root**: `apps/api/Dockerfile` now installs
+`packages/audio-engine` first (COPY + `pip install`, ahead of the app itself, so the Docker
+layer cache stays useful across ordinary app-code changes), then `apps/api`.
+`docker-compose.yml`'s `api` service now builds with `context: .`,
+`dockerfile: apps/api/Dockerfile` instead of `build: ./apps/api`. A new root-level
+`.dockerignore` keeps the wider context's upload small. Cloud Run source deploys must now use
+`--source .` (repo root) instead of `--source apps/api` to match.
+
 ## Fixed — Alembic crashed against a password containing a URL-encoded character (2026-08-12)
 
 **Found while migrating the first real Supabase database, not by any test** — local dev's
