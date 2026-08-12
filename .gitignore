@@ -33,5 +33,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# --- Generated docs (PDFs are exported on demand, source of truth is the .md) ---
+*.pdf
+
 .vercel
 .env*

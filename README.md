@@ -47,6 +47,9 @@ for what's shipped so far.
 
 | File | Contents |
 |---|---|
+| [`USER_GUIDE.md`](USER_GUIDE.md) | Plain-English walkthrough of the app for people using it |
+| [`FEATURES.md`](FEATURES.md) | Catalog of every feature — what it does and why, live vs. planned |
+| [`TECHNICAL_GUIDE.md`](TECHNICAL_GUIDE.md) | Deployment/operations guide — GitHub, Vercel, Cloud Run, Supabase, and how they fit together |
 | [`ROADMAP.md`](ROADMAP.md) | Stage-by-stage build plan and release grouping |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Repo structure, tech stack, data model, system diagram |
 | [`TESTING.md`](TESTING.md) | Test pyramid, test plans, and actual results per stage |
