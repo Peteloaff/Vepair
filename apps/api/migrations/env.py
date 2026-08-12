@@ -15,7 +15,11 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# configparser (which backs alembic's Config) treats "%" as interpolation syntax, so a URL
+# containing a percent-encoded character (e.g. "%40" for "@" in a password) must have its "%"
+# doubled here to round-trip correctly through set_main_option/get_section below — otherwise
+# any DATABASE_URL with a URL-encoded special character in it crashes on startup.
+config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:

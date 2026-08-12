@@ -2,6 +2,19 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Fixed — Alembic crashed against a password containing a URL-encoded character (2026-08-12)
+
+**Found while migrating the first real Supabase database, not by any test** — local dev's
+`vepair:vepair` password has no special characters, so this was latent since Stage 0.
+`migrations/env.py` passed `DATABASE_URL` straight into Alembic's `Config.set_main_option`,
+which is backed by Python's `configparser` — and `configparser` treats a bare `%` as the start
+of interpolation syntax (`%(name)s`), not a literal character. A Supabase pooler connection
+string with a URL-encoded special character in the password (e.g. `%40` for `@`) crashed with
+`ValueError: invalid interpolation syntax` before a single migration could run. Fixed by
+doubling every `%` (`%%`) before storing it, which `configparser` correctly un-escapes back to
+a single `%` when Alembic reads it back out — the same fix applies to any future
+`DATABASE_URL` with a percent-encoded character, not just this one.
+
 ## Stage 11 — Progress Dashboard (2026-08-12)
 
 ### Added
