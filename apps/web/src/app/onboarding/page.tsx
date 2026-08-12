@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { NotificationsConsent } from "@/components/NotificationsConsent";
 import { RequireAuth } from "@/components/RequireAuth";
 import { TrackSelector } from "@/components/TrackSelector";
 import { useAuth } from "@/lib/auth-context";
@@ -282,6 +283,11 @@ export default function OnboardingPage() {
             90-day plan specific to your own measured range.
           </p>
           <TrackSelector />
+        </section>
+
+        <section className="mb-10">
+          <h2 className="mb-1 text-sm font-medium text-neutral-200">Notifications</h2>
+          <NotificationsConsent />
         </section>
 
         <Suspense fallback={null}>

@@ -353,3 +353,15 @@ export interface ProgressSnapshot {
   sessions_completed: number;
   training_compliance_pct: number | null;
 }
+
+export type ConsentType =
+  | "product_analytics"
+  | "model_training"
+  | "clinician_sharing"
+  | "notifications";
+
+export interface ConsentStatus {
+  consent_type: ConsentType;
+  granted: boolean | null;
+  granted_at: string | null;
+}

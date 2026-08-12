@@ -414,7 +414,8 @@ class ConsentRecord(Base, TimestampMixin):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
     )
-    # product_analytics | model_training | clinician_sharing
+    # product_analytics | model_training | clinician_sharing | notifications
+    # Kept in sync with app.schemas_consent.VALID_CONSENT_TYPES, the actual enforced whitelist.
     consent_type: Mapped[str] = mapped_column(String(50))
     granted: Mapped[bool] = mapped_column(Boolean)
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

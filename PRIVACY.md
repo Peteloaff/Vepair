@@ -41,6 +41,15 @@ decline another):
    information purposes only, never clinical) — per-professional, revocable grant letting a
    vocal coach, teacher, or studio the user has explicitly authorized view a specific user's
    recordings, trends, and notes. Not automatic just because a coach knows the singer.
+4. **Notifications / product communications consent** — whether VepAIr may contact the user
+   (e.g. by email) with notifications or updates. Off (unset) by default until the user makes
+   an explicit choice — see the Yes/No control on the onboarding page, backed by
+   `GET`/`PUT /api/v1/consent/notifications`. **If granted, VepAIr may use the user's contact
+   information (their account email) to reach them for this purpose.** This is a distinct
+   purpose from analytics, model training, and professional sharing above — granting one never
+   implies granting another, and this consent specifically does not authorize using contact
+   data for anything beyond notifications/updates (e.g. it is not blanket permission for
+   unrelated marketing or third-party sharing).
 
 No recording or derived measurement may be used for population-level model training without
 explicit, purpose-specific, informed consent — never bundled into a generic ToS acceptance.
@@ -98,3 +107,13 @@ no email, account ID, location, or raw journal/notes text is ever included in ei
 (confirmed by an explicit regression test). The two exported images never touch the server: they
 are rendered entirely client-side from that authenticated response and only leave the device
 when the user explicitly taps Save or Share.
+
+The **notifications consent** purpose (section 3, #4) is implemented via
+`GET`/`PUT /api/v1/consent/{consent_type}`, backed by the `ConsentRecord` table Stage 0 already
+shipped the schema for. Every choice is inserted as a new, timestamped row rather than updated
+in place — the full history of what a user decided, and when, is preserved, matching this
+document's "auditable access" principle. A user who has never been asked reads back as
+`granted: null`, distinct from an explicit `false`, so "hasn't decided" is never conflated with
+"said no." The other three consent types this table anticipates (`product_analytics`,
+`model_training`, `clinician_sharing`) are validated by the same endpoint but have no UI or
+enforcement wired to them yet — only `notifications` is live.

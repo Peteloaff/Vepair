@@ -114,8 +114,12 @@ reviewed foundation instead of bolting on tables stage by stage.
   like `Baseline` — see section 6e for why. `components` stores the full breakdown (per-metric
   scores, weights, inclusion) as JSON, the same data the "why did I get this score?" UI reads.
 - **DeviceMetadata** — recording device/microphone fingerprint, reused across sessions.
-- **ConsentRecord** — explicit, timestamped consent grants, separated by purpose (e.g. product
-  analytics vs. model training vs. vocal-professional sharing) per `PRIVACY.md`.
+- **ConsentRecord** — explicit, timestamped consent grants, separated by purpose (product
+  analytics, model training, vocal-professional sharing, notifications) per `PRIVACY.md`. An
+  append-only ledger, not upserted in place — every change of mind inserts a new row rather than
+  overwriting the last one. Exercised via `GET`/`PUT /api/v1/consent/{consent_type}`; currently
+  only the `notifications` purpose has a real UI (the onboarding page's Yes/No control) driving
+  it, though all four purposes are validated by the same endpoint.
 
 See `apps/api/migrations/versions/` for the actual column-level schema and
 `apps/api/app/models.py` for the SQLAlchemy definitions — this document intentionally does not
