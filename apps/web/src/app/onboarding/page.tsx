@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/RequireAuth";
 import { TrackSelector } from "@/components/TrackSelector";
 import { useAuth } from "@/lib/auth-context";
@@ -60,6 +60,8 @@ function TriState({
 function OnboardingForm() {
   const { apiFetch } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isNewSignup = searchParams.get("new") === "1";
   const [form, setForm] = useState<ProfileInput>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -247,10 +249,14 @@ function OnboardingForm() {
         </button>
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() =>
+            router.push(
+              isNewSignup ? `/record?next=${encodeURIComponent("/vocal-range")}` : "/"
+            )
+          }
           className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
         >
-          Done
+          {isNewSignup ? "Done — record your baseline →" : "Done"}
         </button>
       </div>
     </form>
@@ -278,7 +284,9 @@ export default function OnboardingPage() {
           <TrackSelector />
         </section>
 
-        <OnboardingForm />
+        <Suspense fallback={null}>
+          <OnboardingForm />
+        </Suspense>
       </main>
     </RequireAuth>
   );

@@ -16,6 +16,7 @@ import type {
   CheckInInput,
   Profile,
   RecoveryScore as RecoveryScoreData,
+  VocalPlanView,
 } from "@/lib/types";
 
 const RANGE_OPTIONS = [
@@ -23,6 +24,16 @@ const RANGE_OPTIONS = [
   { label: "30 days", days: 30 },
   { label: "90 days", days: 90 },
 ] as const;
+
+const TRACK_LABEL: Record<string, string> = {
+  repair: "Vocal Repair",
+  improvement: "Vocal Improvement",
+};
+
+function daysRemaining(targetEndDate: string): number {
+  const ms = new Date(targetEndDate).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
 
 function buildSeries(history: CheckIn[], dates: string[], metric: keyof CheckIn): TrendPoint[] {
   const byDate = new Map(history.map((c) => [c.checkin_date, c]));
@@ -40,6 +51,8 @@ function Dashboard() {
   const [baselineError, setBaselineError] = useState(false);
   const [recoveryScore, setRecoveryScore] = useState<RecoveryScoreData | null>(null);
   const [recoveryScoreError, setRecoveryScoreError] = useState(false);
+  const [planView, setPlanView] = useState<VocalPlanView | null>(null);
+  const [planError, setPlanError] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false);
   const [rangeDays, setRangeDays] = useState<number>(30);
   const [editingToday, setEditingToday] = useState(false);
@@ -85,6 +98,9 @@ function Dashboard() {
     apiFetch<BaselineSummary>("/api/v1/baseline")
       .then(setBaseline)
       .catch(() => setBaselineError(true));
+    apiFetch<VocalPlanView>("/api/v1/vocal-plan")
+      .then(setPlanView)
+      .catch(() => setPlanError(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -179,6 +195,42 @@ function Dashboard() {
           <p className="text-sm text-neutral-500">Could not load today&apos;s score.</p>
         ) : (
           <RecoveryScoreCard score={recoveryScore} />
+        )}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-neutral-200">Your Plan</h2>
+        {planError ? (
+          <p className="text-sm text-neutral-500">Could not load your vocal plan.</p>
+        ) : planView === null ? (
+          <p className="text-sm text-neutral-500">Loading...</p>
+        ) : planView.plan ? (
+          <div>
+            <p className="text-sm text-neutral-300">
+              {TRACK_LABEL[planView.plan.track] ?? planView.plan.track} &middot;{" "}
+              {planView.plan.target_milestones.description}
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              {daysRemaining(planView.plan.target_end_date)} days left in this 90-day plan
+            </p>
+            <Link
+              href="/exercises"
+              className="mt-3 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            >
+              Start today&apos;s routine &rarr;
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-500">
+            Complete your profile and record a voice sample plus a{" "}
+            <Link href="/vocal-range" className="text-emerald-400 hover:text-emerald-300">
+              vocal range test
+            </Link>{" "}
+            to get your custom 90-day plan.{" "}
+            <Link href="/onboarding" className="text-emerald-400 hover:text-emerald-300">
+              Get started &rarr;
+            </Link>
+          </p>
         )}
       </section>
 

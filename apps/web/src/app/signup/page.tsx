@@ -33,7 +33,11 @@ export default function SignupPage() {
     try {
       justSubmittedRef.current = true;
       await signup(email, password);
-      router.replace("/onboarding");
+      // The `new=1` marker tells onboarding this is a first-time signup, so its "Done" button
+      // chains into the guided recording + vocal range steps instead of going straight to the
+      // dashboard — a returning user editing their profile later (via the Profile nav link,
+      // same /onboarding URL with no marker) isn't forced through that again.
+      router.replace("/onboarding?new=1");
     } catch (err) {
       justSubmittedRef.current = false;
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");

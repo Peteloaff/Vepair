@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Waveform, type WaveformHandle } from "@/components/Waveform";
 import { useAuth } from "@/lib/auth-context";
@@ -33,6 +34,8 @@ function detectDeviceType(): string {
 
 function RecordingFlow() {
   const { apiFetch } = useAuth();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
   const [phase, setPhase] = useState<Phase>("intro");
   const [stepIndex, setStepIndex] = useState(0);
   const [session, setSession] = useState<VoiceSession | null>(null);
@@ -210,6 +213,15 @@ function RecordingFlow() {
         >
           Start session
         </button>
+
+        {next && (
+          <Link
+            href={next}
+            className="mt-3 block text-center text-xs text-neutral-500 hover:text-neutral-300"
+          >
+            Skip for now &rarr;
+          </Link>
+        )}
       </div>
     );
   }
@@ -336,10 +348,10 @@ function RecordingFlow() {
           docs/acoustic-measurements.md for what each one means and its limitations.
         </p>
         <Link
-          href="/"
+          href={next ?? "/"}
           className="inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
         >
-          Back to dashboard
+          {next ? "Continue to vocal range test →" : "Back to dashboard"}
         </Link>
       </div>
     );
@@ -453,7 +465,9 @@ export default function RecordPage() {
   return (
     <RequireAuth>
       <main className="flex flex-1 flex-col px-6 py-10">
-        <RecordingFlow />
+        <Suspense fallback={null}>
+          <RecordingFlow />
+        </Suspense>
       </main>
     </RequireAuth>
   );
