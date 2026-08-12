@@ -2,6 +2,30 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Fixed — track selection required a saved profile first, and plan-pending copy implied only one input was needed (2026-08-12)
+
+**Found live**, right after the onboarding redirect went in: a brand-new signup has no
+`UserProfile` row yet, so `PATCH /api/v1/profile/track` 404'd with "complete onboarding first"
+— forcing a user to fill out the whole profile form before they could even pick Repair or
+Improvement, even though onboarding already lands them straight on the track picker.
+
+- `app/routers/vocal_plan.py`'s `set_track` now creates a bare `UserProfile` row on first
+  choice if one doesn't exist yet, the same create-on-first-write pattern `PUT /profile`
+  already used — track selection works the instant a user lands on onboarding, no separate
+  profile save required first.
+- `TrackSelector.tsx`: removed the blocking "save the form below first" early return that
+  depended on the now-obsolete 404.
+- Separately, `PLAN_PENDING_REASON` said "head over to Record voice sample, **or** Vocal
+  Range," misleadingly implying either alone is enough — a real plan needs both a recording
+  and a vocal-range test. Reworded to say so plainly. (Confirmed via a direct query against a
+  real tester's production data: recordings and a track were present, but zero `vocal_ranges`
+  rows — correct by-design "pending" behavior, not a bug, just misleading copy.)
+- `login/page.tsx`: a different real tester (`sjkepner@gmail.com`) reported "can't sign in" —
+  turned out they simply hadn't signed up yet (confirmed via direct DB query: no account row).
+  The login error message stays intentionally generic for anti-enumeration reasons and was not
+  changed; instead, "Create an account" is now a prominent full-width button instead of a
+  small text link, so it's harder to miss on the way in.
+
 ## Added — Supabase Storage backend for recordings (2026-08-12)
 
 **Why now:** deploying to Cloud Run for real phone testing exposed a real gap —

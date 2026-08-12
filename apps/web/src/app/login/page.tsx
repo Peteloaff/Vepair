@@ -84,10 +84,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 flex justify-between text-xs text-neutral-500">
-          <Link href="/signup" className="hover:text-neutral-300">
+        <div className="mt-6 border-t border-neutral-800 pt-6">
+          <p className="mb-2 text-xs text-neutral-500">New to VepAIr?</p>
+          <Link
+            href="/signup"
+            className="block w-full rounded-lg border border-neutral-700 px-4 py-2 text-center text-sm font-medium hover:bg-neutral-800"
+          >
             Create an account
           </Link>
+        </div>
+
+        <div className="mt-4 text-center text-xs text-neutral-500">
           <Link href="/forgot-password" className="hover:text-neutral-300">
             Forgot password?
           </Link>

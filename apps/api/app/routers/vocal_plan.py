@@ -19,8 +19,9 @@ from app.vocal_plan import TRACKS, get_active_plan, sync_plan_to_track
 router = APIRouter(prefix="/api/v1", tags=["vocal-plan"])
 
 PLAN_PENDING_REASON = (
-    "We'll build your 90-day plan as soon as we have a recent recording and a vocal range "
-    "test to base it on — head over to Record or Vocal Range to get started."
+    "We'll build your 90-day plan as soon as we have both a recent recording and a vocal "
+    "range test to base it on — head over to Record voice sample, then Vocal Range, to get "
+    "started (both are needed, not just one)."
 )
 
 
@@ -39,15 +40,15 @@ def set_track(
             },
         )
 
+    # Track selection must work the moment a user lands on onboarding — the very first thing
+    # they're asked, not something gated behind saving the rest of the profile form first (a
+    # real gap found live: a brand-new signup had no UserProfile row yet, so this used to 404
+    # with "complete onboarding first"). Same create-on-first-write pattern PUT /profile
+    # already uses.
     profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
     if profile is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "code": "profile_not_found",
-                "message": "Complete onboarding before choosing a track.",
-            },
-        )
+        profile = UserProfile(user_id=current_user.id)
+        db.add(profile)
 
     profile.track = payload.track
     db.commit()

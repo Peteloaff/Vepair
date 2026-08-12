@@ -31,10 +31,20 @@ class TestSetTrack:
         resp = client.patch("/api/v1/profile/track", headers=headers, json={"track": "bogus"})
         assert resp.status_code == 422
 
-    def test_requires_onboarding_to_be_completed_first(self, client, signed_up_user) -> None:
+    def test_works_immediately_after_signup_with_no_profile_yet(
+        self, client, signed_up_user
+    ) -> None:
+        """Track selection must work the moment a new user lands on onboarding — the very
+        first thing they're asked, never gated behind saving the rest of the profile form
+        first. Found live: a brand-new signup had no UserProfile row yet."""
         _user, headers = signed_up_user
         resp = client.patch("/api/v1/profile/track", headers=headers, json={"track": "repair"})
-        assert resp.status_code == 404
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["track"] == "repair"
+
+        profile = client.get("/api/v1/profile", headers=headers)
+        assert profile.status_code == 200
+        assert profile.json()["track"] == "repair"
 
     def test_setting_track_without_assessment_data_yet_leaves_plan_pending(
         self, client, signed_up_user

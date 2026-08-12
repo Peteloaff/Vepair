@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { ApiError } from "@/lib/apiClient";
 import type { Profile, TrackSetResult, VocalTrack } from "@/lib/types";
 
 const TRACK_COPY: Record<VocalTrack, { title: string; description: string }> = {
@@ -26,16 +25,15 @@ export function TrackSelector() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingReason, setPendingReason] = useState<string | null>(null);
-  const [profileMissing, setProfileMissing] = useState(false);
 
   useEffect(() => {
+    // A brand-new signup has no profile row yet — that's expected, not an error. Track
+    // selection must work immediately regardless (see PATCH /profile/track, which creates a
+    // bare profile on first choice), so this just leaves `track` at its default (null) rather
+    // than blocking the picker.
     apiFetch<Profile>("/api/v1/profile")
       .then((profile) => setTrack(profile.track))
-      .catch((err) => {
-        if (err instanceof ApiError && err.code === "profile_not_found") {
-          setProfileMissing(true);
-        }
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -51,7 +49,6 @@ export function TrackSelector() {
       });
       setTrack(result.track);
       setPendingReason(result.plan_pending_reason);
-      setProfileMissing(false);
     } catch {
       setError("Could not save your track. Please try again.");
     } finally {
@@ -61,14 +58,6 @@ export function TrackSelector() {
 
   if (loading) {
     return <p className="text-sm text-neutral-500">Loading...</p>;
-  }
-
-  if (profileMissing) {
-    return (
-      <p className="text-sm text-neutral-500">
-        Save the form below first, then choose your track.
-      </p>
-    );
   }
 
   return (
