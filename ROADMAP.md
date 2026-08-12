@@ -76,6 +76,35 @@ automatic just because a coach knows the singer); the platform never auto-diagno
 condition — same `MEDICAL_SAFETY.md` boundary as the consumer product; one shared Voice
 Intelligence engine, not a second parallel one for professionals.
 
+### Internal admin backend (founder's operational tooling — confirmed need, new)
+
+Distinct from the VepAIr Coach portal above (which is for external vocal coaches/studios): the
+founder needs an internal, GUI admin backend for running the business — user administration,
+data pulls for contact lists, and reporting. Not a customer-facing feature, but grouped into
+Stage 12 because it depends on the same foundation that stage already has to build (role-based
+access beyond today's single "user" role; audit logging for who accessed what).
+
+To be scoped in detail when Stage 12 is reached, but the shape is already clear:
+
+- **Admin auth**: a real admin role, not a flag on the existing `User` model — this is the first
+  actual consumer of `PRIVACY.md` §4's "auditable access" commitment (every non-owner read of a
+  user's data attributable to a specific actor and reason), so that requirement needs to land for
+  real here, not stay aspirational.
+- **User administration**: search/view/manage accounts for support (password resets, account
+  issues) — scoped access for a specific task, not unrestricted bulk data access by default.
+- **Reporting**: aggregate business/usage metrics (signups, retention, engagement) — the kind of
+  data `PRIVACY.md`'s existing "product analytics consent" purpose already anticipates.
+- **Contact list / data export for outreach — needs a privacy decision before it's built, not
+  just an engineering task**: `PRIVACY.md` §3's consent model currently covers product analytics,
+  model training, and vocal-professional sharing — it does not cover marketing/outreach contact
+  use. Pulling emails to build contact lists is a distinct purpose from those three and likely
+  needs its own explicit consent grant (or at minimum a clear opt-out) rather than assuming every
+  registered user is contactable for outreach by default. `PRIVACY.md` should be updated with
+  that decision before this ships, not worked around in code.
+
+Same non-negotiables as the rest of Stage 12 apply here: no clinical/diagnostic data exposure,
+audit-logged access, never a shortcut around the consent model.
+
 ### Deployment milestone (between Stage 11 and Stage 12)
 
 The founder now has GitHub, Supabase, and Google Cloud accounts set up. Before Stage 12 begins,
