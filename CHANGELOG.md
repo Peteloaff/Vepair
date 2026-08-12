@@ -13,13 +13,17 @@ every startup. This was latent since Stage 0: local dev always ran directly in t
 `build: ./apps/api` scoped the Docker build context to `apps/api` alone, so the sibling package
 was never even reachable to copy in the first place.
 
-Fixed by widening the build context to the **repo root**: `apps/api/Dockerfile` now installs
-`packages/audio-engine` first (COPY + `pip install`, ahead of the app itself, so the Docker
-layer cache stays useful across ordinary app-code changes), then `apps/api`.
-`docker-compose.yml`'s `api` service now builds with `context: .`,
-`dockerfile: apps/api/Dockerfile` instead of `build: ./apps/api`. A new root-level
-`.dockerignore` keeps the wider context's upload small. Cloud Run source deploys must now use
-`--source .` (repo root) instead of `--source apps/api` to match.
+Fixed by widening the build context to the **repo root** and moving the Dockerfile there too
+(`apps/api/Dockerfile` → `Dockerfile` at the repo root) — it installs `packages/audio-engine`
+first (COPY + `pip install`, ahead of the app itself, so the Docker layer cache stays useful
+across ordinary app-code changes), then `apps/api`. The move to root wasn't optional: it turns
+out `gcloud run deploy --source .` only auto-detects a Dockerfile-based build when it finds a
+file literally named `Dockerfile` at the root of `--source` — otherwise it silently falls back
+to Buildpacks, which can't make sense of a monorepo with both a Python backend and a Next.js
+frontend present and fails outright. `docker-compose.yml`'s `api` service now builds with
+`context: .`, `dockerfile: Dockerfile`. A new root-level `.dockerignore` keeps the wider
+context's upload small. Cloud Run source deploys must now use `--source .` (repo root) instead
+of `--source apps/api` to match.
 
 ## Fixed — Alembic crashed against a password containing a URL-encoded character (2026-08-12)
 
