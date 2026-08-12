@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vepair
+      POSTGRES_PASSWORD: vepair
+      POSTGRES_DB: vepair
+    ports:
+      - "5432:5432"
+    volumes:
+      - vepair-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vepair"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./apps/api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://vepair:vepair@db:5432/vepair
+      APP_ENV: development
+      LOG_LEVEL: INFO
+      API_CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      - vepair-recordings:/app/var/recordings
+
+  web:
+    build: ./apps/web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+
+volumes:
+  vepair-db-data:
+  vepair-recordings:
