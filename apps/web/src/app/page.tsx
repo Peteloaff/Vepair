@@ -166,6 +166,12 @@ function Dashboard() {
             Voice exercises
           </Link>
           <Link
+            href="/tone-match"
+            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+          >
+            Tone Match
+          </Link>
+          <Link
             href="/record"
             className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
           >

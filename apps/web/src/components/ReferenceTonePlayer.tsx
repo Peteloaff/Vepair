@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { buildReferenceRange, playTone } from "@/lib/notes";
 
 const NOTES = buildReferenceRange();
@@ -60,6 +61,12 @@ export function ReferenceTonePlayer() {
           </button>
         ))}
       </div>
+      <Link
+        href="/tone-match"
+        className="mt-2 block text-xs text-emerald-400 hover:text-emerald-300"
+      >
+        Want to practice matching pitch on its own? Try Tone Match &rarr;
+      </Link>
     </div>
   );
 }
