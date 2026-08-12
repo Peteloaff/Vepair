@@ -17,6 +17,11 @@ class Settings(BaseSettings):
 
     storage_backend: str = "local"
     storage_local_path: str = "./var/recordings"
+    # Only used when storage_backend == "supabase". Must be a private bucket — recordings are
+    # never served directly from Supabase; the backend always reads with the service role key
+    # and re-serves bytes through our own authenticated/ownership-checked endpoint. See
+    # PRIVACY.md's "no public-by-guessable-URL storage" principle.
+    storage_bucket: str = "recordings"
 
     # Self-hosted auth (Stage 1). See app/auth.py for the Supabase swap point.
     jwt_secret: str = "dev-only-insecure-secret-change-me"

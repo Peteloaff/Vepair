@@ -2,6 +2,27 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Supabase Storage backend for recordings (2026-08-12)
+
+**Why now:** deploying to Cloud Run for real phone testing exposed a real gap —
+`STORAGE_BACKEND=local` writes recordings to the container's local disk, which Cloud Run wipes
+on every restart/redeploy. Fine for clicking through the UI, not fine for actually testing with
+a real voice.
+
+- `app/storage.py`: new `SupabaseStorage`, implementing the exact same `save`/`read`/`exists`/
+  `delete` interface `LocalStorage` already had (now formalized as an `ObjectStorage` protocol)
+  — a true drop-in behind `STORAGE_BACKEND=supabase`, no caller changes needed anywhere.
+  Recordings are **never** made directly fetchable from Supabase: `SupabaseStorage` always
+  authenticates with the service role key (bypassing RLS) and only the backend's own existing
+  authenticated, ownership-checked endpoint (`GET /api/v1/recordings/{id}/audio`) re-serves the
+  bytes — the exact same security model `PRIVACY.md`'s "no public-by-guessable-URL storage"
+  principle already required, unchanged by this swap. New `STORAGE_BUCKET` setting (default
+  `"recordings"`) names which private bucket to use.
+- New `supabase` (official Python SDK) dependency.
+- 14 new unit tests: `LocalStorage` (previously untested directly) and `SupabaseStorage`
+  (mocked SDK client, no network calls) covering save/read/exists/delete, plus `get_storage()`
+  backend dispatch including the unknown-backend error case.
+
 ## Fixed — apps/api's Docker image never actually included its own dependency (2026-08-12)
 
 **Found deploying to Cloud Run, not by any test — Docker was never exercised before this**:
