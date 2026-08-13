@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CheckInForm } from "@/components/CheckInForm";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
@@ -432,9 +433,28 @@ function LandingChooser() {
 }
 
 export default function Home() {
-  const { status } = useAuth();
+  const { status, apiFetch } = useAuth();
+  const router = useRouter();
+  const [coachCheck, setCoachCheck] = useState<"pending" | "coach" | "singer">("pending");
 
-  if (status === "loading") {
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    // A coach account has no singer UserProfile/onboarding at all, so it must never render the
+    // singer Dashboard (it would show a confusing "finish setting up your profile" for a
+    // profile type that account can't have) — same server-truth coach check RequireCoach uses.
+    apiFetch("/api/v1/coach/profile")
+      .then(() => setCoachCheck("coach"))
+      .catch(() => setCoachCheck("singer"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  useEffect(() => {
+    if (coachCheck === "coach") {
+      router.replace("/coach");
+    }
+  }, [coachCheck, router]);
+
+  if (status === "loading" || (status === "authenticated" && coachCheck === "pending")) {
     return (
       <main className="flex flex-1 items-center justify-center">
         <p className="text-sm text-neutral-500">Loading...</p>
@@ -444,6 +464,10 @@ export default function Home() {
 
   if (status === "unauthenticated") {
     return <LandingChooser />;
+  }
+
+  if (coachCheck === "coach") {
+    return null;
   }
 
   return <Dashboard />;
