@@ -8,7 +8,7 @@ from pydantic import BaseModel
 VALID_CONSENT_TYPES = {
     "product_analytics",
     "model_training",
-    "clinician_sharing",
+    "coach_sharing",
     "notifications",
 }
 

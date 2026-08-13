@@ -27,6 +27,10 @@ class RoutineOut(BaseModel):
     safety_message: str | None
     reasons: list[str]
     items: list[ExerciseOut]
+    # Stage 12 Phase II: which items (if any) came from an active coach assignment rather
+    # than the adaptive selector — lets the frontend badge them. Empty when there's no
+    # assignment, or none of it fit today's safety limits (reasons explains why).
+    assigned_exercise_ids: list[uuid.UUID] = []
 
 
 class ExerciseSessionCreate(BaseModel):

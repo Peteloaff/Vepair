@@ -1,7 +1,9 @@
 # VepAIr Architecture
 
-Status: Stage 11 (Progress Dashboard). This document describes the system as it exists after
-Stage 11 and the intended shape it grows into. Update this file whenever architecture changes.
+Status: Stage 11 (Progress Dashboard) shipped and live; Stage 12 Phase II (VepAIr Coach pilot)
+built on the `feature/coach-portal` branch, dev-only, not yet merged or deployed — see §6m. This
+document describes the system as it exists after Stage 11 plus that in-progress branch, and the
+intended shape it grows into. Update this file whenever architecture changes.
 
 ## 1. Repository structure
 
@@ -115,11 +117,15 @@ reviewed foundation instead of bolting on tables stage by stage.
   scores, weights, inclusion) as JSON, the same data the "why did I get this score?" UI reads.
 - **DeviceMetadata** — recording device/microphone fingerprint, reused across sessions.
 - **ConsentRecord** — explicit, timestamped consent grants, separated by purpose (product
-  analytics, model training, vocal-professional sharing, notifications) per `PRIVACY.md`. An
-  append-only ledger, not upserted in place — every change of mind inserts a new row rather than
-  overwriting the last one. Exercised via `GET`/`PUT /api/v1/consent/{consent_type}`; currently
-  only the `notifications` purpose has a real UI (the onboarding page's Yes/No control) driving
-  it, though all four purposes are validated by the same endpoint.
+  analytics, model training, coach sharing, notifications) per `PRIVACY.md`. An append-only
+  ledger, not upserted in place — every change of mind inserts a new row rather than overwriting
+  the last one. Exercised via `GET`/`PUT /api/v1/consent/{consent_type}` (notifications) and
+  `app/routers/coach_access.py` (coach sharing); `product_analytics`/`model_training` are
+  validated by the consent endpoint but have no UI yet.
+- **CoachProfile**, **CoachInvite**, **CoachAccess**, **CoachAccessCategoryGrant**,
+  **CoachAssignment**, **CoachNote** (Stage 12 Phase II, dev-only build — see §6m) — the VepAIr
+  Coach pilot's authorization and data-sharing subsystem. Built on `feature/coach-portal`, not
+  merged to `main` or deployed as of this writing.
 
 See `apps/api/migrations/versions/` for the actual column-level schema and
 `apps/api/app/models.py` for the SQLAlchemy definitions — this document intentionally does not
@@ -705,6 +711,80 @@ at `MAX_CONSISTENCY_DAYS` to keep an "all-time" request from building an unbound
 /api/v1/exercise-trends` (Stage 8) already computed the full per-exercise trend list; it just
 wasn't fully displayed anywhere until this page.
 
+## 6m. VepAIr Coach pilot (Stage 12, Phase II — dev-only, not yet deployed)
+
+**Built entirely on a dedicated branch (`feature/coach-portal`), never merged to `main` or
+deployed, per explicit founder instruction** — see `ROADMAP.md`'s Stage 12 note. The migration
+below has only ever run against local dev Postgres, never production Supabase. Everything in
+this section describes what exists on that branch, verified via local `uvicorn --reload` +
+`npm run dev`, the same pattern every prior stage used.
+
+**The central new piece of infrastructure**: until this stage, nothing in the codebase let one
+user read another user's data — `get_current_user` purely validates a JWT with zero role or
+ownership concept, and every existing endpoint trusts `current_user.id` for all reads/writes.
+`app/coach_auth.py` is the single seam every coach-reads-singer endpoint depends on:
+`get_current_coach` (403 if the authenticated user has no `CoachProfile` row) and
+`require_coach_access(category=...)` (a dependency factory resolving the active `CoachAccess`
+row for `(coach, singer_user_id path param)`, 403 if none/revoked or if a specific category
+isn't granted).
+
+**A coach account is a coach account from creation, not an upgrade.** `POST
+/api/v1/auth/coach-signup` creates `User` + `AuthCredential` + `CoachProfile` in one transaction,
+mirroring `signup()`'s existing pattern exactly plus the extra row — resolved this way (over a
+self-serve profile upgrade or founder-provisioned accounts) directly by the founder. This also
+means one account can never be both a singer and a coach, by construction, not by a runtime
+check.
+
+**Authorization data model, deliberately split into two purposes** (see `PRIVACY.md` §6 for the
+consent-ledger half): `CoachAccess`/`CoachAccessCategoryGrant` are the materialized "is this
+currently allowed" tables every request-time check queries; `ConsentRecord` (extended with a
+`category` column, `consent_type="coach_sharing"`, renamed from `clinician_sharing`) stays the
+append-only audit ledger and is never read at request time — a timestamped event log is the
+wrong structure to query on every API call. **One active coach per singer at a time** is enforced
+with a real Postgres partial unique index (`Index("uq_one_active_coach_per_singer",
+"singer_user_id", unique=True, postgresql_where=text("status = 'active'"))`), not just an
+application-level check, so it holds under a race between two simultaneous invite-accepts too;
+the accept endpoint's 409 check is the friendly error, the index is the actual guarantee.
+
+**"One shared Voice Intelligence engine," enforced by construction, not by convention.** `GET
+/api/v1/coach/singers/{id}/summary` calls the exact same functions the singer's own endpoints
+already call — `compute_and_store_recovery_score`, `build_summary` (`app/vocal_range.py`),
+`compute_exercise_trends`, `build_training_consistency`, `build_routine_for_user` — parameterized
+by `singer_user_id` instead of `current_user.id`, and returns the exact same Pydantic response
+schemas. None of these five functions had any internal dependency on `current_user`, so this
+required zero changes to any of them. Regression-tested by asserting byte-identical JSON between
+the singer's own endpoint and the coach's endpoint for the same user/date.
+
+**Training assignment can never weaken or bypass an existing safety rule — the highest-risk
+change in this stage.** `app/coach_assignment.py`'s `get_active_assigned_exercise_ids` returns
+assigned exercise ids only when both the `CoachAssignment` and its linked `CoachAccess` are still
+active. In `app/exercise_routine.py`'s `_select_exercises`, assigned exercises are tried via
+`allowed_by_id.get(exercise_id)` — the exact same `allowed` list already filtered by
+`INTENSITY_ORDER[CATEGORY_INTENSITY[e.category]] <= cap_rank` that every adaptively-chosen
+exercise draws from. An assigned exercise that exceeds today's intensity cap is never even a
+candidate, because it's filtered out by the same line that already governs everything else —
+`_propose_intensity_caps` itself is never touched. `generate_routine`'s `reasons` list always
+discloses whether an assignment was included or safety-excluded, never silently either way.
+Six dedicated unit tests (`TestCoachAssignment`, including a direct "discomfort hard-override
+cannot be bypassed by a coach assignment" case) guard this.
+
+**Professional notes** (`CoachNote`) are coach-authored, singer-readable by default, immutable
+(soft-delete only, never edited in place) — see `MEDICAL_SAFETY.md` §12 for the concrete
+clinical-language mitigations (disclaimer, server-side blocklist that flags but never blocks a
+save, 2000-char limit).
+
+**Hardcoded, permanent exclusion regardless of any category grant**:
+`DailyCheckIn.illness_symptoms`/`.reflux_symptoms`/`.notes` and `VoiceSession.notes` are never
+read by any coach-facing endpoint — enforced by building `CoachVoiceSessionOut` explicitly
+field-by-field (never via a `.model_validate()` shortcut that could accidentally pull in a new
+column later) and locked in by a negative-content regression test.
+
+**Authenticated recording playback** required a pattern not used elsewhere in the app: a plain
+`<audio src="...">` can't carry an `Authorization` header, so the coach-side recordings page
+fetches audio as a `Blob` via `fetch()` with a bearer token read from `localStorage`, converts it
+to an object URL, and only does so lazily on a user-initiated "Play" click per recording — never
+eagerly for a whole page of recordings.
+
 ## 7. Error handling strategy
 
 - Backend: a single FastAPI exception handler maps known exceptions (validation, not-found,
@@ -746,5 +826,7 @@ references to port 5433 in early commit history.
   needs real uploads beyond local dev.
 - Whether professional-facing data (vocal coach/studio access via VepAIr Coach, Stage 12 — see
   `ROADMAP.md`; information purposes only, never clinical, so no HIPAA scope is anticipated)
-  needs a separate database or row-level security in the same Postgres instance — deferred until
-  that stage.
+  needs a separate database or row-level security in the same Postgres instance — resolved for
+  the Phase II pilot's scale: application-level authorization (`app/coach_auth.py`, §6m) in the
+  same Postgres instance, no RLS or separate database. Worth revisiting only if Phase III+
+  (paid, more coaches/singers) changes that calculus.

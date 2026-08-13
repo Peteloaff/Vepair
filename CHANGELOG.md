@@ -28,6 +28,74 @@ logs the reset token server-side, a known gap documented since Stage 1), so a re
 way to receive or use a reset link today. Worth prioritizing before onboarding more real users
 who might need it.
 
+## Stage 12, Phase II — VepAIr Coach pilot, built dev-only (2026-08-12)
+
+**Founder decision: build the full pilot on a dedicated branch, never pushed to `main`, nothing
+reaching the live app until an explicit future go-ahead.** All work happened on
+`feature/coach-portal`; the new migration only ever ran against local dev Postgres, never
+production Supabase.
+
+### Added
+
+- **Six new tables** (`CoachProfile`, `CoachInvite`, `CoachAccess`, `CoachAccessCategoryGrant`,
+  `CoachAssignment`, `CoachNote`) plus a `ConsentRecord` extension (`category` column, a real FK
+  from `clinician_id` to `coach_profiles`, and `clinician_sharing` renamed to `coach_sharing` in
+  `VALID_CONSENT_TYPES` — "clinician" was clinical language on a permanently non-clinical
+  feature). One active coach per singer at a time, enforced with a Postgres partial unique index,
+  not just an application check. See `ARCHITECTURE.md` §6m.
+- **`app/coach_auth.py`** — the first authorization seam in the codebase letting one user read
+  another user's data: `get_current_coach` + `require_coach_access(category=...)`.
+- **`POST /api/v1/auth/coach-signup`** — a coach account is a coach account from creation
+  (founder's explicit call: sign up as a coach, permissions come from that, not a self-serve
+  upgrade), so one account can never be both a singer and a coach.
+- **Invite lifecycle**: coach invites a singer by email (404 if unmatched, 409 on a duplicate
+  pending invite), singer accepts with ≥1 of four categories checked (all unchecked by
+  default) or declines; both sides can manage/revoke the connection afterward.
+- **Read-only coach dashboard** (`GET /api/v1/coach/singers/{id}/summary` and friends) —
+  deliberately calls the singer's own existing scoring functions
+  (`compute_and_store_recovery_score`, `build_summary`, `compute_exercise_trends`,
+  `build_training_consistency`, `build_routine_for_user`) parameterized by `singer_user_id`,
+  never a re-derived copy — "one shared Voice Intelligence engine" enforced by construction,
+  proven by a regression test asserting byte-identical output vs. the singer's own endpoint.
+- **Recording comparison**: category-gated audio playback, with a structured `coach_recording_
+  access` audit log line per read.
+- **Training assignment** — the highest-risk change in this stage: a coach's assigned exercises
+  are only ever drawn from the exact same intensity-cap-filtered candidate list every
+  adaptively-chosen exercise already comes from (`app/exercise_routine.py`), so an assignment can
+  never push past what's already safe for that user today. Six dedicated unit tests, including a
+  direct "discomfort hard-override cannot be bypassed by a coach assignment" case.
+- **Professional notes** (`CoachNote`) — singer-readable, immutable (soft-delete only), a
+  non-dismissible clinical-language disclaimer, a 2000-char server limit, and a server-side
+  blocklist that flags but never blocks a save (friction, not censorship — legitimate escalation
+  language must never be prevented). See `MEDICAL_SAFETY.md` §12.
+- **Frontend**: `/coach-signup`, `/coach` (singer roster + sent invites), `/coach/invite`,
+  `/coach/singers/[singerId]` (dashboard reusing `RecoveryScoreCard`, category-gated sections,
+  assigned-exercise badges) plus its `/recordings`, `/assign`, `/notes` sub-pages, and
+  `/coach-access` (singer-side: pending invites with per-category checkboxes, active
+  connections with per-category toggles, revoke with honest "forward-only" copy, and a
+  read-your-own-notes view). Authenticated recording playback required a new pattern —
+  `fetch()` a `Blob` with a manually-attached bearer token, since a plain `<audio src>` can't
+  carry an `Authorization` header.
+- **59 new backend tests** (398 total, up from 339) plus full frontend verification
+  (`tsc --noEmit`, `eslint`, `vitest`, `next build`) all clean.
+
+### Notes
+
+- Two founder decisions made mid-build via direct question, not assumed: coach accounts are
+  created through a dedicated signup (not a profile upgrade), and only one coach can be active
+  per singer at a time.
+- A real usability bug was caught and fixed before the frontend was built around it: the
+  singer-list endpoint originally returned bare UUIDs with no way to identify who's who — fixed
+  by adding `CoachSingerListItemOut` (email, granted categories, granted-at) before any coach-side
+  UI depended on the broken shape.
+- `PRIVACY.md` §3/§6 and `MEDICAL_SAFETY.md` gained new sections for the coach-sharing consent
+  categories and the professional-notes risk mitigations, respectively — not just implied by this
+  entry, documented for real.
+- **This entire stage is dev-only as of this writing** — built and tested against local dev
+  Postgres and `npm run dev`/`uvicorn --reload`, never merged to `main`, never deployed to Cloud
+  Run or Vercel, never run against production Supabase. Stays that way until the founder
+  explicitly says to move forward with real pilot coaches (`ROADMAP.md`'s Stage 12 note).
+
 ## Fixed — track selection required a saved profile first, and plan-pending copy implied only one input was needed (2026-08-12)
 
 **Found live**, right after the onboarding redirect went in: a brand-new signup has no

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
@@ -8,7 +9,8 @@ export function TopNav() {
 
   return (
     <header className="flex items-center justify-between border-b border-neutral-800 px-6 py-4">
-      <Link href="/" className="text-lg font-semibold tracking-tight">
+      <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+        <Image src="/brand/vepair-logo.png" alt="" width={28} height={28} priority />
         VepAIr
       </Link>
       {status === "authenticated" && (

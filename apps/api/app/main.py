@@ -14,6 +14,8 @@ from app.logging_config import configure_logging
 from app.routers import auth as auth_router
 from app.routers import baseline as baseline_router
 from app.routers import checkins as checkins_router
+from app.routers import coach as coach_router
+from app.routers import coach_access as coach_access_router
 from app.routers import consent as consent_router
 from app.routers import exercises as exercises_router
 from app.routers import profile as profile_router
@@ -100,6 +102,8 @@ app.include_router(vocal_plan_router.router)
 app.include_router(share_progress_router.router)
 app.include_router(training_consistency_router.router)
 app.include_router(consent_router.router)
+app.include_router(coach_router.router)
+app.include_router(coach_access_router.router)
 
 
 @app.get("/api/v1/health", response_model=HealthResponse)

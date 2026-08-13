@@ -15,6 +15,7 @@ import {
   API_BASE,
   type AuthUser,
   type TokenResponse,
+  coachSignup as apiCoachSignup,
   fetchMe,
   login as apiLogin,
   logout as apiLogout,
@@ -39,6 +40,12 @@ interface AuthContextValue {
   user: AuthUser | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
+  coachSignup: (
+    email: string,
+    password: string,
+    displayName: string,
+    studioName: string | null
+  ) => Promise<void>;
   logout: () => Promise<void>;
   apiFetch: <T>(path: string, options?: ApiFetchOptions) => Promise<T>;
 }
@@ -108,6 +115,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = useCallback(
     async (email: string, password: string) => {
       const tokens = await apiSignup(email, password);
+      persistTokens(tokens);
+    },
+    [persistTokens]
+  );
+
+  const coachSignup = useCallback(
+    async (
+      email: string,
+      password: string,
+      displayName: string,
+      studioName: string | null
+    ) => {
+      const tokens = await apiCoachSignup(email, password, displayName, studioName);
       persistTokens(tokens);
     },
     [persistTokens]
@@ -192,7 +212,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ status, user, login, signup, logout, apiFetch }}>
+    <AuthContext.Provider
+      value={{ status, user, login, signup, coachSignup, logout, apiFetch }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { RequireAuth } from "@/components/RequireAuth";
 import { CheckInForm } from "@/components/CheckInForm";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
@@ -16,6 +16,7 @@ import type {
   CheckInInput,
   Profile,
   RecoveryScore as RecoveryScoreData,
+  SingerInvite,
   VocalPlanView,
 } from "@/lib/types";
 
@@ -53,6 +54,7 @@ function Dashboard() {
   const [recoveryScoreError, setRecoveryScoreError] = useState(false);
   const [planView, setPlanView] = useState<VocalPlanView | null>(null);
   const [planError, setPlanError] = useState(false);
+  const [pendingInviteCount, setPendingInviteCount] = useState(0);
   const [profileMissing, setProfileMissing] = useState(false);
   const [rangeDays, setRangeDays] = useState<number>(30);
   const [editingToday, setEditingToday] = useState(false);
@@ -101,6 +103,12 @@ function Dashboard() {
     apiFetch<VocalPlanView>("/api/v1/vocal-plan")
       .then(setPlanView)
       .catch(() => setPlanError(true));
+    // Stage 12 Phase II (dev-only): a coach-sent invite is easy to miss, so a badge on the
+    // nav link is worth the extra request — silently ignored if it fails, same as every
+    // other best-effort fetch on this dashboard.
+    apiFetch<SingerInvite[]>("/api/v1/invites")
+      .then((invites) => setPendingInviteCount(invites.length))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -170,6 +178,17 @@ function Dashboard() {
             className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
           >
             Tone Match
+          </Link>
+          <Link
+            href="/coach-access"
+            className="relative rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+          >
+            Coach Access
+            {pendingInviteCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+                {pendingInviteCount}
+              </span>
+            )}
           </Link>
           <Link
             href="/record"
@@ -355,10 +374,77 @@ function Dashboard() {
   );
 }
 
-export default function Home() {
+function LandingChooser() {
   return (
-    <RequireAuth>
-      <Dashboard />
-    </RequireAuth>
+    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
+      <div className="w-full max-w-2xl text-center">
+        <Image
+          src="/brand/vepair-logo.png"
+          alt=""
+          width={64}
+          height={64}
+          className="mx-auto mb-6"
+          priority
+        />
+        <h1 className="text-3xl font-semibold tracking-tight">Welcome to VepAIr</h1>
+        <p className="mt-2 text-sm text-neutral-400">
+          AI-assisted vocal recovery, conditioning, and performance &mdash; for singers and the
+          coaches who train them.
+        </p>
+
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Link
+            href="/signup"
+            className="group rounded-2xl border border-neutral-800 bg-neutral-900/60 p-8 text-left transition hover:border-emerald-700 hover:bg-neutral-900"
+          >
+            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Singer</p>
+            <p className="mt-2 text-sm text-neutral-400">
+              Track your voice, get personalized daily exercises, and train safely with VepAIr.
+            </p>
+            <span className="mt-4 inline-block text-sm font-medium text-emerald-400 group-hover:text-emerald-300">
+              Get started &rarr;
+            </span>
+          </Link>
+
+          <Link
+            href="/coach-signup"
+            className="group rounded-2xl border border-neutral-800 bg-neutral-900/60 p-8 text-left transition hover:border-emerald-700 hover:bg-neutral-900"
+          >
+            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Coach</p>
+            <p className="mt-2 text-sm text-neutral-400">
+              Invite singers, assign custom training, and follow their progress in real time.
+            </p>
+            <span className="mt-4 inline-block text-sm font-medium text-emerald-400 group-hover:text-emerald-300">
+              Get started &rarr;
+            </span>
+          </Link>
+        </div>
+
+        <p className="mt-8 text-sm text-neutral-500">
+          Already have an account?{" "}
+          <Link href="/login" className="text-emerald-400 hover:text-emerald-300">
+            Log in
+          </Link>
+        </p>
+      </div>
+    </main>
   );
+}
+
+export default function Home() {
+  const { status } = useAuth();
+
+  if (status === "loading") {
+    return (
+      <main className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-neutral-500">Loading...</p>
+      </main>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return <LandingChooser />;
+  }
+
+  return <Dashboard />;
 }

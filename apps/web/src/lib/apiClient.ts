@@ -60,6 +60,23 @@ export async function signup(email: string, password: string): Promise<TokenResp
   return parseResponse<TokenResponse>(res);
 }
 
+// Stage 12 Phase II (dev-only). A coach account is a coach account from creation — see
+// app.models.CoachProfile — never a self-serve upgrade on an existing singer account.
+export async function coachSignup(
+  email: string,
+  password: string,
+  displayName: string,
+  studioName: string | null
+): Promise<TokenResponse> {
+  const res = await jsonRequest("/api/v1/auth/coach-signup", "POST", {
+    email,
+    password,
+    display_name: displayName,
+    studio_name: studioName,
+  });
+  return parseResponse<TokenResponse>(res);
+}
+
 export async function login(email: string, password: string): Promise<TokenResponse> {
   const res = await jsonRequest("/api/v1/auth/login", "POST", { email, password });
   return parseResponse<TokenResponse>(res);

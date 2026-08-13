@@ -23,6 +23,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.coach_assignment import get_active_assigned_exercise_ids
 from app.exercise_library import CATEGORY_INTENSITY, CLOSING_CATEGORY, OPENING_CATEGORY
 from app.exercise_trends import compute_exercise_trends, overall_trend_is_positive
 from app.models import DailyCheckIn, Exercise, ExerciseSession, UserProfile
@@ -100,6 +101,13 @@ class RoutineSignals:
     # engages (see _resolve_challenge_mode) — never touches intensity_cap or any hard safety
     # rule above, which apply identically regardless of track.
     track: str | None = None
+    # Stage 12 Phase II: an active coach assignment, if any (see app/coach_assignment.py).
+    # These exercises get priority within the budget in _select_exercises, but only from the
+    # exact same intensity-cap-filtered candidate list every adaptively-chosen exercise is
+    # drawn from — see _select_exercises's `allowed` list. There is no code path where an
+    # assigned exercise can exceed today's intensity_cap; this field can never weaken or
+    # bypass any rule in _propose_intensity_caps.
+    coach_assigned_exercise_ids: list[uuid.UUID] | None = None
 
 
 @dataclass
@@ -110,6 +118,10 @@ class RoutineResult:
     total_duration_seconds: int
     safety_message: str | None
     reasons: list[str] = field(default_factory=list)
+    # Which coach-assigned exercise ids (if any) actually made it into `items` — see
+    # generate_routine. Empty when there was no assignment, or none of it fit today's safety
+    # limits (in which case `reasons` explains why, never silently).
+    assigned_exercise_ids: list[uuid.UUID] = field(default_factory=list)
 
 
 def _propose_intensity_caps(signals: RoutineSignals) -> tuple[list[tuple[str, str]], str | None]:
@@ -184,6 +196,7 @@ def _select_exercises(
     intensity_cap: str,
     goal_text: str | None,
     challenge_mode: bool = False,
+    assigned_exercise_ids: list[uuid.UUID] | None = None,
 ) -> list[ExerciseInfo]:
     budget_seconds = length_minutes * 60
     cap_rank = INTENSITY_ORDER[intensity_cap]
@@ -220,6 +233,18 @@ def _select_exercises(
 
     closing = by_category.get(CLOSING_CATEGORY, [])
     closing_reserved = closing[0].duration_seconds if closing else 0
+
+    # Coach-assigned exercises (Stage 12 Phase II) get priority within the budget, tried right
+    # after the opening exercise — but only ever from `allowed`, the exact same
+    # intensity-cap-filtered list every adaptively-chosen exercise below is drawn from. An
+    # assigned exercise that exceeds today's cap was already excluded from `allowed` above and
+    # is never even a candidate here.
+    if assigned_exercise_ids:
+        allowed_by_id = {e.id: e for e in allowed}
+        for exercise_id in assigned_exercise_ids:
+            exercise = allowed_by_id.get(exercise_id)
+            if exercise is not None:
+                try_add(exercise, reserve=closing_reserved)
 
     middle_order = (
         list(reversed(MIDDLE_CATEGORY_ORDER)) if challenge_mode else list(MIDDLE_CATEGORY_ORDER)
@@ -289,9 +314,33 @@ def generate_routine(
         reasons.append(challenge_reason)
 
     items = _select_exercises(
-        exercises, length_minutes, intensity_cap, signals.goal_text, challenge_mode
+        exercises,
+        length_minutes,
+        intensity_cap,
+        signals.goal_text,
+        challenge_mode,
+        signals.coach_assigned_exercise_ids,
     )
     total_duration_seconds = sum(e.duration_seconds for e in items)
+
+    assigned_included: list[uuid.UUID] = []
+    if signals.coach_assigned_exercise_ids:
+        included_ids = {e.id for e in items}
+        assigned_included = [
+            eid for eid in signals.coach_assigned_exercise_ids if eid in included_ids
+        ]
+        # Never silent either way — a coach or singer could otherwise wonder why an
+        # assignment "didn't work" on a day the safety check held the routine back.
+        if assigned_included:
+            reasons.append(
+                "Your coach assigned specific exercises for today — included where today's "
+                "safety limits allow."
+            )
+        else:
+            reasons.append(
+                "Your coach assigned exercises for today, but today's safety check kept the "
+                "routine to gentler options instead."
+            )
 
     return RoutineResult(
         length_minutes=length_minutes,
@@ -300,6 +349,7 @@ def generate_routine(
         total_duration_seconds=total_duration_seconds,
         safety_message=safety_message,
         reasons=reasons,
+        assigned_exercise_ids=assigned_included,
     )
 
 
@@ -368,6 +418,7 @@ def build_routine_for_user(
         goal_text=profile.goals if profile else None,
         trending_positive=overall_trend_is_positive(trends),
         track=profile.track if profile else None,
+        coach_assigned_exercise_ids=get_active_assigned_exercise_ids(db, user_id),
     )
 
     return generate_routine(exercises, length_minutes, signals)

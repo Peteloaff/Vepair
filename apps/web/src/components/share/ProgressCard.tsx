@@ -133,8 +133,12 @@ export const ProgressCard = forwardRef<HTMLDivElement, { snapshot: ProgressSnaps
           </div>
         )}
 
-        <div className="flex items-baseline justify-between">
-          <span className="text-3xl font-semibold tracking-tight text-neutral-100">VepAIr</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- plain <img> renders reliably for html-to-image's DOM capture */}
+            <img src="/brand/vepair-logo.png" alt="" width={40} height={40} />
+            <span className="text-3xl font-semibold tracking-tight text-neutral-100">VepAIr</span>
+          </div>
           <span className="text-2xl text-neutral-500">
             {new Date(snapshot.for_date).toLocaleDateString(undefined, {
               year: "numeric",

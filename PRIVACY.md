@@ -37,10 +37,22 @@ decline another):
    section of the product brief: DAU, check-in completion, retention, etc.).
 2. **Model training consent** — using a user's recordings/derived data to improve VepAIr's
    models. Off by default. Never inferred from analytics consent.
-3. **Vocal professional sharing consent** (VepAIr Coach, Stage 12 — see `ROADMAP.md`;
-   information purposes only, never clinical) — per-professional, revocable grant letting a
-   vocal coach, teacher, or studio the user has explicitly authorized view a specific user's
-   recordings, trends, and notes. Not automatic just because a coach knows the singer.
+3. **Coach sharing consent** (`coach_sharing` — VepAIr Coach, Stage 12 Phase II, see
+   `ROADMAP.md`; information purposes only, never clinical) — per-coach, revocable grant letting
+   a vocal coach the user has explicitly accepted an invite from view a specific singer's data.
+   Not automatic just because a coach knows the singer: the singer must accept an invite, and
+   accepting requires choosing at least one of four independent categories —
+   **`recovery_trends`** (VepAIr Score + history), **`vocal_range`** (comfortable range summary),
+   **`exercise_history`** (routine, exercise trends, training consistency), **`recordings`**
+   (uploaded audio + playback) — all unchecked by default, independently toggleable later without
+   a full revoke. One active coach per singer at a time (DB-enforced). Revoking is immediate for
+   future access (the coach's next request is rejected) but forward-only for the past — already-
+   viewed data isn't retroactively unshown, and the revoke confirmation says so plainly.
+   `DailyCheckIn.illness_symptoms`/`.reflux_symptoms`/`.notes` and `VoiceSession.notes` are never
+   readable by a coach regardless of any grant — a code-level omission, not a togglable category.
+   Coach-authored notes about a singer are readable by that singer permanently, surviving revoke
+   (see `MEDICAL_SAFETY.md` §12 for the freeform-note-specific mitigations). Renamed from
+   "clinician sharing consent" / `clinician_sharing` — see `CHANGELOG.md`.
 4. **Notifications / product communications consent** — whether VepAIr may contact the user
    (e.g. by email) with notifications or updates. Off (unset) by default until the user makes
    an explicit choice — see the Yes/No control on the onboarding page, backed by
@@ -114,6 +126,21 @@ shipped the schema for. Every choice is inserted as a new, timestamped row rathe
 in place — the full history of what a user decided, and when, is preserved, matching this
 document's "auditable access" principle. A user who has never been asked reads back as
 `granted: null`, distinct from an explicit `false`, so "hasn't decided" is never conflated with
-"said no." The other three consent types this table anticipates (`product_analytics`,
-`model_training`, `clinician_sharing`) are validated by the same endpoint but have no UI or
-enforcement wired to them yet — only `notifications` is live.
+"said no." The other two consent types this table anticipates (`product_analytics`,
+`model_training`) are validated by the same endpoint but have no UI or enforcement wired to them
+yet.
+
+**Coach sharing consent (Stage 12 Phase II, dev-only build — see `ROADMAP.md`)** is fully
+implemented, not just a validated-but-unwired type like the two above. `ConsentRecord` gained a
+`category` column (populated only for `consent_type == "coach_sharing"`) and a real FK from
+`clinician_id` to the new `coach_profiles` table (previously unconstrained and unused). Every
+accept, category toggle, and revoke appends a new `ConsentRecord` row via
+`app/routers/coach_access.py` — the append-only audit ledger this section's principles require.
+**Authorization at request time never queries this ledger** — a separate materialized
+`CoachAccess`/`CoachAccessCategoryGrant` pair (checked by `app/coach_auth.py`'s
+`require_coach_access`) is what every coach-facing endpoint actually gates on, since a ledger of
+timestamped events is the wrong structure to query on every request. `GET
+/api/v1/coach/singers/{id}/recordings/{id}/audio` logs a structured `coach_recording_access` line
+(`app/routers/coach.py`) for the "auditable access" requirement above — deliberately just a log
+line for pilot scale, not yet a queryable table; a real `CoachDataAccessLog` is deferred to the
+admin backend (`ROADMAP.md`'s Stage 12 admin-tooling section) if the pilot's scale warrants it.

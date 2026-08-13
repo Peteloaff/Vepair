@@ -19,11 +19,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -414,10 +416,166 @@ class ConsentRecord(Base, TimestampMixin):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
     )
-    # product_analytics | model_training | clinician_sharing | notifications
+    # product_analytics | model_training | coach_sharing | notifications
     # Kept in sync with app.schemas_consent.VALID_CONSENT_TYPES, the actual enforced whitelist.
+    # Was "clinician_sharing" until Stage 12 Phase II — renamed since "clinician" is clinical
+    # language on a permanently non-clinical feature (see the coach-tables migration).
     consent_type: Mapped[str] = mapped_column(String(50))
+    # Only set when consent_type == "coach_sharing" — one row per category per grant/revoke
+    # event, so the audit ledger stays per-category-granular too. See CoachAccessCategoryGrant,
+    # the table authorization checks actually query; this column is audit-only.
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
     granted: Mapped[bool] = mapped_column(Boolean)
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    clinician_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Was an unconstrained, unused UUID column pre-Stage 12. Now a real FK, nullable since it
+    # only applies to coach_sharing consent rows.
+    clinician_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class CoachProfile(Base, TimestampMixin):
+    """Stage 12 Phase II. Presence of this row is what makes a User a coach — same optional
+    1:1-extension shape as UserProfile, not a role flag. Created only via
+    POST /api/v1/auth/coach-signup (app/routers/auth.py), never as a self-serve upgrade on an
+    existing account — a coach account is a coach account from creation, so the same user can
+    never also be a singer. See ROADMAP.md Stage 12 / the Phase II plan for why."""
+
+    __tablename__ = "coach_profiles"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
+    )
+    display_name: Mapped[str] = mapped_column(String(200))
+    studio_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class CoachInvite(Base, TimestampMixin):
+    """One row per invite a coach sends. Targets an existing VepAIr account resolved by email
+    at creation time — inviting a non-account email 404s rather than creating a dangling
+    invite (Phase II doesn't build a parallel pending-account system). `status="revoked"` here
+    means the coach or singer cancelled before any response — distinct from post-acceptance
+    access revocation, which lives on CoachAccess.status, not here."""
+
+    __tablename__ = "coach_invites"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE")
+    )
+    singer_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    # pending|accepted|declined|revoked
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CoachAccess(Base, TimestampMixin):
+    """The authorization-check table every coach-reads-singer endpoint actually queries —
+    upserted in place, not append-only. ConsentRecord (consent_type="coach_sharing") is the
+    separate append-only audit trail of the events that changed this row; a timestamped ledger
+    is the wrong thing to query at request time for "is this currently allowed."
+
+    One active coach per singer at a time (founder decision, Phase II plan section 1) is
+    enforced at the database level, not just in the accept-invite endpoint, so it holds even
+    under a race between two simultaneous accepts."""
+
+    __tablename__ = "coach_access"
+    __table_args__ = (
+        UniqueConstraint("coach_id", "singer_user_id", name="uq_coach_access_pair"),
+        Index(
+            "uq_one_active_coach_per_singer",
+            "singer_user_id",
+            unique=True,
+            postgresql_where=text("status = 'active'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE")
+    )
+    singer_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    invite_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_invites.id", ondelete="CASCADE")
+    )
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active|revoked
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_by: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "singer"|"coach"
+
+
+class CoachAccessCategoryGrant(Base, TimestampMixin):
+    """Per-category authorization state — the "per-category consent" non-negotiable
+    (PRIVACY.md section 3) made queryable. One row per (coach_access, category); category is a
+    fixed whitelist (recovery_trends | vocal_range | exercise_history | recordings). Toggling
+    one category off (PATCH /api/v1/coach-connections/{id}/categories) never affects the
+    others, and never touches CoachAccess.status itself — that's what makes this genuinely
+    per-category rather than all-or-nothing."""
+
+    __tablename__ = "coach_access_category_grants"
+    __table_args__ = (
+        UniqueConstraint("coach_access_id", "category", name="uq_grant_access_category"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_access_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_access.id", ondelete="CASCADE")
+    )
+    category: Mapped[str] = mapped_column(String(50))
+    granted: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class CoachAssignment(Base, TimestampMixin):
+    """A coach's exercise assignment for a singer. History kept (superseded, not deleted) —
+    same pattern as VocalPlan. Only ever consumed by app/exercise_routine.py while
+    coach_access_id's linked CoachAccess is still active — see app/coach_assignment.py. Never
+    bypasses app/exercise_routine.py's intensity-cap safety filter; see that module for the
+    integration point."""
+
+    __tablename__ = "coach_assignments"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE")
+    )
+    singer_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    coach_access_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_access.id", ondelete="CASCADE")
+    )
+    exercise_ids: Mapped[list] = mapped_column(JSON)  # ordered list of Exercise UUID strings
+    note_to_singer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active|superseded
+
+
+class CoachNote(Base, TimestampMixin):
+    """Coach-authored, singer-readable by design — never a clinical chart (MEDICAL_SAFETY.md).
+    Immutable once created; mistakes are soft-deleted (deleted_at), not hard-deleted, so the
+    audit trail survives. `flagged_terms` is set when app/coach_notes.py's blocklist check
+    matches a MEDICAL_SAFETY.md section 1 prohibited-pattern term — the note still saves; this
+    is friction for review, not a hard block, since legitimate escalation language ("see an
+    ENT") must never be prevented."""
+
+    __tablename__ = "coach_notes"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE")
+    )
+    singer_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    coach_access_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_access.id", ondelete="CASCADE")
+    )
+    body: Mapped[str] = mapped_column(Text)  # max length enforced at the Pydantic schema layer
+    flagged_terms: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

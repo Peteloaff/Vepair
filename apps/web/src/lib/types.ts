@@ -204,6 +204,7 @@ export interface Routine {
   safety_message: string | null;
   reasons: string[];
   items: Exercise[];
+  assigned_exercise_ids: string[];
 }
 
 export interface ExerciseSessionRecord {
@@ -364,4 +365,101 @@ export interface ConsentStatus {
   consent_type: ConsentType;
   granted: boolean | null;
   granted_at: string | null;
+}
+
+// --- Stage 12 Phase II: VepAIr Coach (dev-only, not yet linked into the live nav) ---
+
+export type CoachShareCategory =
+  | "recovery_trends"
+  | "vocal_range"
+  | "exercise_history"
+  | "recordings";
+
+export const COACH_SHARE_CATEGORIES: CoachShareCategory[] = [
+  "recovery_trends",
+  "vocal_range",
+  "exercise_history",
+  "recordings",
+];
+
+export const COACH_SHARE_CATEGORY_LABEL: Record<CoachShareCategory, string> = {
+  recovery_trends: "Your recovery score & trends",
+  vocal_range: "Your vocal range history",
+  exercise_history: "Your exercise routine & completion history",
+  recordings: "Your voice recordings (for side-by-side comparison)",
+};
+
+export interface SingerInvite {
+  id: string;
+  coach_display_name: string;
+  coach_studio_name: string | null;
+  message: string | null;
+  created_at: string;
+}
+
+export interface CoachConnection {
+  id: string;
+  coach_display_name: string;
+  coach_studio_name: string | null;
+  status: "active" | "revoked";
+  granted_categories: CoachShareCategory[];
+  granted_at: string;
+  revoked_at: string | null;
+}
+
+export interface SingerCoachNote {
+  id: string;
+  body: string;
+  flagged_terms: string[] | null;
+  created_at: string;
+}
+
+export interface CoachProfile {
+  id: string;
+  display_name: string;
+  studio_name: string | null;
+  created_at: string;
+}
+
+export interface CoachSingerListItem {
+  singer_user_id: string;
+  singer_email: string;
+  coach_access_id: string;
+  granted_categories: CoachShareCategory[];
+  granted_at: string;
+}
+
+export interface CoachSentInvite {
+  id: string;
+  singer_email: string;
+  status: "pending" | "accepted" | "declined" | "revoked";
+  message: string | null;
+  created_at: string;
+  responded_at: string | null;
+}
+
+export interface CoachSingerSummary {
+  singer_id: string;
+  granted_categories: CoachShareCategory[];
+  recovery_score: RecoveryScore | null;
+  vocal_range: VocalRangeSummary | null;
+  exercise_trends: ExerciseTrend[] | null;
+  training_consistency: TrainingConsistency | null;
+  todays_routine: Routine | null;
+}
+
+export interface CoachAssignment {
+  id: string;
+  exercise_ids: string[];
+  note_to_singer: string | null;
+  status: "active" | "superseded";
+  created_at: string;
+}
+
+export interface CoachVoiceSession {
+  id: string;
+  started_at: string;
+  completed_at: string | null;
+  device_metadata_id: string | null;
+  recordings: Recording[];
 }
