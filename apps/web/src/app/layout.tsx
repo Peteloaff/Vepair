@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { TopNav } from "@/components/TopNav";
@@ -37,6 +38,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AuthProvider>
           <TopNav />
           {children}
+          <footer className="border-t border-neutral-800 px-6 py-4 text-center text-xs text-neutral-600">
+            <Link href="/terms" className="hover:text-neutral-400">
+              Terms of Service
+            </Link>
+          </footer>
         </AuthProvider>
       </body>
     </html>

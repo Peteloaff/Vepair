@@ -162,3 +162,89 @@ def test_password_reset_confirm_rejects_invalid_token(client) -> None:
         json={"token": "not-a-real-token", "new_password": "brand-new-password-1"},
     )
     assert resp.status_code == 400
+
+
+def test_delete_account_rejects_wrong_password(client, signed_up_user) -> None:
+    user, headers = signed_up_user
+    resp = client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        headers=headers,
+        json={"password": "definitely-wrong"},
+    )
+    assert resp.status_code == 401
+    assert resp.json()["error"]["code"] == "invalid_password"
+
+    # The account must still exist and be usable.
+    me = client.get("/api/v1/auth/me", headers=headers)
+    assert me.status_code == 200
+
+
+def test_delete_account_requires_auth(client) -> None:
+    resp = client.request("DELETE", "/api/v1/auth/me", json={"password": "whatever123"})
+    assert resp.status_code == 401
+
+
+def test_delete_account_removes_it_and_revokes_access(client, signed_up_user) -> None:
+    user, headers = signed_up_user
+    resp = client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        headers=headers,
+        json={"password": user["password"]},
+    )
+    assert resp.status_code == 204
+
+    # The old access token is stateless (JWT), but the account it points at is gone.
+    me = client.get("/api/v1/auth/me", headers=headers)
+    assert me.status_code == 401
+    assert me.json()["error"]["code"] == "user_not_found"
+
+    # Logging in again must fail — the account no longer exists.
+    login = client.post(
+        "/api/v1/auth/login", json={"email": user["email"], "password": user["password"]}
+    )
+    assert login.status_code == 401
+
+    # The refresh token is fully gone (cascaded), not just revoked.
+    refresh = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": user["refresh_token"]}
+    )
+    assert refresh.status_code == 401
+
+    # The email is free again for a fresh signup.
+    resignup = client.post(
+        "/api/v1/auth/signup", json={"email": user["email"], "password": "brand-new-pw-1"}
+    )
+    assert resignup.status_code == 201
+
+
+def test_delete_account_wipes_recording_storage(client, signed_up_user, db_session) -> None:
+    from app.storage import get_storage
+    from tests.integration.test_recordings import clean_wav_bytes
+
+    user, headers = signed_up_user
+    session_id = client.post("/api/v1/voice-sessions", headers=headers, json={}).json()["id"]
+    upload = client.post(
+        f"/api/v1/voice-sessions/{session_id}/recordings",
+        headers=headers,
+        data={"sample_type": "sustained_ah"},
+        files={"file": ("recording.wav", clean_wav_bytes(), "audio/wav")},
+    )
+    assert upload.status_code == 201
+
+    from app.models import Recording
+
+    recording = db_session.query(Recording).filter_by(id=upload.json()["id"]).one()
+    file_path = recording.file_path
+    storage = get_storage()
+    assert storage.exists(file_path)
+
+    resp = client.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        headers=headers,
+        json={"password": user["password"]},
+    )
+    assert resp.status_code == 204
+    assert not storage.exists(file_path)

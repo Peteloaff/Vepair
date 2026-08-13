@@ -100,6 +100,14 @@ export default function SignupPage() {
           </button>
         </form>
 
+        <p className="mt-4 text-xs text-neutral-500">
+          By creating an account, you agree to our{" "}
+          <Link href="/terms" className="underline hover:text-neutral-300">
+            Terms of Service
+          </Link>
+          .
+        </p>
+
         <div className="mt-6 text-xs text-neutral-500">
           Already have an account?{" "}
           <Link href="/login" className="text-neutral-300 hover:text-neutral-100">

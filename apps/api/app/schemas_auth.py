@@ -41,6 +41,13 @@ class PasswordResetConfirmSchema(BaseModel):
     new_password: str = Field(min_length=8, max_length=200)
 
 
+class AccountDeletionRequest(BaseModel):
+    """Requires the current password, same security bar as changing a password -- this is
+    permanent and cannot be undone, so it should never be a single accidental click away."""
+
+    password: str
+
+
 class UserOut(BaseModel):
     id: uuid.UUID
     email: str

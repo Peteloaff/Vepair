@@ -105,11 +105,16 @@ only ever reachable by the user who created it — verified with cross-user auth
 not just asserted) and never served from a predictable/guessable URL (playback requires a valid
 bearer token and an ownership check, not just knowing the recording id).
 
-**Still not implemented: recording deletion and data export.** Deleting a `User` cascades the
-database rows (`VoiceSession` → `Recording` via `ON DELETE CASCADE`) but does **not** delete the
-underlying audio file from storage — there is no deletion code path at all yet for an individual
-recording (no delete endpoint exists). This is a real gap against this document's "recording
-deletion" and "data export" requirements above, tracked as a recommended change before Stage 3.
+**Account deletion (with storage cleanup) is implemented.** `DELETE /api/v1/auth/me` is a
+self-serve, password-gated (same bar as changing a password) endpoint: it deletes every
+`Recording`'s actual audio file from object storage via `get_storage().delete(...)` *before*
+deleting the `User` row, then lets `ON DELETE CASCADE` remove every remaining database record
+scoped to that user. A single flaky storage call is logged and skipped rather than blocking the
+deletion, so a user can never be stuck unable to delete their own account. This closes the gap
+this section used to describe. **Still not implemented: per-recording deletion and data
+export.** There is no delete endpoint for an individual `Recording` (only whole-account
+deletion), and no machine-readable export of a user's own data yet — both remain real gaps
+against this document's Section 4 requirements.
 
 Stage 8 shipped exercise-attempt audio analysis with the strictest "minimal collection" posture
 in the app: audio uploaded alongside an exercise result is analyzed in-memory during that one

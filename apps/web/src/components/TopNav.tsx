@@ -18,6 +18,9 @@ export function TopNav() {
           <Link href="/onboarding" className="hover:text-neutral-100">
             Profile
           </Link>
+          <Link href="/settings" className="hover:text-neutral-100">
+            Settings
+          </Link>
           <span className="hidden sm:inline">{user?.email}</span>
           <button
             type="button"

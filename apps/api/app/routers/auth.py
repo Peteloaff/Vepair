@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,8 +10,17 @@ from app.auth import create_access_token, get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.email import send_password_reset_email
-from app.models import AuthCredential, CoachProfile, PasswordResetToken, RefreshToken, User
+from app.models import (
+    AuthCredential,
+    CoachProfile,
+    PasswordResetToken,
+    Recording,
+    RefreshToken,
+    User,
+    VoiceSession,
+)
 from app.schemas_auth import (
+    AccountDeletionRequest,
     CoachSignupRequest,
     LoginRequest,
     LogoutRequest,
@@ -27,6 +37,9 @@ from app.security import (
     hash_password,
     verify_password,
 )
+from app.storage import get_storage
+
+logger = logging.getLogger("vepair.auth")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 settings = get_settings()
@@ -220,3 +233,53 @@ def confirm_password_reset(
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.delete("/me", status_code=204)
+def delete_my_account(
+    payload: AccountDeletionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Permanent, self-serve account deletion. Requires the current password -- same bar as
+    changing one -- since there is no undo. Deletes every stored recording's actual audio file
+    from object storage *before* deleting the User row: the row's ON DELETE CASCADE foreign keys
+    already remove every database record (profile, check-ins, recordings, measurements,
+    baselines, scores, vocal range history, exercise history, coach connections, notes,
+    consent records, everything), but cascade never touches object storage -- a Recording row
+    disappearing doesn't delete the WAV file behind it. This closes that real gap (see
+    PRIVACY.md section 6's "still not implemented" note, now implemented) rather than leaving
+    orphaned audio in the bucket after an account is gone."""
+    credential = db.scalar(
+        select(AuthCredential).where(AuthCredential.user_id == current_user.id)
+    )
+    if credential is None or not verify_password(payload.password, credential.password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "invalid_password", "message": "Incorrect password."},
+        )
+
+    recordings = db.scalars(
+        select(Recording)
+        .join(VoiceSession)
+        .where(VoiceSession.user_id == current_user.id)
+    ).all()
+    storage = get_storage()
+    for recording in recordings:
+        try:
+            storage.delete(recording.file_path)
+        except Exception:
+            # A single flaky storage call must never block someone from deleting their own
+            # account -- log it and keep going; an orphaned file is a smaller problem than an
+            # account a user cannot get rid of.
+            logger.error(
+                "Failed to delete recording file during account deletion: user_id=%s "
+                "recording_id=%s file_path=%s",
+                current_user.id,
+                recording.id,
+                recording.file_path,
+                exc_info=True,
+            )
+
+    db.delete(current_user)
+    db.commit()

@@ -16,6 +16,7 @@ import {
   type AuthUser,
   type TokenResponse,
   coachSignup as apiCoachSignup,
+  deleteAccount as apiDeleteAccount,
   fetchMe,
   login as apiLogin,
   logout as apiLogout,
@@ -47,6 +48,7 @@ interface AuthContextValue {
     studioName: string | null
   ) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
   apiFetch: <T>(path: string, options?: ApiFetchOptions) => Promise<T>;
 }
 
@@ -154,6 +156,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   }, [clearSession, router]);
 
+  const deleteAccount = useCallback(
+    async (password: string) => {
+      const token = accessTokenRef.current;
+      if (!token) {
+        throw new ApiError(401, "missing_token", "Not authenticated");
+      }
+      // Deliberately doesn't call logout()/apiLogout first — the refresh token row is about
+      // to be gone anyway (cascaded with the deleted User row), so there's nothing to revoke.
+      await apiDeleteAccount(token, password);
+      clearSession();
+    },
+    [clearSession]
+  );
+
   const apiFetch = useCallback(
     async <T,>(path: string, options: ApiFetchOptions = {}): Promise<T> => {
       const { method = "GET", body, searchParams } = options;
@@ -213,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ status, user, login, signup, coachSignup, logout, apiFetch }}
+      value={{ status, user, login, signup, coachSignup, logout, deleteAccount, apiFetch }}
     >
       {children}
     </AuthContext.Provider>

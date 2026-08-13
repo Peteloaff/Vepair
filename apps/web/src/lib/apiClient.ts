@@ -112,4 +112,20 @@ export async function fetchMe(accessToken: string): Promise<AuthUser> {
   return parseResponse<AuthUser>(res);
 }
 
+// Deliberately bypasses useAuth().apiFetch: a wrong password here is a 401 that means
+// "wrong password," not "expired session" — apiFetch can't tell those apart and would
+// silently retry after a token refresh, then log the user out on the second 401 instead of
+// surfacing invalid_password.
+export async function deleteAccount(accessToken: string, password: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ password }),
+  });
+  await parseResponse<void>(res);
+}
+
 export { API_BASE, parseResponse };
