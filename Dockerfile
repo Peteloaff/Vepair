@@ -21,4 +21,7 @@ RUN pip install --no-cache-dir .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Applies any pending migration against DATABASE_URL before the app starts serving traffic —
+# previously this was only assumed to happen (see TECHNICAL_GUIDE.md), but nothing in the image
+# actually ran it, so schema changes never reached production until run manually.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

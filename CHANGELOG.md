@@ -2,6 +2,24 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Fixed — production database migrations were never actually applied on deploy (2026-08-13)
+
+**Found deploying the Coach Pilot's migration to production for the first time**: coach signup
+returned a real 500 (`internal_error`) while ordinary singer signup worked fine on the same
+freshly-redeployed backend — a strong signal the six new coach tables simply didn't exist yet,
+confirmed by comparing the two live endpoints directly against production. `TECHNICAL_GUIDE.md`
+§7 claimed schema changes "ship as part of the normal backend deploy... the deploy process (or
+whatever entrypoint runs `alembic upgrade head`) applies it" — but nothing in the root
+`Dockerfile` ever actually ran that command. `CMD` started `uvicorn` directly; this was true
+since the Dockerfile was created (see the earlier "apps/api's Docker image never actually
+included its own dependency" entry below) and had simply never been exercised by a schema-
+changing deploy before now.
+
+Fixed by changing `Dockerfile`'s `CMD` to `alembic upgrade head && uvicorn ...` — migrations now
+genuinely run against `DATABASE_URL` before the app starts accepting traffic, using the exact
+same env var the app already connects with, no separate manual step. `TECHNICAL_GUIDE.md`'s
+claim is now actually true rather than aspirational.
+
 ## Fixed — live login/signup broken: production API URL had reset to localhost (2026-08-13)
 
 **Found live** — the founder reported being unable to log in on vepair.com. Every auth request
