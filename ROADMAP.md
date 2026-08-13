@@ -82,7 +82,7 @@ automatic just because a coach knows the singer); the platform never auto-diagno
 condition — same `MEDICAL_SAFETY.md` boundary as the consumer product; one shared Voice
 Intelligence engine, not a second parallel one for professionals.
 
-### Internal admin backend (founder's operational tooling — confirmed need, new)
+### Internal admin backend (founder's operational tooling — scoped, not yet built)
 
 Distinct from the VepAIr Coach portal above (which is for external vocal coaches/studios): the
 founder needs an internal, GUI admin backend for running the business — user administration,
@@ -90,26 +90,103 @@ data pulls for contact lists, and reporting. Not a customer-facing feature, but 
 Stage 12 because it depends on the same foundation that stage already has to build (role-based
 access beyond today's single "user" role; audit logging for who accessed what).
 
-To be scoped in detail when Stage 12 is reached, but the shape is already clear:
+**Why this got scoped now, ahead of the rest of Stage 12**: the Coach Pilot's first production
+deploy needed two throwaway test accounts and one real account cleaned up, and the only way to
+do it was a raw `DELETE FROM users` over a direct Cloud Shell `psql` connection using the
+production database's full connection string (password included) — typed straight into a
+terminal, with no record of who deleted what or why beyond this chat log. That's the concrete
+gap this section closes. Deferred to build until the founder gives the go-ahead (same dev-first,
+review-before-release posture as everything else in Stage 12), but scoped in real detail now
+rather than left as a stub.
 
-- **Admin auth**: a real admin role, not a flag on the existing `User` model — this is the first
-  actual consumer of `PRIVACY.md` §4's "auditable access" commitment (every non-owner read of a
-  user's data attributable to a specific actor and reason), so that requirement needs to land for
-  real here, not stay aspirational.
-- **User administration**: search/view/manage accounts for support (password resets, account
-  issues) — scoped access for a specific task, not unrestricted bulk data access by default.
+**v1 scope — directly informed by that gap, nothing speculative:**
+
+- **Admin auth**: a real admin role, not a flag repurposed from something else. Simplest correct
+  shape: an `is_admin: bool` column on the existing `User` model (additive, same pattern as every
+  other optional-attribute rollout in this schema), checked server-side by a `get_current_admin`
+  dependency mirroring `app/coach_auth.py`'s `get_current_coach` exactly — 403 if the flag isn't
+  set, never a client-trusted role claim. Reuses the existing login endpoint (an admin is still
+  a `User` row with `AuthCredential`); no separate admin-auth system to maintain.
+- **User search & lookup**: find an account by email, see its type (singer/coach), signup date,
+  and onboarding/profile completeness — the exact information that took a manual SQL query to get
+  today (see `TECHNICAL_GUIDE.md` §8, "Direct database access (diagnostics)" — this replaces that
+  workflow with a real UI, not a parallel one).
+- **Account deactivation/deletion through a real endpoint, not raw SQL**: `DELETE FROM users`
+  run by hand has no confirmation step, no audit trail, and no soft-delete recovery window. A
+  `POST /api/v1/admin/users/{id}/deactivate` (soft, reversible) and a separate, more deliberate
+  hard-delete path — both going through the same cascade the schema already guarantees, just
+  with a record of who did it and when.
+- **Password reset that actually emails the user**: this is arguably a prerequisite, not a nice-
+  to-have — `apps/api/app/email.py` still only logs reset tokens server-side (a real gap since
+  Stage 1, reconfirmed live during this deploy: production's "Forgot password" doesn't work for
+  a real user today). An admin-triggered reset is the fastest path to closing that gap without
+  first standing up a full transactional-email provider for self-serve resets.
 - **Reporting**: aggregate business/usage metrics (signups, retention, engagement) — the kind of
   data `PRIVACY.md`'s existing "product analytics consent" purpose already anticipates.
+- **A real audit log, not just a log line**: `PRIVACY.md` §4's "auditable access" commitment is
+  currently honored by exactly one structured log line (coach recording access in
+  `app/routers/coach.py`) — good enough for a read, not good enough for a delete. Every admin
+  action (who, what, on which account, when) needs a real queryable table here, since this is the
+  first place in the app a person can take a destructive action on someone else's data.
+
+**Explicitly deferred past v1**: bulk operations, a second admin role/permission tiers,
+impersonation ("log in as this user"), and the contact-list/outreach export called out below —
+each is a real feature with its own scope, not a checkbox to add to v1's list.
+
 - **Contact list / data export for outreach — needs a privacy decision before it's built, not
   just an engineering task**: `PRIVACY.md` §3's consent model currently covers product analytics,
-  model training, and vocal-professional sharing — it does not cover marketing/outreach contact
-  use. Pulling emails to build contact lists is a distinct purpose from those three and likely
-  needs its own explicit consent grant (or at minimum a clear opt-out) rather than assuming every
-  registered user is contactable for outreach by default. `PRIVACY.md` should be updated with
-  that decision before this ships, not worked around in code.
+  model training, and coach sharing — it does not cover marketing/outreach contact use. Pulling
+  emails to build contact lists is a distinct purpose from those three and likely needs its own
+  explicit consent grant (or at minimum a clear opt-out) rather than assuming every registered
+  user is contactable for outreach by default. `PRIVACY.md` should be updated with that decision
+  before this ships, not worked around in code.
 
 Same non-negotiables as the rest of Stage 12 apply here: no clinical/diagnostic data exposure,
 audit-logged access, never a shortcut around the consent model.
+
+### Subscription tiers / paywall (confirmed coming, details not yet decided)
+
+**Founder confirmed directly (2026-08-13): a paid tier is coming for the consumer app, not just
+for VepAIr Coach.** Until now, every monetization plan on this roadmap was B2B — VepAIr Coach's
+own Phase III–V pricing above is coaches/studios paying for the coach portal. This is a
+**second, separate axis**: individual accounts (both singers and coaches) will have Free vs.
+Pro tiers on the consumer/coach-pilot product itself. Three named tiers so far: **Free**,
+**User Pro** (paid singer tier), **Coach Pro** (paid coach tier) — the founder was explicit that
+feature boundaries, pricing, and whether a free Coach tier exists at all are **not decided yet**.
+Nothing below should be read as locking in those decisions; it's scoped so the architecture
+doesn't accidentally make them harder to make later.
+
+**What's worth building structurally now vs. waiting entirely:** nothing — no schema, no billing
+integration, no gating code should be built until real pricing decisions exist, same as every
+other "confirmed coming, not yet specified" item on this roadmap. This subsection exists so that
+when those decisions land, the shape of the work is already understood rather than re-derived,
+and so that nothing built in the meantime (the Coach Pilot's schema in particular) has to be
+reworked to make room for it.
+
+**Shape of the eventual work, for when it's scoped for real:**
+
+- **A tier/entitlement record, not a flag**: one row per account (singer or coach) with a tier,
+  status, and renewal date — its own table (e.g. `Subscription`), not a column bolted onto
+  `UserProfile`/`CoachProfile`. A growing ledger of tier *changes* (matching `ConsentRecord`'s
+  append-only pattern) is worth considering too, since "when did this account upgrade/downgrade"
+  is exactly the kind of question that comes up later and is expensive to reconstruct after the
+  fact if only current state was ever stored.
+- **One enforcement seam, reused everywhere a feature needs gating** — the same shape as
+  `app/coach_auth.py`'s `require_coach_access`: a single dependency every tier-gated endpoint
+  calls, so whichever features end up Free vs. Pro, the mechanism enforcing that boundary is
+  already correct and tested before the business decision is even finalized.
+- **A payment provider integration point.** Not chosen yet; Stripe is the default assumption
+  worth validating when this is actually scoped (subscriptions, webhooks, and a customer portal
+  for self-serve plan changes are all standard Stripe primitives that would otherwise be
+  reinvented). Webhook handling needs to keep the `Subscription` table in sync with the
+  provider's own source of truth for renewal/cancellation/payment-failure events — never trust
+  client-reported subscription state for gating.
+- **Open questions, founder's call, not decided here** (mirroring how Stage 12's own coach-pilot
+  plan flagged its open questions rather than guessing): exact Free vs. User Pro feature
+  boundary; whether Coach accounts have a Free tier or Coach Pro is the only option; monthly vs.
+  annual and proration; trial periods; what happens to an active coach-singer connection
+  (`CoachAccess`) if the coach's subscription lapses — does access pause, or does the singer keep
+  what they had; whether a downgrade is immediate or takes effect at the end of a billing period.
 
 ### Deployment milestone (between Stage 11 and Stage 12)
 
