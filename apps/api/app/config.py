@@ -29,6 +29,19 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
     password_reset_token_expire_minutes: int = 60
 
+    # Outbound email. "log" (default) just logs the message server-side, matching the
+    # dependency-free local-dev posture STORAGE_BACKEND=local uses. "graph" sends real mail via
+    # Microsoft Graph (Microsoft 365), using OAuth2 client-credentials — not raw SMTP, since
+    # Microsoft has been retiring Basic Auth for SMTP AUTH. See app/email.py.
+    email_backend: str = "log"
+    email_from_address: str = "noreply@vepair.com"
+    ms_graph_tenant_id: str = ""
+    ms_graph_client_id: str = ""
+    ms_graph_client_secret: str = ""
+    # Used to build links inside emails (e.g. the password-reset link) — never inferred from
+    # API_CORS_ORIGINS, since that's a list and this needs to be the one canonical frontend URL.
+    frontend_base_url: str = "http://localhost:3000"
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]

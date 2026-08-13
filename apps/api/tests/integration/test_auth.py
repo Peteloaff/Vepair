@@ -115,12 +115,13 @@ def test_password_reset_flow(client, signed_up_user, caplog) -> None:
     )
     assert request_resp.status_code == 202
 
-    # Dev-mode "email" backend logs the raw token — pull it back out to simulate the user
-    # clicking the emailed link.
+    # Dev-mode "log" email backend logs the reset link (with the raw token as a query param)
+    # instead of sending it — pull it back out to simulate the user clicking the emailed link.
     token = None
     for record in caplog.records:
-        if "Password reset requested" in record.getMessage():
-            token = record.getMessage().rsplit("token: ", 1)[-1]
+        message = record.getMessage()
+        if "reset-password?token=" in message:
+            token = message.rsplit("reset-password?token=", 1)[-1].split()[0]
     assert token, "reset token was not logged by the dev email backend"
 
     confirm_resp = client.post(
