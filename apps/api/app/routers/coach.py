@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.coach_auth import get_current_coach, require_coach_access
@@ -19,6 +19,7 @@ from app.models import (
     CoachInvite,
     CoachNote,
     CoachProfile,
+    ConsentRecord,
     DailyCheckIn,
     Exercise,
     Recording,
@@ -189,6 +190,42 @@ def _granted_categories(db: Session, access: CoachAccess) -> set[str]:
     return set(grants)
 
 
+@router.delete("/singers/{singer_user_id}", status_code=204)
+def remove_singer(
+    access: CoachAccess = Depends(require_coach_access()),
+    db: Session = Depends(get_db),
+) -> None:
+    """Coach-initiated disconnect — the mirror of the singer's own
+    DELETE /api/v1/coach-connections/{id} (app/routers/coach_access.py), just from the other
+    side. Same semantics: immediate for future access (the coach's own next request 403s, since
+    require_coach_access checks CoachAccess.status == "active"), forward-only for the past
+    (CoachAssignment/CoachNote rows are never deleted, and the singer keeps permanent read
+    access to notes already written about them). The singer's account and all their own data
+    are untouched — this only ends the coach's access to it."""
+    access.status = "revoked"
+    access.revoked_at = datetime.now(UTC)
+    access.revoked_by = "coach"
+
+    grants = db.scalars(
+        select(CoachAccessCategoryGrant).where(
+            CoachAccessCategoryGrant.coach_access_id == access.id,
+            CoachAccessCategoryGrant.granted.is_(True),
+        )
+    ).all()
+    for grant in grants:
+        db.add(
+            ConsentRecord(
+                user_id=access.singer_user_id,
+                consent_type="coach_sharing",
+                category=grant.category,
+                granted=False,
+                granted_at=func.clock_timestamp(),
+                clinician_id=access.coach_id,
+            )
+        )
+    db.commit()
+
+
 @router.get("/singers/{singer_user_id}/summary", response_model=CoachSingerSummaryOut)
 def get_singer_summary(
     singer_user_id: uuid.UUID,
@@ -347,6 +384,12 @@ def get_singer_recording_audio(
     access: CoachAccess = Depends(require_coach_access(category="recordings")),
     db: Session = Depends(get_db),
 ) -> Response:
+    """Deliberately a live link into the singer's own stored copy, never a separate one made
+    for the coach — there is exactly one copy of this recording anywhere, ever, and it's the
+    singer's. Nothing is downloaded or cached server-side for the coach, and access is gated
+    entirely by the existing "recordings" category grant (require_coach_access): revoke that
+    category, or the connection outright, and this 403s on the coach's very next request. See
+    PRIVACY.md section 3's coach-recordings retention note."""
     recording = db.scalar(
         select(Recording)
         .join(VoiceSession)

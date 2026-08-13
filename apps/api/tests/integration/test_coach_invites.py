@@ -260,3 +260,105 @@ def test_singer_list_includes_identifying_info_not_bare_ids(
     assert singers[0]["singer_user_id"] == singer["user"]["id"]
     assert singers[0]["singer_email"] == singer["email"]
     assert sorted(singers[0]["granted_categories"]) == ["recovery_trends", "vocal_range"]
+
+
+def test_coach_can_remove_a_singer_from_their_roster(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """Coach-initiated disconnect — the mirror of the singer's own DELETE
+    /api/v1/coach-connections/{id}, just from the other side."""
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    created = client.post(
+        "/api/v1/coach/invites", headers=coach_headers, json={"singer_email": singer["email"]}
+    )
+    client.post(
+        f"/api/v1/invites/{created.json()['id']}/accept",
+        headers=singer_headers,
+        json={"granted_categories": ["recovery_trends"]},
+    )
+
+    resp = client.delete(
+        f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers
+    )
+    assert resp.status_code == 204
+
+    # Immediate for the coach's own future access.
+    roster = client.get("/api/v1/coach/singers", headers=coach_headers)
+    assert roster.json() == []
+
+    # The singer's own account and data are completely untouched.
+    me = client.get("/api/v1/auth/me", headers=singer_headers)
+    assert me.status_code == 200
+    assert me.json()["email"] == singer["email"]
+
+
+def test_removed_singer_can_still_see_the_coachs_notes_about_them(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """Forward-only revoke, same as the singer-initiated path: a coach can't retroactively
+    take back a note the singer already has permanent read access to."""
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    created = client.post(
+        "/api/v1/coach/invites", headers=coach_headers, json={"singer_email": singer["email"]}
+    )
+    accepted = client.post(
+        f"/api/v1/invites/{created.json()['id']}/accept",
+        headers=singer_headers,
+        json={"granted_categories": ["recovery_trends"]},
+    )
+    connection_id = accepted.json()["id"]
+
+    client.post(
+        f"/api/v1/coach/singers/{singer['user']['id']}/notes",
+        headers=coach_headers,
+        json={"body": "Great breath support in today's session."},
+    )
+
+    client.delete(f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers)
+
+    notes = client.get(
+        f"/api/v1/coach-connections/{connection_id}/notes", headers=singer_headers
+    )
+    assert notes.status_code == 200
+    assert len(notes.json()) == 1
+    assert notes.json()[0]["body"] == "Great breath support in today's session."
+
+
+def test_coach_cannot_remove_a_singer_with_no_active_access(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, _singer_headers = signed_up_user
+
+    resp = client.delete(
+        f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "no_active_access"
+
+
+def test_removing_a_singer_blocks_the_coachs_own_further_reads(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    created = client.post(
+        "/api/v1/coach/invites", headers=coach_headers, json={"singer_email": singer["email"]}
+    )
+    client.post(
+        f"/api/v1/invites/{created.json()['id']}/accept",
+        headers=singer_headers,
+        json={"granted_categories": ["recovery_trends"]},
+    )
+
+    client.delete(f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers)
+
+    resp = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/summary",
+        headers=coach_headers,
+        params={"date": "2026-08-13"},
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "no_active_access"

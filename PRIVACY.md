@@ -48,6 +48,14 @@ decline another):
    a full revoke. One active coach per singer at a time (DB-enforced). Revoking is immediate for
    future access (the coach's next request is rejected) but forward-only for the past — already-
    viewed data isn't retroactively unshown, and the revoke confirmation says so plainly.
+   **`recordings` specifically: VepAIr never creates or stores a separate copy of a singer's
+   audio for a coach.** There is exactly one copy of any recording, ever — the singer's own,
+   in the same storage this document already describes. A coach with the `recordings` category
+   granted gets a live, authenticated link into that single copy (`GET /api/v1/coach/singers/
+   {id}/recordings/{id}/audio`), gated by the same category-grant check as every other read;
+   nothing is downloaded, cached, or persisted on the coach's side by the app itself, and
+   revoking the category or the connection cuts off that link immediately, same as any other
+   category. We don't retain a singer's voice anywhere beyond the one copy they already own.
    `DailyCheckIn.illness_symptoms`/`.reflux_symptoms`/`.notes` and `VoiceSession.notes` are never
    readable by a coach regardless of any grant — a code-level omission, not a togglable category.
    Coach-authored notes about a singer are readable by that singer permanently, surviving revoke

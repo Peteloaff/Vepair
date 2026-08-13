@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireCoach } from "@/components/RequireCoach";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
@@ -16,9 +16,11 @@ function NotShared({ label }: { label: string }) {
 
 function SingerDashboardContent() {
   const { apiFetch } = useAuth();
+  const router = useRouter();
   const params = useParams<{ singerId: string }>();
   const [summary, setSummary] = useState<CoachSingerSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     apiFetch<CoachSingerSummary>(`/api/v1/coach/singers/${params.singerId}/summary`, {
@@ -28,6 +30,24 @@ function SingerDashboardContent() {
       .catch(() => setError("Could not load this singer's dashboard."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.singerId]);
+
+  async function removeSinger() {
+    if (
+      !window.confirm(
+        "Remove this singer from your roster? You'll lose access to their data immediately. This does not delete their VepAIr account or any of their own data — they keep everything, and can invite you again later if they choose to."
+      )
+    ) {
+      return;
+    }
+    setRemoving(true);
+    try {
+      await apiFetch(`/api/v1/coach/singers/${params.singerId}`, { method: "DELETE" });
+      router.replace("/coach");
+    } catch {
+      setError("Could not remove this singer. Please try again.");
+      setRemoving(false);
+    }
+  }
 
   if (error) {
     return <p className="text-sm text-red-300">{error}</p>;
@@ -62,6 +82,14 @@ function SingerDashboardContent() {
           >
             Notes
           </Link>
+          <button
+            type="button"
+            onClick={removeSinger}
+            disabled={removing}
+            className="rounded-lg border border-red-900 px-3 py-1.5 text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+          >
+            {removing ? "Removing..." : "Remove from roster"}
+          </button>
         </div>
       </div>
 
