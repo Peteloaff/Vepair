@@ -2,6 +2,32 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Fixed — live login/signup broken: production API URL had reset to localhost (2026-08-13)
+
+**Found live** — the founder reported being unable to log in on vepair.com. Every auth request
+(`/api/v1/auth/login`, `/refresh`, `/me`, etc.) was going to `http://127.0.0.1:8000`
+(`ERR_CONNECTION_REFUSED` in the browser network log) instead of the real Cloud Run backend —
+the client-side fallback in `apps/web/src/lib/apiClient.ts`
+(`process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"`) was firing, meaning
+`NEXT_PUBLIC_API_URL`/`API_URL` weren't correctly baked into the currently-deployed production
+bundle. This is the same class of recurring env-var-reset issue this project has hit before on
+the backend side (Cloud Run's `API_CORS_ORIGINS`) — this time on the frontend.
+
+Fixed by re-setting both `NEXT_PUBLIC_API_URL` and `API_URL` in Vercel's production environment
+to `https://vepair-api-302841837670.us-west1.run.app`, then pushing an empty commit to force a
+rebuild — per `TECHNICAL_GUIDE.md` §4, `NEXT_PUBLIC_*` variables are baked in at build time, so
+updating the value alone does nothing to an already-deployed build. Verified live: a login
+attempt against vepair.com now correctly reaches the backend and returns a real auth response
+(confirmed via both a deliberate wrong-password attempt returning "Incorrect email or password,"
+and the founder confirming a real login succeeded afterward) instead of hanging on a connection
+error.
+
+**Separately surfaced, not yet fixed**: production's "Forgot password" flow doesn't actually
+work for a live user yet — no email provider is wired up (`apps/api/app/email.py` still just
+logs the reset token server-side, a known gap documented since Stage 1), so a real user has no
+way to receive or use a reset link today. Worth prioritizing before onboarding more real users
+who might need it.
+
 ## Fixed — track selection required a saved profile first, and plan-pending copy implied only one input was needed (2026-08-12)
 
 **Found live**, right after the onboarding redirect went in: a brand-new signup has no
