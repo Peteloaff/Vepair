@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { RequireAuth } from "@/components/RequireAuth";
 import { CheckInForm } from "@/components/CheckInForm";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
@@ -374,10 +374,77 @@ function Dashboard() {
   );
 }
 
-export default function Home() {
+function LandingChooser() {
   return (
-    <RequireAuth>
-      <Dashboard />
-    </RequireAuth>
+    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
+      <div className="w-full max-w-2xl text-center">
+        <Image
+          src="/brand/vepair-logo.png"
+          alt=""
+          width={64}
+          height={64}
+          className="mx-auto mb-6"
+          priority
+        />
+        <h1 className="text-3xl font-semibold tracking-tight">Welcome to VepAIr</h1>
+        <p className="mt-2 text-sm text-neutral-400">
+          AI-assisted vocal recovery, conditioning, and performance &mdash; for singers and the
+          coaches who train them.
+        </p>
+
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Link
+            href="/signup"
+            className="group rounded-2xl border border-neutral-800 bg-neutral-900/60 p-8 text-left transition hover:border-emerald-700 hover:bg-neutral-900"
+          >
+            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Singer</p>
+            <p className="mt-2 text-sm text-neutral-400">
+              Track your voice, get personalized daily exercises, and train safely with VepAIr.
+            </p>
+            <span className="mt-4 inline-block text-sm font-medium text-emerald-400 group-hover:text-emerald-300">
+              Get started &rarr;
+            </span>
+          </Link>
+
+          <Link
+            href="/coach-signup"
+            className="group rounded-2xl border border-neutral-800 bg-neutral-900/60 p-8 text-left transition hover:border-emerald-700 hover:bg-neutral-900"
+          >
+            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Coach</p>
+            <p className="mt-2 text-sm text-neutral-400">
+              Invite singers, assign custom training, and follow their progress in real time.
+            </p>
+            <span className="mt-4 inline-block text-sm font-medium text-emerald-400 group-hover:text-emerald-300">
+              Get started &rarr;
+            </span>
+          </Link>
+        </div>
+
+        <p className="mt-8 text-sm text-neutral-500">
+          Already have an account?{" "}
+          <Link href="/login" className="text-emerald-400 hover:text-emerald-300">
+            Log in
+          </Link>
+        </p>
+      </div>
+    </main>
   );
+}
+
+export default function Home() {
+  const { status } = useAuth();
+
+  if (status === "loading") {
+    return (
+      <main className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-neutral-500">Loading...</p>
+      </main>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return <LandingChooser />;
+  }
+
+  return <Dashboard />;
 }
