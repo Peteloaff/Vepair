@@ -114,8 +114,8 @@ export default function TermsPage() {
           <h2 className="mb-2 text-base font-medium text-neutral-100">8. Contact</h2>
           <p>
             Questions about these terms or your data can be sent to{" "}
-            <a href="mailto:pete@vepair.com" className="underline hover:text-neutral-100">
-              pete@vepair.com
+            <a href="mailto:support@vepair.com" className="underline hover:text-neutral-100">
+              support@vepair.com
             </a>
             .
           </p>
