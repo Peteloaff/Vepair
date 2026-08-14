@@ -2,6 +2,31 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Backend Admin (2026-08-13)
+
+An internal operator surface (`/admin` in the frontend, `/api/v1/admin/*` in the backend) closing
+real operational gaps hit repeatedly in earlier stages: raw `DELETE FROM users` over a direct
+production `psql` connection with no audit trail, and password resets that only logged a token
+server-side instead of emailing it. See `ARCHITECTURE.md` §6o for the full design.
+
+- **Admin role** (`User.is_admin`, `User.is_active` — both additive, no self-serve or API path to
+  grant admin, ever; see `TECHNICAL_GUIDE.md` §9 for the one-time manual bootstrap) and an
+  append-only `AdminAuditLog` table, written to by every state-changing admin action in the same
+  transaction as the change.
+- **User search, detail, and reporting**: email search, per-account detail (signup date, account
+  type, onboarding completeness, last-session/check-in/recording activity), and an aggregate
+  reports page (signups, active/deactivated counts, onboarding completion rate, a DAU/WAU proxy).
+- **Deactivate / reactivate**: soft, instant, reversible account lockout — revokes all refresh
+  tokens and blocks both existing sessions and fresh logins while deactivated.
+- **Hard delete, deactivation required first**: reuses the exact same deletion logic as self-serve
+  account deletion (now factored into a shared `app/account_deletion.py`), so there is exactly one
+  account-deletion code path in the app.
+- **Admin-triggered password reset**: a thin, audited wrapper around the existing password-reset
+  mechanism, letting an admin trigger a reset email on a user's behalf.
+- Fixed in the process: `POST /api/v1/auth/login` did not check `is_active`, so a deactivated
+  account could simply log back in and mint a fresh session, defeating the point of deactivating
+  it — caught by the admin test suite before shipping, not in production.
+
 ## Added — Goal Tones, rest-day recommendations, and coach tooling extensions (2026-08-13)
 
 Seven related additions, all built on top of the existing Stage 6 adaptive routine engine and

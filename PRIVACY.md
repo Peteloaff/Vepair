@@ -88,6 +88,15 @@ explicit, purpose-specific, informed consent — never bundled into a generic To
 - **Auditable access**: every read of a `Recording`'s audio by anyone other than its owner
   (e.g. a future authorized vocal coach, via VepAIr Coach's consent system above) must be
   attributable to a specific actor and reason.
+- **Admin access is itself access to user data, and is audited the same way.** The backend
+  admin account type (Section 6) can view any account's email, activity summary, and
+  onboarding/status flags, and can deactivate, reactivate, permanently delete, or trigger a
+  password reset on any account. None of this is gated by the singer's own consent — it is
+  operational access, not a coach-style sharing relationship — but every state-changing admin
+  action is written to `AdminAuditLog` (admin, action, target, timestamp) before it takes
+  effect, so "who did what to which account, and when" is always reconstructable. Admin reads
+  (search, detail view, reports) are not individually logged — only actions that change state
+  — consistent with this document's existing practice of logging events, not every read.
 
 ## 5. Transport & storage security
 
@@ -159,3 +168,15 @@ timestamped events is the wrong structure to query on every request. `GET
 (`app/routers/coach.py`) for the "auditable access" requirement above — deliberately just a log
 line for pilot scale, not yet a queryable table; a real `CoachDataAccessLog` is deferred to the
 admin backend (`ROADMAP.md`'s Stage 12 admin-tooling section) if the pilot's scale warrants it.
+
+**Backend Admin** is implemented: `User.is_admin`/`User.is_active` (additive columns, both
+default to the pre-existing behavior) plus `AdminAuditLog`, a `ConsentRecord`-shaped append-only
+table (`app/admin_audit.py`'s `log_admin_action`, called by every state-changing admin endpoint
+in the same transaction as the change). `app/admin_auth.py`'s `get_current_admin` gates every
+`/api/v1/admin/*` route on the `is_admin` flag, checked server-side on every request — never a
+client-trusted claim. There is no self-serve or API path to become an admin; see
+`TECHNICAL_GUIDE.md` §9 for the one-time manual bootstrap. Hard delete requires the target
+account to already be deactivated first (`409 must_deactivate_first` otherwise) and reuses the
+exact same `app/account_deletion.py`'s `delete_user_and_storage` self-serve delete already uses,
+so there remains exactly one account-deletion code path in the app. See Section 4's new bullet
+above for how this reconciles with "auditable access."

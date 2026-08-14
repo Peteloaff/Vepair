@@ -52,6 +52,12 @@ class User(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    # Admin backend (post-Stage-12). Both additive, both default to the pre-existing behavior
+    # (nobody is an admin; everybody is active) so every row that predates this migration reads
+    # correctly with no backfill needed. No self-serve path ever sets is_admin=True — see
+    # app/admin_auth.py's docstring and TECHNICAL_GUIDE.md for the one-time manual bootstrap.
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     profile: Mapped["UserProfile | None"] = relationship(back_populates="user", uselist=False)
 
@@ -615,3 +621,23 @@ class CoachNote(Base, TimestampMixin):
     body: Mapped[str] = mapped_column(Text)  # max length enforced at the Pydantic schema layer
     flagged_terms: Mapped[list | None] = mapped_column(JSON, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AdminAuditLog(Base, TimestampMixin):
+    """Append-only trail of every state-changing admin action, same pattern as ConsentRecord.
+    Never updated or deleted. `target_user_id` is SET NULL on the target account's own deletion
+    so a hard-delete doesn't take its own audit trail with it -- `details` captures the target's
+    email (and any other relevant context) at the time so the record stays meaningful even after
+    target_user_id goes null. See app/admin_audit.py's log_admin_action, the only writer."""
+
+    __tablename__ = "admin_audit_log"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    admin_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    action: Mapped[str] = mapped_column(String(100))
+    target_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)

@@ -1,4 +1,3 @@
-import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.account_deletion import delete_user_and_storage
 from app.auth import create_access_token, get_current_user
 from app.config import get_settings
 from app.database import get_db
@@ -14,10 +14,8 @@ from app.models import (
     AuthCredential,
     CoachProfile,
     PasswordResetToken,
-    Recording,
     RefreshToken,
     User,
-    VoiceSession,
 )
 from app.schemas_auth import (
     AccountDeletionRequest,
@@ -37,9 +35,6 @@ from app.security import (
     hash_password,
     verify_password,
 )
-from app.storage import get_storage
-
-logger = logging.getLogger("vepair.auth")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 settings = get_settings()
@@ -130,6 +125,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
     credential = db.scalar(select(AuthCredential).where(AuthCredential.user_id == user.id))
     if credential is None or not verify_password(payload.password, credential.password_hash):
         raise INVALID_CREDENTIALS
+
+    if user.is_active is False:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "account_deactivated", "message": "This account has been deactivated."},
+        )
 
     return _issue_tokens(db, user)
 
@@ -259,27 +260,4 @@ def delete_my_account(
             detail={"code": "invalid_password", "message": "Incorrect password."},
         )
 
-    recordings = db.scalars(
-        select(Recording)
-        .join(VoiceSession)
-        .where(VoiceSession.user_id == current_user.id)
-    ).all()
-    storage = get_storage()
-    for recording in recordings:
-        try:
-            storage.delete(recording.file_path)
-        except Exception:
-            # A single flaky storage call must never block someone from deleting their own
-            # account -- log it and keep going; an orphaned file is a smaller problem than an
-            # account a user cannot get rid of.
-            logger.error(
-                "Failed to delete recording file during account deletion: user_id=%s "
-                "recording_id=%s file_path=%s",
-                current_user.id,
-                recording.id,
-                recording.file_path,
-                exc_info=True,
-            )
-
-    db.delete(current_user)
-    db.commit()
+    delete_user_and_storage(db, current_user)

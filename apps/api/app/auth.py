@@ -79,4 +79,9 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
             status_code=401,
             detail={"code": "user_not_found", "message": "User for this token no longer exists."},
         )
+    if user.is_active is False:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "account_deactivated", "message": "This account has been deactivated."},
+        )
     return user

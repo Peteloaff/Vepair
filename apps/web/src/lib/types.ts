@@ -479,3 +479,34 @@ export interface CoachVoiceSession {
   device_metadata_id: string | null;
   recordings: Recording[];
 }
+
+// --- Backend Admin (post-Stage-12, minimal/unstyled v1) ---
+
+export interface AdminUserListItem {
+  id: string;
+  email: string;
+  account_type: "singer" | "coach";
+  created_at: string;
+  is_active: boolean;
+  is_admin: boolean;
+  onboarding_complete: boolean;
+}
+
+export interface AdminUserDetail extends AdminUserListItem {
+  last_session_at: string | null;
+  last_checkin_date: string | null;
+  last_recording_at: string | null;
+}
+
+export interface AdminReportsSummary {
+  total_users: number;
+  singer_count: number;
+  coach_count: number;
+  active_count: number;
+  deactivated_count: number;
+  onboarding_completion_rate: number;
+  signups_last_7_days: number;
+  signups_last_90_days: number;
+  dau: number;
+  wau: number;
+}

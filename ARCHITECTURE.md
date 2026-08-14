@@ -74,7 +74,9 @@ All entities below exist as SQLAlchemy models + Alembic migrations as of Stage 0
 by working, tested endpoints; the rest of the schema still exists so later stages build on a
 reviewed foundation instead of bolting on tables stage by stage.
 
-- **User** — authentication identity (mirrors Supabase Auth user id).
+- **User** — authentication identity (mirrors Supabase Auth user id). `is_admin` and
+  `is_active` (post-Stage-12, both additive, defaulting to the pre-existing behavior — nobody
+  admin, everybody active) back the Backend Admin section — see §6o.
 - **AuthCredential**, **RefreshToken**, **PasswordResetToken** — Stage 1 self-hosted auth
   tables. See section 6a.
 - **UserProfile** — onboarding answers: voice use, singer/non-singer, style, practice frequency,
@@ -128,6 +130,11 @@ reviewed foundation instead of bolting on tables stage by stage.
   merged to `main` or deployed as of this writing.
 - **VocalGoal** (post-Stage-12) — a singer's target low/avg/high note. Current-state, not
   history: one row per user, upserted in place — see §6n.
+- **AdminAuditLog** (post-Stage-12) — append-only trail of every state-changing admin action
+  (admin, action, target user, details, timestamp), same shape as `ConsentRecord`. `target_user_id`
+  is `SET NULL` on the target's own deletion so a hard-delete doesn't remove its own audit trail;
+  `details` captures the target's email at the time so the row stays meaningful regardless. See
+  §6o.
 
 See `apps/api/migrations/versions/` for the actual column-level schema and
 `apps/api/app/models.py` for the SQLAlchemy definitions — this document intentionally does not
@@ -830,6 +837,64 @@ baseline logic.
 account to `/coach`; `Dashboard` takes an `isCoachView` prop that skips every singer-only fetch
 (none of that data exists for a coach account) and renders a compact panel plus a link into the
 Coach Portal instead, keeping the same page shell for both account types.
+
+## 6o. Backend Admin (post-Stage-12)
+
+An internal operator surface, not a user-facing feature — closes real operational gaps hit
+repeatedly during earlier stages (raw `DELETE FROM users` over a direct prod `psql` connection
+with no audit trail, password resets that only logged a token server-side instead of emailing
+it).
+
+**Auth**: `app/admin_auth.py`'s `get_current_admin` mirrors `app/coach_auth.py`'s
+`get_current_coach` exactly, except the "is this an admin" check is a flag on `User` itself
+(`is_admin`) rather than a separate profile table — there's no equivalent of `CoachProfile` for
+admins, since admin isn't a distinct account type with its own data, just an authenticated
+account with elevated privileges. No self-serve or API path ever sets `is_admin = true` — see
+`TECHNICAL_GUIDE.md` §9 for the one-time manual bootstrap.
+
+**Audit**: every state-changing `/api/v1/admin/*` endpoint calls `app/admin_audit.py`'s
+`log_admin_action(db, admin_user_id, action, target_user_id, details)` in the same transaction as
+the change, writing to `AdminAuditLog` (see section 4). Read-only endpoints (search, detail,
+reports) are not logged.
+
+**Deactivation** (`User.is_active`, default `True`) is soft and instant:
+`POST /api/v1/admin/users/{id}/deactivate` flips the flag and revokes every one of that account's
+`RefreshToken` rows (same revocation pattern `password-reset/confirm` already uses).
+`app/auth.py`'s `get_current_user` and `routers/auth.py`'s `login` both gained an
+`is_active is False` check — the former locks out any still-valid access token immediately, the
+latter stops a deactivated account from just logging back in and minting a fresh session, which
+would otherwise defeat the point of deactivating it. `POST .../reactivate` reverses it.
+
+**Hard delete requires deactivation first**: `POST /api/v1/admin/users/{id}/delete` returns
+`409 must_deactivate_first` unless the account is already inactive — a deliberate safety gate
+before anything permanent. It then calls the same `app/account_deletion.py`'s
+`delete_user_and_storage(db, user)` that self-serve delete (`DELETE /api/v1/auth/me`) uses —
+that function was factored out of `routers/auth.py` specifically so there is exactly one
+account-deletion code path in the app, not two that can drift apart.
+
+**Admin-triggered password reset** (`POST /api/v1/admin/users/{id}/send-password-reset`) is a
+thin, audited wrapper around the same `PasswordResetToken` + `send_password_reset_email`
+mechanism `POST /api/v1/auth/password-reset/request` already uses — no new password logic, just
+admin-authorization and audit-logging instead of self-serve, on top of an email-sending path that
+already existed (see `app/email.py`).
+
+**Search, detail, and reporting** (`GET /api/v1/admin/users`, `.../users/{id}`,
+`.../reports/summary`) are read-only aggregate/lookup endpoints over existing tables — no new
+schema beyond `is_admin`/`is_active`/`AdminAuditLog`. "Last login" isn't tracked by a dedicated
+event table yet; the detail endpoint uses the most recent `RefreshToken.created_at` for that user
+as a documented proxy rather than building a login-event table just for this. The reports
+endpoint's DAU/WAU are similarly a proxy (distinct users with a check-in or recording in the
+window), not a true session-based metric.
+
+**Frontend** (`apps/web/src/app/admin/*`, `components/RequireAdmin.tsx`) is deliberately
+minimal/unstyled — a search page, a per-user detail/actions page (with the same
+type-`DELETE`-to-confirm pattern the singer-side `/settings` delete flow already uses), and a
+reports page. `RequireAdmin.tsx` mirrors `RequireCoach.tsx`: a server-truth check via
+`GET /api/v1/admin/profile`, never a client-trusted flag.
+
+Deferred past v1: bulk operations, multiple admin roles/permission tiers, impersonation ("log in
+as this user"), a real login-event table, contact-list/outreach export (needs a `PRIVACY.md`
+consent-purpose decision first, not just an engineering task).
 
 ## 7. Error handling strategy
 

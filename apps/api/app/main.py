@@ -11,6 +11,7 @@ from sqlalchemy import text
 from app.config import get_settings
 from app.database import SessionLocal
 from app.logging_config import configure_logging
+from app.routers import admin as admin_router
 from app.routers import auth as auth_router
 from app.routers import baseline as baseline_router
 from app.routers import checkins as checkins_router
@@ -106,6 +107,7 @@ app.include_router(training_consistency_router.router)
 app.include_router(consent_router.router)
 app.include_router(coach_router.router)
 app.include_router(coach_access_router.router)
+app.include_router(admin_router.router)
 
 
 @app.get("/api/v1/health", response_model=HealthResponse)

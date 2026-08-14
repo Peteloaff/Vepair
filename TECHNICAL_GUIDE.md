@@ -161,6 +161,44 @@ git push
 
 ## 6. Known gotchas (already hit once — don't rediscover these)
 
+- **`gcloud logging read --format="value(textPayload)"` misses all application-level log
+  lines.** `app/logging_config.py`'s `JsonFormatter` prints every `logger.*()` call as a JSON
+  string on stdout; Cloud Logging auto-detects that and files it under `jsonPayload`, not
+  `textPayload`. Only uvicorn's own access logs (`INFO:     GET /path HTTP/1.1 200 OK`) are
+  plain text. Filtering on `jsonPayload.logger="<name>"` and reading `jsonPayload.message` is
+  the only way to see anything `app/email.py`, `app/admin_audit.py`, etc. actually logged — this
+  cost real time diagnosing a "Graph email isn't working" report that turned out not to be a bug
+  at all (see the next item).
+- **Microsoft Graph `sendMail` returning `202` does not mean the email was delivered.** A `202`
+  only means Graph *accepted the request for processing* — Exchange Online's own outbound
+  protection can still silently drop the message afterward, with nothing logged on our side
+  (there's no success-path log line in `app/email.py`, only a fallback line and a failure line —
+  see below) and no error surfaced to the caller. Diagnosed 2026-08-14 by testing delivery to two
+  independent providers (Gmail and a disposable mail.tm inbox) — zero delivery to either, which
+  ruled out "Gmail is just filtering a new domain" and pointed at something on Microsoft's side
+  instead of DNS or app config.
+- **The actual cause, found via Message Trace: `550 5.7.708 Access denied, traffic not accepted
+  from this IP`** — Exchange Online's own outbound anti-abuse protection had restricted the
+  tenant/mailbox from sending, most likely triggered by the burst of near-identical automated
+  "password reset" test emails sent in rapid succession from a brand-new, low-reputation tenant
+  during this very debugging session. Not a DNS issue (SPF/DKIM/DMARC were all confirmed
+  correctly configured before this was found) and not a code/Azure-permission bug. Check
+  `security.microsoft.com/restrictedentities` first (self-service unblock if the mailbox is
+  listed); if not listed, it's a tenant-wide throttle and needs a Microsoft support ticket
+  (Admin Center → Help & support → New service request, referencing the NDR and `5.7.708`) — see
+  ticket `#2608140040004549`, filed 2026-08-14, for precedent if this recurs.
+- **Message Trace works far better filtered by recipient than by sender.** Searching by sender
+  (`noreply@vepair.com`) in the Exchange admin center's classic message trace errored with an
+  unrelated-looking "Sender validation failed: Invalid email address" — a red herring. The modern
+  `security.microsoft.com` trace, searched by **recipient** address instead, is what actually
+  surfaced the real `5.7.708` NDR.
+- **`gcloud logging read --format="value(textPayload)"` misses all application-level log
+  lines** — `app/logging_config.py`'s `JsonFormatter` prints every `logger.*()` call as JSON on
+  stdout; Cloud Logging files that under `jsonPayload`, not `textPayload`. Only uvicorn's own
+  access logs are plain text. Filter on `jsonPayload.logger="<name>"` and read
+  `jsonPayload.message` instead — and always scope with `--freshness` when testing something
+  live, since an old matching log line (e.g. a stale `[email:log]` entry from before
+  `EMAIL_BACKEND=graph` was ever set) can look like current signal otherwise.
 - **Dockerfile must live at the repo root, not `apps/api/`.** `gcloud run deploy --source .`
   only auto-detects a Dockerfile build when a file literally named `Dockerfile` sits at the root
   of `--source`; anywhere else it silently falls back to Buildpacks, which can't handle a
@@ -229,3 +267,20 @@ guessing — e.g. confirming a "can't sign in" report was actually "never signed
 the `users` table directly, or confirming a "missing plan" report was correctly-behaving (missing
 prerequisite data) rather than a bug. Treat this connection string like any other production
 credential — never commit it, never log it.
+
+## 9. Bootstrapping the first admin
+
+The backend admin section (`/admin` in the frontend, `/api/v1/admin/*` in the backend — see
+`ARCHITECTURE.md` §6h) has no self-serve or API path to grant admin access, ever, by design. The
+only way an account becomes an admin is a one-time manual UPDATE against the production database,
+using the same §8 connection:
+
+```sql
+UPDATE users SET is_admin = true WHERE email = '<founder email>';
+```
+
+Run this once for the founder's own account after the admin migration has been deployed. There is
+no "list current admins" UI either — if that's ever needed, query `users WHERE is_admin = true`
+directly. Granting admin to anyone else should go through this same manual path, deliberately,
+rather than adding a self-serve "promote to admin" endpoint later without thinking through who
+should be allowed to call it.
