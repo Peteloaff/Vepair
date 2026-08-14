@@ -396,7 +396,7 @@ function Dashboard({ isCoachView = false }: { isCoachView?: boolean }) {
 
       <section className="mt-10">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium tracking-tight">Trends</h2>
+          <h2 className="text-lg font-medium tracking-tight">Trend</h2>
           <div className="flex gap-1 rounded-lg border border-neutral-800 p-1 text-xs">
             {RANGE_OPTIONS.map((opt) => (
               <button
@@ -415,40 +415,21 @@ function Dashboard({ isCoachView = false }: { isCoachView?: boolean }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <TrendChart
-            title="Voice quality"
-            color="#34d399"
-            points={buildSeries(filteredHistory, dates, "voice_quality")}
-            yMin={1}
-            yMax={10}
-            yTicks={[1, 5, 10]}
-          />
-          <TrendChart
-            title="Fatigue"
-            color="#fbbf24"
-            points={buildSeries(filteredHistory, dates, "fatigue")}
-            yMin={1}
-            yMax={10}
-            yTicks={[1, 5, 10]}
-          />
-          <TrendChart
-            title="Throat discomfort"
-            color="#f87171"
-            points={buildSeries(filteredHistory, dates, "throat_discomfort")}
-            yMin={0}
-            yMax={10}
-            yTicks={[0, 5, 10]}
-          />
-          <TrendChart
-            title="Sleep (hours)"
-            color="#38bdf8"
-            points={buildSeries(filteredHistory, dates, "sleep_hours")}
-            yMin={0}
-            yMax={12}
-            yTicks={[0, 6, 12]}
-          />
-        </div>
+        <TrendChart
+          title="Voice quality"
+          color="#34d399"
+          points={buildSeries(filteredHistory, dates, "voice_quality")}
+          yMin={1}
+          yMax={10}
+          yTicks={[1, 5, 10]}
+        />
+        <p className="mt-3 text-xs text-neutral-500">
+          Fatigue, throat discomfort, sleep, and longer ranges live on{" "}
+          <Link href="/progress" className="text-emerald-400 hover:text-emerald-300">
+            Progress
+          </Link>
+          .
+        </p>
       </section>
     </main>
   );

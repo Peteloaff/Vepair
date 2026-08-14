@@ -6,7 +6,16 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { useAuth } from "@/lib/auth-context";
 import { daysAgoLocalDate, todayLocalDate } from "@/lib/date";
-import type { ExerciseTrend, ScoreHistoryPoint, TrainingConsistency } from "@/lib/types";
+import type { CheckIn, ExerciseTrend, ScoreHistoryPoint, TrainingConsistency } from "@/lib/types";
+
+function buildSeries(history: CheckIn[], dates: string[], metric: keyof CheckIn): TrendPoint[] {
+  const byDate = new Map(history.map((c) => [c.checkin_date, c]));
+  return dates.map((date) => {
+    const c = byDate.get(date);
+    const raw = c ? c[metric] : null;
+    return { date, value: typeof raw === "number" ? raw : null };
+  });
+}
 
 const RANGE_OPTIONS = [
   { label: "7 days", days: 7 },
@@ -63,6 +72,7 @@ function ProgressDashboard() {
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryPoint[] | null>(null);
   const [consistency, setConsistency] = useState<TrainingConsistency | null>(null);
   const [exerciseTrends, setExerciseTrends] = useState<ExerciseTrend[] | null>(null);
+  const [checkins, setCheckins] = useState<CheckIn[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const today = todayLocalDate();
@@ -76,10 +86,14 @@ function ProgressDashboard() {
       apiFetch<TrainingConsistency>("/api/v1/training-consistency", {
         searchParams: { from_date: fromDate, to_date: today, as_of: today },
       }),
+      apiFetch<CheckIn[]>("/api/v1/checkins", {
+        searchParams: { from_date: fromDate, to_date: today },
+      }),
     ])
-      .then(([score, consistencyData]) => {
+      .then(([score, consistencyData, checkinData]) => {
         setScoreHistory(score);
         setConsistency(consistencyData);
+        setCheckins(checkinData);
         setError(null);
       })
       .catch(() => setError("Could not load your progress data."));
@@ -93,12 +107,16 @@ function ProgressDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const dates = useMemo(
+    () => consistency?.days.map((d) => d.for_date) ?? scoreHistory?.map((p) => p.score_date) ?? [],
+    [consistency, scoreHistory]
+  );
+
   const scorePoints: TrendPoint[] = useMemo(() => {
     if (!scoreHistory) return [];
     const byDate = new Map(scoreHistory.map((p) => [p.score_date, p]));
-    const days = consistency?.days.map((d) => d.for_date) ?? scoreHistory.map((p) => p.score_date);
-    return days.map((date) => ({ date, value: byDate.get(date)?.score_value ?? null }));
-  }, [scoreHistory, consistency]);
+    return dates.map((date) => ({ date, value: byDate.get(date)?.score_value ?? null }));
+  }, [scoreHistory, dates]);
 
   const sortedTrends = useMemo(() => {
     if (!exerciseTrends) return [];
@@ -168,6 +186,48 @@ function ProgressDashboard() {
             yMax={100}
             yTicks={[0, 50, 100]}
           />
+        )}
+      </section>
+
+      <section className="mt-6">
+        <h2 className="mb-4 text-lg font-medium tracking-tight">Daily check-in trends</h2>
+        {checkins === null ? (
+          <p className="text-sm text-neutral-500">Loading...</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TrendChart
+              title="Voice quality"
+              color="#34d399"
+              points={buildSeries(checkins, dates, "voice_quality")}
+              yMin={1}
+              yMax={10}
+              yTicks={[1, 5, 10]}
+            />
+            <TrendChart
+              title="Fatigue"
+              color="#fbbf24"
+              points={buildSeries(checkins, dates, "fatigue")}
+              yMin={1}
+              yMax={10}
+              yTicks={[1, 5, 10]}
+            />
+            <TrendChart
+              title="Throat discomfort"
+              color="#f87171"
+              points={buildSeries(checkins, dates, "throat_discomfort")}
+              yMin={0}
+              yMax={10}
+              yTicks={[0, 5, 10]}
+            />
+            <TrendChart
+              title="Sleep (hours)"
+              color="#38bdf8"
+              points={buildSeries(checkins, dates, "sleep_hours")}
+              yMin={0}
+              yMax={12}
+              yTicks={[0, 6, 12]}
+            />
+          </div>
         )}
       </section>
 
