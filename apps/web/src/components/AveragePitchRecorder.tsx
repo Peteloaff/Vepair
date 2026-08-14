@@ -6,11 +6,64 @@ import {
   MicrophonePermissionDeniedError,
   MicrophoneUnavailableError,
 } from "@/lib/recorder";
-import { frequencyToMidi, midiToNoteName } from "@/lib/notes";
+import { frequencyToMidi, midiToFrequency, midiToNoteName, noteNameToMidi } from "@/lib/notes";
+import { detectPitch } from "@/lib/pitchDetector";
 import { useAuth } from "@/lib/auth-context";
 import type { Recording, VocalGoal, VoiceSession } from "@/lib/types";
 
 type Phase = "idle" | "requesting" | "recording" | "uploading" | "result" | "error";
+
+// Meter span around the goal frequency, and how close counts as "on pitch" -- 2 Hz either
+// side of the goal, matching the granularity a singer can actually aim for (much smaller
+// than a semitone at speaking/singing pitch, so this is a genuinely tighter bar than the
+// note-level goal tracking elsewhere in the app).
+const METER_RANGE_HZ = 40;
+const ON_PITCH_HZ = 2;
+
+function PitchMeter({ liveHz, goalHz }: { liveHz: number | null; goalHz: number | null }) {
+  if (goalHz === null) {
+    return (
+      <p className="font-mono text-2xl font-semibold text-neutral-100">
+        {liveHz != null ? `${liveHz.toFixed(1)} Hz` : "—"}
+      </p>
+    );
+  }
+
+  const onPitch = liveHz != null && Math.abs(liveHz - goalHz) <= ON_PITCH_HZ;
+  const rangeMin = goalHz - METER_RANGE_HZ;
+  const rangeMax = goalHz + METER_RANGE_HZ;
+  const clamped = liveHz != null ? Math.min(rangeMax, Math.max(rangeMin, liveHz)) : null;
+  const positionPct = clamped != null ? ((clamped - rangeMin) / (rangeMax - rangeMin)) * 100 : null;
+  const hitZoneStartPct = ((METER_RANGE_HZ - ON_PITCH_HZ) / (METER_RANGE_HZ * 2)) * 100;
+  const hitZoneWidthPct = ((ON_PITCH_HZ * 2) / (METER_RANGE_HZ * 2)) * 100;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between">
+        <span
+          className={`font-mono text-2xl font-semibold ${onPitch ? "text-emerald-400" : "text-neutral-100"}`}
+        >
+          {liveHz != null ? `${liveHz.toFixed(1)} Hz` : "—"}
+        </span>
+        <span className="text-xs text-neutral-500">Goal: {goalHz.toFixed(1)} Hz</span>
+      </div>
+      <div className="relative h-2 rounded-full bg-neutral-800">
+        <div
+          className="absolute top-0 h-2 rounded-full bg-emerald-500/25"
+          style={{ left: `${hitZoneStartPct}%`, width: `${hitZoneWidthPct}%` }}
+        />
+        {positionPct != null && (
+          <div
+            className={`absolute top-1/2 h-4 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full transition-colors ${
+              onPitch ? "bg-emerald-400" : "bg-neutral-300"
+            }`}
+            style={{ left: `${positionPct}%` }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function AveragePitchRecorder() {
   const { apiFetch } = useAuth();
@@ -20,9 +73,20 @@ export function AveragePitchRecorder() {
   const [savingGoal, setSavingGoal] = useState(false);
   const [goalSaved, setGoalSaved] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [goalHz, setGoalHz] = useState<number | null>(null);
+  const [liveHz, setLiveHz] = useState<number | null>(null);
 
   const recorderRef = useRef<AudioRecorder | null>(null);
   const intervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    apiFetch<VocalGoal>("/api/v1/vocal-goals")
+      .then((goal) => {
+        setGoalHz(goal.target_avg_note ? midiToFrequency(noteNameToMidi(goal.target_avg_note)) : null);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -51,6 +115,13 @@ export function AveragePitchRecorder() {
       return;
     }
     recorderRef.current = recorder;
+    setLiveHz(null);
+    recorder.onChunk = (chunk) => {
+      const sampleRate = recorder.getSampleRate();
+      if (!sampleRate) return;
+      const pitch = detectPitch(chunk, sampleRate);
+      setLiveHz(pitch?.frequencyHz ?? null);
+    };
     recorder.start();
     setPhase("recording");
     setElapsedSeconds(0);
@@ -63,7 +134,9 @@ export function AveragePitchRecorder() {
     if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
     const recorder = recorderRef.current;
     if (!recorder) return;
+    recorder.onChunk = null;
     const recording = recorder.stop();
+    setLiveHz(null);
     setPhase("uploading");
     try {
       const session = await apiFetch<VoiceSession>("/api/v1/voice-sessions", {
@@ -146,9 +219,12 @@ export function AveragePitchRecorder() {
 
       {phase === "recording" && (
         <div>
-          <p className="mb-3 font-mono text-2xl tabular-nums text-neutral-200">
+          <p className="mb-1 font-mono text-sm tabular-nums text-neutral-500">
             {Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, "0")}
           </p>
+          <div className="mb-4">
+            <PitchMeter liveHz={liveHz} goalHz={goalHz} />
+          </div>
           <button
             type="button"
             onClick={stop}
