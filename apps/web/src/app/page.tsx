@@ -15,6 +15,7 @@ import type {
   BaselineSummary,
   CheckIn,
   CheckInInput,
+  CoachConnection,
   Profile,
   RecoveryScore as RecoveryScoreData,
   RestCheck,
@@ -61,6 +62,7 @@ function Dashboard({ isCoachView = false }: { isCoachView?: boolean }) {
   const [goalError, setGoalError] = useState(false);
   const [restCheck, setRestCheck] = useState<RestCheck | null>(null);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
+  const [hasCoachConnection, setHasCoachConnection] = useState(false);
   const [profileMissing, setProfileMissing] = useState(false);
   const [rangeDays, setRangeDays] = useState<number>(30);
   const [editingToday, setEditingToday] = useState(false);
@@ -126,6 +128,13 @@ function Dashboard({ isCoachView = false }: { isCoachView?: boolean }) {
     // other best-effort fetch on this dashboard.
     apiFetch<SingerInvite[]>("/api/v1/invites")
       .then((invites) => setPendingInviteCount(invites.length))
+      .catch(() => {});
+    // A singer with no invite ever received and no existing coach connection has nothing to
+    // do on /coach-access, so the nav link itself is confusing clutter -- only show it once
+    // there's actually something there (a pending invite, from the fetch above, or a
+    // connection, active or revoked, checked here).
+    apiFetch<CoachConnection[]>("/api/v1/coach-connections")
+      .then((connections) => setHasCoachConnection(connections.length > 0))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -233,17 +242,19 @@ function Dashboard({ isCoachView = false }: { isCoachView?: boolean }) {
           >
             Tone Match
           </Link>
-          <Link
-            href="/coach-access"
-            className="relative rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
-          >
-            Coach Access
-            {pendingInviteCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
-                {pendingInviteCount}
-              </span>
-            )}
-          </Link>
+          {(pendingInviteCount > 0 || hasCoachConnection) && (
+            <Link
+              href="/coach-access"
+              className="relative rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+            >
+              Coach Access
+              {pendingInviteCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+                  {pendingInviteCount}
+                </span>
+              )}
+            </Link>
+          )}
           <Link
             href="/record"
             className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
