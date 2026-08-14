@@ -59,6 +59,8 @@ class VocalRangeSummary:
     history: list[dict]
     stretch_target_note: str | None
     stretch_target_reason: str | None
+    stretch_target_low_note: str | None
+    stretch_target_low_reason: str | None
 
 
 def hz_to_midi(hz: float) -> float:
@@ -205,6 +207,7 @@ def suggest_stretch_target(
     trend_is_declining: bool,
     track: str | None = None,
     trend_is_improving: bool = False,
+    goal_high_note: str | None = None,
 ) -> tuple[str | None, str | None]:
     """A gentle, always-optional stretch suggestion beyond the user's own historical best —
     never a population target, never framed as a requirement. Returns (note, reason) or
@@ -218,7 +221,11 @@ def suggest_stretch_target(
     stretch, but only when the recent trend is genuinely improving (not just non-declining) —
     matching Improvement's brief to be "more aggressive with pushing the vocalist to stretch
     their vocal range safely," while still passing through every safety check below rather
-    than bypassing them."""
+    than bypassing them.
+
+    `goal_high_note` (Goal Tones, app/vocal_goals.py) never changes the step size or bypasses
+    any check above — when it's set and still ahead of today's nudge, it only adds context to
+    the reason text about which target this step is working toward."""
     if track == "repair":
         return None, None
     if historical_best_high_note is None:
@@ -244,6 +251,53 @@ def suggest_stretch_target(
             "If it feels comfortable, you could try reaching one semitone beyond your recent "
             "best — never force it."
         )
+    if goal_high_note is not None and note_name_to_midi(goal_high_note) > best_midi:
+        reason += f" You're working toward a target high of {goal_high_note}."
+    return target_note, reason
+
+
+def suggest_low_stretch_target(
+    historical_best_low_note: str | None,
+    recovery_status: str,
+    throat_discomfort: int | None,
+    trend_is_declining: bool,
+    track: str | None = None,
+    trend_is_improving: bool = False,
+    goal_low_note: str | None = None,
+) -> tuple[str | None, str | None]:
+    """The low-end mirror of suggest_stretch_target — same suppression rules, same small
+    safety-gated step, just downward instead of upward. Reuses the same trend flags (computed
+    from the high-note history in build_summary) as the shared "is the voice trending in a
+    concerning direction overall" safety signal, rather than building a separate low-note trend
+    detector for what's ultimately the same suppression decision."""
+    if track == "repair":
+        return None, None
+    if historical_best_low_note is None:
+        return None, None
+    if throat_discomfort is not None and throat_discomfort >= 7:
+        return None, None
+    if recovery_status == "red":
+        return None, None
+    if trend_is_declining:
+        return None, None
+
+    best_midi = note_name_to_midi(historical_best_low_note)
+    semitone_step = 2 if (track == "improvement" and trend_is_improving) else 1
+    target_midi = best_midi - semitone_step
+    target_note = f"{NOTE_NAMES[target_midi % 12]}{target_midi // 12 - 1}"
+    if semitone_step == 2:
+        reason = (
+            "Your range has been trending well on an Improvement track — if it feels "
+            "comfortable, you could try reaching two semitones below your recent best low "
+            "note — never force it."
+        )
+    else:
+        reason = (
+            "If it feels comfortable, you could try reaching one semitone below your recent "
+            "best low note — never force it."
+        )
+    if goal_low_note is not None and note_name_to_midi(goal_low_note) < best_midi:
+        reason += f" You're working toward a target low of {goal_low_note}."
     return target_note, reason
 
 
@@ -274,6 +328,8 @@ def build_summary(
     recovery_status: str = "unknown",
     throat_discomfort: int | None = None,
     track: str | None = None,
+    goal_high_note: str | None = None,
+    goal_low_note: str | None = None,
 ) -> VocalRangeSummary:
     entries = list(
         db.scalars(
@@ -296,13 +352,26 @@ def build_summary(
     historical_best_low = min(low_notes, key=note_name_to_midi) if low_notes else None
     historical_best_high = max(high_notes, key=note_name_to_midi) if high_notes else None
 
+    trend_is_declining = _recent_trend_is_declining(high_notes)
+    trend_is_improving = _recent_trend_is_improving(high_notes)
+
     stretch_note, stretch_reason = suggest_stretch_target(
         historical_best_high,
         recovery_status,
         throat_discomfort,
-        _recent_trend_is_declining(high_notes),
+        trend_is_declining,
         track=track,
-        trend_is_improving=_recent_trend_is_improving(high_notes),
+        trend_is_improving=trend_is_improving,
+        goal_high_note=goal_high_note,
+    )
+    stretch_low_note, stretch_low_reason = suggest_low_stretch_target(
+        historical_best_low,
+        recovery_status,
+        throat_discomfort,
+        trend_is_declining,
+        track=track,
+        trend_is_improving=trend_is_improving,
+        goal_low_note=goal_low_note,
     )
 
     return VocalRangeSummary(
@@ -326,4 +395,6 @@ def build_summary(
         ],
         stretch_target_note=stretch_note,
         stretch_target_reason=stretch_reason,
+        stretch_target_low_note=stretch_low_note,
+        stretch_target_low_reason=stretch_low_reason,
     )

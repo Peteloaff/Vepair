@@ -39,3 +39,5 @@ class VocalRangeSummaryOut(BaseModel):
     history: list[dict]
     stretch_target_note: str | None
     stretch_target_reason: str | None
+    stretch_target_low_note: str | None
+    stretch_target_low_reason: str | None

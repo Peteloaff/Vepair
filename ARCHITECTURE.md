@@ -126,6 +126,8 @@ reviewed foundation instead of bolting on tables stage by stage.
   **CoachAssignment**, **CoachNote** (Stage 12 Phase II, dev-only build — see §6m) — the VepAIr
   Coach pilot's authorization and data-sharing subsystem. Built on `feature/coach-portal`, not
   merged to `main` or deployed as of this writing.
+- **VocalGoal** (post-Stage-12) — a singer's target low/avg/high note. Current-state, not
+  history: one row per user, upserted in place — see §6n.
 
 See `apps/api/migrations/versions/` for the actual column-level schema and
 `apps/api/app/models.py` for the SQLAlchemy definitions — this document intentionally does not
@@ -784,6 +786,50 @@ column later) and locked in by a negative-content regression test.
 fetches audio as a `Blob` via `fetch()` with a bearer token read from `localStorage`, converts it
 to an object URL, and only does so lazily on a user-initiated "Play" click per recording — never
 eagerly for a whole page of recordings.
+
+## 6n. Goal Tones, rest days, and coach tooling extensions (post-Stage-12)
+
+**Goal Tones** (`app/vocal_goals.py`) — a singer's target low/avg/high note. `VocalGoal` is
+current-state, not history: one row per user, upserted in place, same pattern as `UserProfile`.
+`GET /api/v1/vocal-goals` returns the manual override if one exists, else a live AI
+recommendation recomputed from `vocal_range.build_summary()` on every call (never stale) —
+low/high default to the user's own historical best measured range, avg to the semitone midpoint.
+An active, not-yet-reached goal reaches into two places, both additively: `vocal_range.py`'s
+`suggest_stretch_target`/`suggest_low_stretch_target` gain an optional goal note that only adds
+context to the reason text (never changes the step size), and `exercise_routine.py`'s
+`RoutineSignals.goal_high_note`/`goal_low_note` (populated only when the goal isn't reached yet)
+bias `_select_exercises`'s category order toward Range exploration/Pitch glides — the same
+mechanism as the existing goal-keyword boost, still fully bounded by `intensity_cap`.
+
+**Rest day recommendations** (`exercise_routine.py`'s `_should_recommend_rest_day`) sit above the
+existing discomfort-based intensity cap. `build_signals_for_user` was factored out of
+`build_routine_for_user` specifically so `GET /api/v1/routine/rest-check` (used by the home page)
+can compute the same signals without also selecting exercises. See `MEDICAL_SAFETY.md` §13.
+
+**Coach-authored custom exercises** (`POST /api/v1/coach/exercises`) add `Exercise
+.created_by_coach_id` (nullable FK to `coach_profiles.id`, null = seed exercise). No other schema
+change — `is_active` already existed and defaults `True`, so a created exercise is a normal,
+immediately-live `Exercise` row from every other endpoint's point of view. See `MEDICAL_SAFETY.md`
+§13 for why `category` must be an existing whitelisted value, not free text.
+
+**Coach per-exercise tone targets** extend `CoachAssignment` with a nullable
+`exercise_tone_targets: dict[str, str]` JSON column, parallel to the existing `exercise_ids`
+column. `app/coach_assignment.py`'s `get_active_assigned_exercise_tone_targets` mirrors
+`get_active_assigned_exercise_ids`'s active-assignment-and-access gating; `generate_routine`
+filters it down to whichever assigned exercises actually made it into today's routine before
+returning it — purely informational, never touches selection.
+
+**Tone Match average-pitch recorder** reuses the entire existing upload/measurement pipeline
+under a new `sample_type: "tone_baseline"`, added to both `SAMPLE_TYPES`
+(`app/schemas_recording.py`) and `SUSTAINED_PHONATION_SAMPLE_TYPES`
+(`packages/audio-engine/src/vepair_audio_engine/measurements.py`) — the latter is what makes it
+automatically feed Stage 4's personal baseline like any other everyday recording, with zero new
+baseline logic.
+
+**Coach home page parity**: `apps/web/src/app/page.tsx`'s `Home()` no longer redirects a coach
+account to `/coach`; `Dashboard` takes an `isCoachView` prop that skips every singer-only fetch
+(none of that data exists for a coach account) and renders a compact panel plus a link into the
+Coach Portal instead, keeping the same page shell for both account types.
 
 ## 7. Error handling strategy
 

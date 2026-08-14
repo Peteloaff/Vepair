@@ -24,6 +24,8 @@ document sets binding engineering requirements, not a public-facing legal privac
 | Exercise attempt audio (Stage 8) | audio from an exercise with a target measurement | **Not stored at all** — analyzed in-memory during the upload request, then discarded; only the derived numbers persist in `ExerciseResult.measured_result` |
 | Exercise trend data (Stage 8) | per-exercise improving/declining/stable classification | Derived on read from `ExerciseResult.measured_result` history — no separate table |
 | Vocal range history (Stage 8) | comfortable low/high/falsetto notes over time | `VocalRange`, `source_recording_id` links back to the underlying `Recording` (stored normally, same as any other guided-session recording) |
+| Goal Tones (post-Stage-12) | a singer's target low/avg/high note, AI-suggested or manually set | `VocalGoal` — current-state only, one row per user, no history kept |
+| Tone Match average-pitch recording (post-Stage-12) | `sample_type: "tone_baseline"` | Same `Recording`/`AcousticMeasurement` storage and rules as every other recording (Section 4) — an ordinary sustained sample, not a new category |
 | Share My Progress images (Stage 10) | rendered PNGs of the user's own aggregate stats | **Never stored anywhere** — generated client-side, in the browser, from an authenticated read of already-stored data, and only saved to the user's own device or handed to the OS share sheet when they explicitly tap Save/Share. No server-side rendering, no upload, no copy retained by VepAIr. |
 | Device metadata | mic/device fingerprint | `DeviceMetadata` |
 | Consent records | what the user agreed to, when | `ConsentRecord` |

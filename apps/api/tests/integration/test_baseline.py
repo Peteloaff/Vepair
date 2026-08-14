@@ -59,6 +59,25 @@ def test_stable_user_no_anomalies_and_confidence_increases(client, signed_up_use
     assert baseline["median_value"] == pytest.approx(220.0, abs=1.0)
 
 
+def test_tone_baseline_sample_type_counts_toward_personal_baseline(
+    client, signed_up_user
+) -> None:
+    """The Tone Match "find your average pitch" recorder (app/vocal_goals.py) uploads under
+    sample_type="tone_baseline" -- an ordinary sustained sample, so it should feed the personal
+    baseline exactly like any other everyday recording, not be excluded like the deliberate-
+    extreme range_low/range_high/range_falsetto samples are."""
+    _user, headers = signed_up_user
+
+    for _ in range(8):
+        body = upload_tone(client, headers, 220.0, sample_type="tone_baseline")
+        assert body["anomalies"] == []
+
+    summary = get_baseline(client, headers)
+    assert summary["usable_session_count"] == 8
+    baseline = f0_baseline(summary)
+    assert baseline["median_value"] == pytest.approx(220.0, abs=1.0)
+
+
 def test_confidence_increases_monotonically_as_sessions_accumulate(
     client, signed_up_user
 ) -> None:

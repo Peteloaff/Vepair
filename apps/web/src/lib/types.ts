@@ -205,6 +205,14 @@ export interface Routine {
   reasons: string[];
   items: Exercise[];
   assigned_exercise_ids: string[];
+  rest_day_recommended: boolean;
+  rest_day_reason: string | null;
+  exercise_tone_targets: Record<string, string>;
+}
+
+export interface RestCheck {
+  rest_day_recommended: boolean;
+  rest_day_reason: string | null;
 }
 
 export interface ExerciseSessionRecord {
@@ -250,6 +258,13 @@ export interface VocalRangeSummary {
   history: VocalRangeHistoryEntry[];
   stretch_target_note: string | null;
   stretch_target_reason: string | null;
+}
+
+export interface VocalGoal {
+  target_low_note: string | null;
+  target_avg_note: string | null;
+  target_high_note: string | null;
+  source: "ai" | "manual";
 }
 
 export type VocalTrack = "repair" | "improvement";
@@ -454,6 +469,7 @@ export interface CoachAssignment {
   note_to_singer: string | null;
   status: "active" | "superseded";
   created_at: string;
+  exercise_tone_targets: Record<string, string> | null;
 }
 
 export interface CoachVoiceSession {

@@ -23,6 +23,7 @@ from app.routers import recordings as recordings_router
 from app.routers import recovery_score as recovery_score_router
 from app.routers import share_progress as share_progress_router
 from app.routers import training_consistency as training_consistency_router
+from app.routers import vocal_goals as vocal_goals_router
 from app.routers import vocal_plan as vocal_plan_router
 from app.routers import vocal_range as vocal_range_router
 from app.schemas import ErrorDetail, ErrorResponse, HealthResponse
@@ -98,6 +99,7 @@ app.include_router(baseline_router.router)
 app.include_router(recovery_score_router.router)
 app.include_router(exercises_router.router)
 app.include_router(vocal_range_router.router)
+app.include_router(vocal_goals_router.router)
 app.include_router(vocal_plan_router.router)
 app.include_router(share_progress_router.router)
 app.include_router(training_consistency_router.router)

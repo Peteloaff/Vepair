@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { ExerciseInfoButton } from "@/components/ExerciseInfoButton";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireCoach } from "@/components/RequireCoach";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
@@ -179,6 +180,11 @@ function SingerDashboardContent() {
             {summary.todays_routine.items.map((item) => (
               <li key={item.id} className="flex items-center gap-2 text-neutral-300">
                 {item.name}
+                <ExerciseInfoButton
+                  purpose={item.purpose}
+                  instructions={item.instructions}
+                  contraindications={item.contraindications}
+                />
                 {summary.todays_routine!.assigned_exercise_ids.includes(item.id) && (
                   <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">
                     assigned

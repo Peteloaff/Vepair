@@ -32,6 +32,7 @@ from app.routers.recovery_score import _to_out as _recovery_score_to_out
 from app.schemas_coach import (
     CoachAssignmentCreate,
     CoachAssignmentOut,
+    CoachExerciseCreate,
     CoachInviteCreate,
     CoachInviteOut,
     CoachNoteCreate,
@@ -58,6 +59,49 @@ router = APIRouter(prefix="/api/v1/coach", tags=["coach"])
 @router.get("/profile", response_model=CoachProfileOut)
 def get_coach_profile(coach: CoachProfile = Depends(get_current_coach)) -> CoachProfile:
     return coach
+
+
+@router.post("/exercises", response_model=ExerciseOut, status_code=201)
+def create_coach_exercise(
+    payload: CoachExerciseCreate,
+    coach: CoachProfile = Depends(get_current_coach),
+    db: Session = Depends(get_db),
+) -> Exercise:
+    """A coach-authored exercise. Immediately active and immediately eligible for the general
+    adaptive routine pool used by every user, not just this coach's own singers -- the
+    category whitelist (CoachExerciseCreate's validator) is what keeps it inside the same
+    intensity-cap safety gate as every seed exercise; there is no separate review step."""
+    exercise = Exercise(
+        name=payload.name,
+        category=payload.category,
+        purpose=payload.purpose or f"A custom exercise added by {coach.display_name}.",
+        instructions=payload.instructions,
+        duration_seconds=payload.duration_seconds,
+        difficulty=payload.difficulty,
+        expected_result="As described by your coach.",
+        is_active=True,
+        created_by_coach_id=coach.id,
+    )
+    db.add(exercise)
+    db.commit()
+    db.refresh(exercise)
+    return exercise
+
+
+@router.get("/exercises", response_model=list[ExerciseOut])
+def list_coach_exercises(
+    coach: CoachProfile = Depends(get_current_coach), db: Session = Depends(get_db)
+) -> list[Exercise]:
+    """This coach's own created exercises only -- for managing/reviewing what they've added, not
+    a general library browse (GET /api/v1/exercises already covers the full active library,
+    including these once created)."""
+    return list(
+        db.scalars(
+            select(Exercise)
+            .where(Exercise.created_by_coach_id == coach.id)
+            .order_by(Exercise.created_at.desc())
+        ).all()
+    )
 
 
 @router.post("/invites", response_model=CoachInviteOut, status_code=201)
@@ -294,6 +338,8 @@ def get_singer_summary(
             history=summary.history,
             stretch_target_note=summary.stretch_target_note,
             stretch_target_reason=summary.stretch_target_reason,
+            stretch_target_low_note=summary.stretch_target_low_note,
+            stretch_target_low_reason=summary.stretch_target_low_reason,
         )
 
     exercise_trends_out = None
@@ -462,6 +508,11 @@ def create_assignment(
         exercise_ids=[str(eid) for eid in payload.exercise_ids],
         note_to_singer=payload.note_to_singer,
         status="active",
+        exercise_tone_targets=(
+            {str(eid): note for eid, note in payload.exercise_tone_targets.items()}
+            if payload.exercise_tone_targets
+            else None
+        ),
     )
     db.add(assignment)
     db.commit()

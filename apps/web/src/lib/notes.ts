@@ -33,6 +33,12 @@ export function midiToFrequency(midi: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
+/** Inverse of midiToFrequency, rounded to the nearest note — for labeling an arbitrary
+ * measured Hz value (e.g. the Tone Match average-pitch recorder) with the closest note name. */
+export function frequencyToMidi(hz: number): number {
+  return Math.round(69 + 12 * Math.log2(hz / 440));
+}
+
 export interface ReferenceNote {
   label: string;
   midi: number;

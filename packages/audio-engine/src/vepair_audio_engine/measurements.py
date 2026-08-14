@@ -49,7 +49,7 @@ MIN_VOICED_FRAMES_FOR_PERIODICITY_MEASURES = 10
 # number that looks precise but isn't scientifically meaningful. See
 # docs/acoustic-measurements.md for the full reasoning.
 SUSTAINED_PHONATION_SAMPLE_TYPES = frozenset(
-    {"sustained_ah", "sustained_ee", "sustained_oo", "hum"}
+    {"sustained_ah", "sustained_ee", "sustained_oo", "hum", "tone_baseline"}
 )
 
 

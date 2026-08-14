@@ -21,6 +21,11 @@ SAMPLE_TYPES = (
     "range_low",
     "range_high",
     "range_falsetto",
+    # Tone Match's open-ended "find your average pitch" recorder (Goal Tones, app/vocal_goals.py)
+    # -- an ordinary sustained/typical sample, not a deliberate extreme, so it's included in
+    # SUSTAINED_PHONATION_SAMPLE_TYPES below and naturally feeds Stage 4's personal baseline
+    # like any other everyday recording.
+    "tone_baseline",
 )
 
 

@@ -18,20 +18,38 @@ a day can be held back for more than one reason at once, and the user should see
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.coach_assignment import get_active_assigned_exercise_ids
+from app.coach_assignment import (
+    get_active_assigned_exercise_ids,
+    get_active_assigned_exercise_tone_targets,
+)
 from app.exercise_library import CATEGORY_INTENSITY, CLOSING_CATEGORY, OPENING_CATEGORY
 from app.exercise_trends import compute_exercise_trends, overall_trend_is_positive
 from app.models import DailyCheckIn, Exercise, ExerciseSession, UserProfile
-from app.recovery_score import SAFETY_MESSAGE, compute_and_store_recovery_score
+from app.recovery_score import (
+    SAFETY_MESSAGE,
+    compute_and_store_recovery_score,
+    fetch_score_history,
+)
+from app.vocal_goals import get_active_goals
+from app.vocal_range import build_summary as build_vocal_range_summary
+from app.vocal_range import note_name_to_midi
 
 VALID_ROUTINE_LENGTHS_MINUTES: tuple[int, ...] = (5, 10, 15, 20)
 
 INTENSITY_ORDER: dict[str, int] = {"low": 0, "moderate": 1, "high": 2}
+
+# A rest day is a stricter tier above the existing "gentlest exercises only" cutoff
+# (throat_discomfort >= 7, see _propose_intensity_caps) — reserved for the cases where even the
+# gentlest routine isn't the right call today. Never a hard block: generate_routine still
+# returns a valid (lowest-intensity) routine underneath, so someone who chooses to exercise
+# anyway still gets something appropriate, matching how discomfort already works.
+REST_DAY_DISCOMFORT_THRESHOLD = 9
+REST_DAY_CONSECUTIVE_RED_DAYS_THRESHOLD = 3
 
 # Deterministic fill order for the "middle" of a routine (after the opening breathing exercise,
 # before the closing cooldown) — gentlest categories first, building toward more demanding ones.
@@ -108,6 +126,21 @@ class RoutineSignals:
     # assigned exercise can exceed today's intensity_cap; this field can never weaken or
     # bypass any rule in _propose_intensity_caps.
     coach_assigned_exercise_ids: list[uuid.UUID] | None = None
+    # How many days up to and including today have a stored "red" recovery status, with no gap
+    # (see _consecutive_red_days) — feeds the rest-day recommendation below. Never inferred from
+    # a day with no stored score; a missing day always breaks the streak.
+    consecutive_red_days: int = 0
+    # Goal Tones (app/vocal_goals.py): set only when there's an *active, not-yet-reached* goal
+    # in that direction — build_signals_for_user does that comparison against the user's current
+    # measured range before populating these, so _select_exercises never has to re-derive it.
+    # Only ever biases which already-allowed categories get tried first (Range exploration /
+    # Pitch glides) — never raises intensity_cap or bypasses any safety rule above.
+    goal_high_note: str | None = None
+    goal_low_note: str | None = None
+    # Stage 12 Phase II: a coach's per-exercise target note (app/coach_assignment.py), if any --
+    # purely informational, surfaced back out on RoutineResult for whichever assigned exercises
+    # actually make it into today's routine. Never affects selection or safety in any way.
+    coach_exercise_tone_targets: dict[uuid.UUID, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -122,6 +155,38 @@ class RoutineResult:
     # generate_routine. Empty when there was no assignment, or none of it fit today's safety
     # limits (in which case `reasons` explains why, never silently).
     assigned_exercise_ids: list[uuid.UUID] = field(default_factory=list)
+    # A strong recommendation, never a block — `items` above is still a valid, safe routine
+    # (the lowest intensity tier) even when this is True, for anyone who chooses to exercise
+    # anyway. See REST_DAY_DISCOMFORT_THRESHOLD / REST_DAY_CONSECUTIVE_RED_DAYS_THRESHOLD.
+    rest_day_recommended: bool = False
+    rest_day_reason: str | None = None
+    # Coach-set per-exercise target notes (see coach_exercise_tone_targets on RoutineSignals),
+    # filtered down to only the exercises that actually made it into `items` today.
+    exercise_tone_targets: dict[uuid.UUID, str] = field(default_factory=dict)
+
+
+def _should_recommend_rest_day(signals: RoutineSignals) -> tuple[bool, str | None]:
+    """A stricter tier above _propose_intensity_caps's existing "low" cutoff
+    (throat_discomfort >= 7) — reserved for when even the gentlest routine isn't the right call.
+    Escalation language follows MEDICAL_SAFETY.md section 2/3's style: never an order, never a
+    diagnosis, always pointing toward a qualified professional if it persists."""
+    if (
+        signals.throat_discomfort is not None
+        and signals.throat_discomfort >= REST_DAY_DISCOMFORT_THRESHOLD
+    ):
+        return True, (
+            "Today's reported discomfort is severe. Today looks like a good day to rest your "
+            "voice completely rather than exercise. If this continues, consider checking in "
+            "with a qualified voice professional."
+        )
+    if signals.consecutive_red_days >= REST_DAY_CONSECUTIVE_RED_DAYS_THRESHOLD:
+        return True, (
+            f"Your recovery status has been red for {signals.consecutive_red_days} days in a "
+            "row. Today looks like a good day to rest your voice completely rather than "
+            "exercise. If this continues, consider checking in with a qualified voice "
+            "professional."
+        )
+    return False, None
 
 
 def _propose_intensity_caps(signals: RoutineSignals) -> tuple[list[tuple[str, str]], str | None]:
@@ -197,6 +262,7 @@ def _select_exercises(
     goal_text: str | None,
     challenge_mode: bool = False,
     assigned_exercise_ids: list[uuid.UUID] | None = None,
+    boost_range_categories: bool = False,
 ) -> list[ExerciseInfo]:
     budget_seconds = length_minutes * 60
     cap_rank = INTENSITY_ORDER[intensity_cap]
@@ -249,12 +315,18 @@ def _select_exercises(
     middle_order = (
         list(reversed(MIDDLE_CATEGORY_ORDER)) if challenge_mode else list(MIDDLE_CATEGORY_ORDER)
     )
+    boosted: list[str] = []
     if goal_text:
         goal_lower = goal_text.lower()
-        boosted: list[str] = []
         for keyword, categories in GOAL_KEYWORD_PRIORITY.items():
             if keyword in goal_lower:
                 boosted.extend(c for c in categories if c not in boosted)
+    if boost_range_categories:
+        # Goal Tones (app/vocal_goals.py): the user has an active target they haven't reached
+        # yet — bias toward the categories that actually work the edges of range, same
+        # mechanism as the goal_text keyword boost above, still fully bounded by intensity_cap.
+        boosted.extend(c for c in ("Range exploration", "Pitch glides") if c not in boosted)
+    if boosted:
         middle_order = boosted + [c for c in middle_order if c not in boosted]
 
     for category in middle_order:
@@ -313,6 +385,13 @@ def generate_routine(
     if challenge_reason:
         reasons.append(challenge_reason)
 
+    boost_range_categories = bool(signals.goal_high_note or signals.goal_low_note)
+    if boost_range_categories:
+        reasons.append(
+            "You have an active target tone you haven't reached yet — today's routine leans "
+            "toward range-stretching exercises within what's already safe for today."
+        )
+
     items = _select_exercises(
         exercises,
         length_minutes,
@@ -320,6 +399,7 @@ def generate_routine(
         signals.goal_text,
         challenge_mode,
         signals.coach_assigned_exercise_ids,
+        boost_range_categories,
     )
     total_duration_seconds = sum(e.duration_seconds for e in items)
 
@@ -342,6 +422,17 @@ def generate_routine(
                 "routine to gentler options instead."
             )
 
+    rest_day_recommended, rest_day_reason = _should_recommend_rest_day(signals)
+
+    exercise_tone_targets: dict[uuid.UUID, str] = {}
+    if signals.coach_exercise_tone_targets:
+        included_ids = {e.id for e in items}
+        exercise_tone_targets = {
+            eid: note
+            for eid, note in signals.coach_exercise_tone_targets.items()
+            if eid in included_ids
+        }
+
     return RoutineResult(
         length_minutes=length_minutes,
         intensity_cap=intensity_cap,
@@ -350,10 +441,28 @@ def generate_routine(
         safety_message=safety_message,
         reasons=reasons,
         assigned_exercise_ids=assigned_included,
+        rest_day_recommended=rest_day_recommended,
+        rest_day_reason=rest_day_reason,
+        exercise_tone_targets=exercise_tone_targets,
     )
 
 
 # --- Data access & orchestration (talks to the DB; pure functions above don't) ---
+
+
+def _consecutive_red_days(db: Session, user_id: uuid.UUID, for_date: date) -> int:
+    """How many days up to and including for_date have a stored "red" status, with no gap. Only
+    ever looks at scores that were actually already computed and stored (fetch_score_history
+    never backfills) — a day with no stored row breaks the streak rather than being assumed
+    either way, since there's no way to know what it would have been."""
+    history = fetch_score_history(db, user_id, for_date - timedelta(days=6), for_date)
+    by_date = {h.score_date: h.status for h in history}
+    count = 0
+    day = for_date
+    while by_date.get(day) == "red":
+        count += 1
+        day -= timedelta(days=1)
+    return count
 
 
 def _to_exercise_info(row: Exercise) -> ExerciseInfo:
@@ -371,14 +480,11 @@ def _to_exercise_info(row: Exercise) -> ExerciseInfo:
     )
 
 
-def build_routine_for_user(
-    db: Session, user_id: uuid.UUID, length_minutes: int, for_date: date
-) -> RoutineResult:
-    exercises = [
-        _to_exercise_info(row)
-        for row in db.scalars(select(Exercise).where(Exercise.is_active.is_(True))).all()
-    ]
-
+def build_signals_for_user(db: Session, user_id: uuid.UUID, for_date: date) -> RoutineSignals:
+    """Gathers every signal generate_routine needs, without selecting any exercises — the part
+    build_routine_for_user and the lightweight rest-day check (GET /api/v1/routine/rest-check)
+    both need, factored out so the latter never has to build a full routine just to answer
+    "should today be a rest day?"."""
     checkin = db.scalar(
         select(DailyCheckIn).where(
             DailyCheckIn.user_id == user_id, DailyCheckIn.checkin_date == for_date
@@ -405,6 +511,26 @@ def build_routine_for_user(
     profile = db.scalar(select(UserProfile).where(UserProfile.user_id == user_id))
     trends = compute_exercise_trends(db, user_id)
 
+    # Goal Tones (app/vocal_goals.py): only carried onto signals when there's an active goal in
+    # that direction the user hasn't reached yet — the "not yet reached" comparison happens
+    # here, once, so _select_exercises never has to re-derive it from raw values.
+    goals = get_active_goals(db, user_id)
+    range_summary = build_vocal_range_summary(db, user_id)
+    goal_high_note = None
+    if goals.target_high_note is not None and (
+        range_summary.current_high_note is None
+        or note_name_to_midi(goals.target_high_note)
+        > note_name_to_midi(range_summary.current_high_note)
+    ):
+        goal_high_note = goals.target_high_note
+    goal_low_note = None
+    if goals.target_low_note is not None and (
+        range_summary.current_low_note is None
+        or note_name_to_midi(goals.target_low_note)
+        < note_name_to_midi(range_summary.current_low_note)
+    ):
+        goal_low_note = goals.target_low_note
+
     signals = RoutineSignals(
         recovery_status=score_result.status,
         throat_discomfort=checkin.throat_discomfort if checkin else None,
@@ -419,6 +545,30 @@ def build_routine_for_user(
         trending_positive=overall_trend_is_positive(trends),
         track=profile.track if profile else None,
         coach_assigned_exercise_ids=get_active_assigned_exercise_ids(db, user_id),
+        consecutive_red_days=_consecutive_red_days(db, user_id, for_date),
+        goal_high_note=goal_high_note,
+        goal_low_note=goal_low_note,
+        coach_exercise_tone_targets=get_active_assigned_exercise_tone_targets(db, user_id),
     )
+    return signals
 
+
+def build_routine_for_user(
+    db: Session, user_id: uuid.UUID, length_minutes: int, for_date: date
+) -> RoutineResult:
+    exercises = [
+        _to_exercise_info(row)
+        for row in db.scalars(select(Exercise).where(Exercise.is_active.is_(True))).all()
+    ]
+    signals = build_signals_for_user(db, user_id, for_date)
     return generate_routine(exercises, length_minutes, signals)
+
+
+def check_rest_day_for_user(
+    db: Session, user_id: uuid.UUID, for_date: date
+) -> tuple[bool, str | None]:
+    """The GET /api/v1/routine/rest-check entrypoint — same signals and same rule as
+    build_routine_for_user's routine, just without spending the work of also selecting
+    exercises for a length_minutes the caller may not have (e.g. the home page)."""
+    signals = build_signals_for_user(db, user_id, for_date)
+    return _should_recommend_rest_day(signals)

@@ -256,7 +256,14 @@ class DailyCheckIn(Base, TimestampMixin):
 
 
 class Exercise(Base, TimestampMixin):
-    """Exercise library entry."""
+    """Exercise library entry. `created_by_coach_id` is null for the hand-curated
+    SEED_EXERCISES (see app/exercise_library.py); non-null means a coach authored it via
+    POST /api/v1/coach/exercises. A coach-created row is a normal, immediately-active Exercise
+    row like any other -- it's eligible for the general adaptive routine pool (not just that
+    coach's own singers) the moment it's created, gated by the same `category`-driven
+    intensity-cap safety check as every seed exercise (see CATEGORY_INTENSITY in
+    exercise_library.py, which is exactly why `category` must be one of that fixed set rather
+    than free text)."""
 
     __tablename__ = "exercises"
 
@@ -272,6 +279,9 @@ class Exercise(Base, TimestampMixin):
     target_measurement: Mapped[str | None] = mapped_column(String(100), nullable=True)
     expected_result: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by_coach_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE"), nullable=True
+    )
 
 
 class ExerciseSession(Base, TimestampMixin):
@@ -352,6 +362,27 @@ class VocalRange(Base, TimestampMixin):
     source_recording_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("recordings.id", ondelete="SET NULL"), nullable=True
     )
+
+
+class VocalGoal(Base, TimestampMixin):
+    """A singer's target low/avg/high note. Current-state, not history (one row per user,
+    upserted in place) -- same pattern as UserProfile, unlike VocalRange's append-only log,
+    because a "goal" is a single thing you're aiming for right now, not a measurement series.
+    `source` records whether these are the AI's own suggestion (derived fresh from VocalRange
+    history -- see app/vocal_goals.py -- whenever no row exists yet or the row itself was never
+    manually edited) or a value the singer explicitly set, which then overrides the AI
+    suggestion until cleared."""
+
+    __tablename__ = "vocal_goals"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
+    )
+    target_low_note: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    target_avg_note: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    target_high_note: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    source: Mapped[str] = mapped_column(String(10))  # "ai" | "manual"
 
 
 class VocalPlan(Base, TimestampMixin):
@@ -554,6 +585,11 @@ class CoachAssignment(Base, TimestampMixin):
     exercise_ids: Mapped[list] = mapped_column(JSON)  # ordered list of Exercise UUID strings
     note_to_singer: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")  # active|superseded
+    # Optional per-exercise target note, e.g. {"<exercise_id>": "G4"} -- keys are always a
+    # subset of exercise_ids (validated at creation, see schemas_coach.py), values always a
+    # valid note name (validated via app.vocal_range.note_name_to_midi). Parallel to
+    # exercise_ids rather than folded into it so the ordered-list shape above never changes.
+    exercise_tone_targets: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class CoachNote(Base, TimestampMixin):

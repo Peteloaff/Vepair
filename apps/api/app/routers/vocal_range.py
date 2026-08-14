@@ -14,6 +14,7 @@ from app.schemas_vocal_range import (
     VocalRangeEntryOut,
     VocalRangeSummaryOut,
 )
+from app.vocal_goals import get_active_goals
 from app.vocal_plan import ensure_plan_exists
 from app.vocal_range import build_summary, record_range_attempt
 
@@ -54,12 +55,15 @@ def get_range_summary(
         )
     )
     profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
+    goals = get_active_goals(db, current_user.id)
     summary = build_summary(
         db,
         current_user.id,
         recovery_status=score.status,
         throat_discomfort=checkin.throat_discomfort if checkin else None,
         track=profile.track if profile else None,
+        goal_high_note=goals.target_high_note,
+        goal_low_note=goals.target_low_note,
     )
     return VocalRangeSummaryOut(
         current_low_note=summary.current_low_note,
@@ -74,4 +78,6 @@ def get_range_summary(
         history=summary.history,
         stretch_target_note=summary.stretch_target_note,
         stretch_target_reason=summary.stretch_target_reason,
+        stretch_target_low_note=summary.stretch_target_low_note,
+        stretch_target_low_reason=summary.stretch_target_low_reason,
     )

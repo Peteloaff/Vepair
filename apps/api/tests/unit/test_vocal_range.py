@@ -4,6 +4,7 @@ from app.vocal_range import (
     hz_to_note_name,
     note_name_to_midi,
     semitones_between,
+    suggest_low_stretch_target,
     suggest_stretch_target,
 )
 
@@ -165,3 +166,73 @@ class TestSuggestStretchTargetTrack:
             "G4", "green", 1, True, track="improvement", trend_is_improving=True
         )
         assert result == (None, None)
+
+
+class TestSuggestStretchTargetGoalTone:
+    """Goal Tones (app/vocal_goals.py): goal_high_note never changes the step size or bypasses
+    any safety check — it only adds context to the reason text when it's still ahead of today's
+    nudge."""
+
+    def test_goal_ahead_of_nudge_is_mentioned_in_reason(self) -> None:
+        _note, reason = suggest_stretch_target("G4", "green", 1, False, goal_high_note="C6")
+        assert "target high of C6" in reason
+
+    def test_goal_already_reached_is_not_mentioned(self) -> None:
+        _note, reason = suggest_stretch_target("G4", "green", 1, False, goal_high_note="G4")
+        assert "target high" not in reason
+
+    def test_no_goal_produces_unchanged_reason(self) -> None:
+        note, reason = suggest_stretch_target("G4", "green", 1, False)
+        assert "target high" not in reason
+        assert note == "G#4"
+
+    def test_goal_note_never_changes_step_size(self) -> None:
+        note, _ = suggest_stretch_target("G4", "green", 1, False, goal_high_note="C8")
+        assert semitones_between("G4", note) == 1
+
+    def test_goal_note_does_not_bypass_discomfort_suppression(self) -> None:
+        assert suggest_stretch_target("G4", "green", 8, False, goal_high_note="C6") == (
+            None,
+            None,
+        )
+
+
+class TestSuggestLowStretchTarget:
+    """Mirror of TestSuggestStretchTarget for the low end of the range."""
+
+    def test_suggests_one_semitone_below_historical_best_when_conditions_are_good(self) -> None:
+        note, reason = suggest_low_stretch_target("G4", "green", 1, False)
+        assert note == "F#4"
+        assert reason is not None
+
+    def test_no_suggestion_without_historical_data(self) -> None:
+        assert suggest_low_stretch_target(None, "green", 1, False) == (None, None)
+
+    def test_no_suggestion_on_red_recovery_status(self) -> None:
+        assert suggest_low_stretch_target("G4", "red", 1, False) == (None, None)
+
+    def test_no_suggestion_on_high_discomfort(self) -> None:
+        assert suggest_low_stretch_target("G4", "green", 8, False) == (None, None)
+
+    def test_no_suggestion_when_trend_is_declining(self) -> None:
+        assert suggest_low_stretch_target("G4", "green", 1, True) == (None, None)
+
+    def test_repair_track_suppresses_suggestion(self) -> None:
+        assert suggest_low_stretch_target("G4", "green", 1, False, track="repair") == (
+            None,
+            None,
+        )
+
+    def test_improvement_track_with_improving_trend_allows_two_semitones(self) -> None:
+        note, _ = suggest_low_stretch_target(
+            "G4", "green", 1, False, track="improvement", trend_is_improving=True
+        )
+        assert semitones_between(note, "G4") == 2
+
+    def test_goal_low_ahead_of_nudge_is_mentioned_in_reason(self) -> None:
+        _note, reason = suggest_low_stretch_target("G4", "green", 1, False, goal_low_note="C1")
+        assert "target low of C1" in reason
+
+    def test_goal_low_already_reached_is_not_mentioned(self) -> None:
+        _note, reason = suggest_low_stretch_target("G4", "green", 1, False, goal_low_note="A4")
+        assert "target low" not in reason

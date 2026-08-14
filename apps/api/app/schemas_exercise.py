@@ -31,6 +31,21 @@ class RoutineOut(BaseModel):
     # than the adaptive selector — lets the frontend badge them. Empty when there's no
     # assignment, or none of it fit today's safety limits (reasons explains why).
     assigned_exercise_ids: list[uuid.UUID] = []
+    # A strong recommendation, never a block -- items above is still a valid routine even when
+    # this is True. See app/exercise_routine.py's REST_DAY_* thresholds.
+    rest_day_recommended: bool = False
+    rest_day_reason: str | None = None
+    # Stage 12 Phase II: coach-set per-exercise target notes, for whichever assigned exercises
+    # made it into items today. Purely informational -- never affects selection or safety.
+    exercise_tone_targets: dict[uuid.UUID, str] = {}
+
+
+class RestCheckOut(BaseModel):
+    """Lightweight companion to RoutineOut for surfaces (like the home page) that want the
+    rest-day recommendation without building a full routine."""
+
+    rest_day_recommended: bool
+    rest_day_reason: str | None
 
 
 class ExerciseSessionCreate(BaseModel):

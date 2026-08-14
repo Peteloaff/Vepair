@@ -2,6 +2,38 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Goal Tones, rest-day recommendations, and coach tooling extensions (2026-08-13)
+
+Seven related additions, all built on top of the existing Stage 6 adaptive routine engine and
+Stage 8 vocal range mapping rather than parallel systems:
+
+- **Goal Tones** (`app/vocal_goals.py`, new `vocal_goals` table): a singer's target low/avg/high
+  note. Defaults to an AI suggestion derived from the singer's own vocal range history (never a
+  population target — same discipline as the existing stretch-target suggestion), overridable at
+  any time via three note pickers on the Tone Match page. An active, not-yet-reached goal biases
+  the daily routine toward Range exploration/Pitch glides categories and personalizes the
+  existing stretch-target reason text — never changes the step size or bypasses any safety rule.
+- **Rest day recommendations** (`app/exercise_routine.py`): a stricter tier above the existing
+  discomfort-based intensity cap, for severe discomfort (>= 9/10) or 3+ consecutive red-status
+  days. A strong recommendation, never a block — see `MEDICAL_SAFETY.md` §13.
+- **Coach-authored custom exercises** (`POST /api/v1/coach/exercises`): title + description,
+  immediately active and eligible for the general adaptive routine pool, gated into the same
+  intensity-cap safety check as every seed exercise by requiring an existing category rather than
+  free text. See `MEDICAL_SAFETY.md` §13 for the trust trade-off this accepts.
+- **Coach per-exercise tone targets**: a coach can set an optional target note on individual
+  exercises within an assignment, surfaced to the singer during that exercise. Purely
+  informational — never affects selection or safety.
+- **Exercise info buttons**: a small "ⓘ" hover/tap trigger showing an exercise's purpose,
+  instructions, and contraindications wherever a coach sees exercises listed by name only.
+- **Tone Match average-pitch recorder**: an open-ended "record until you stop" tool that reports
+  the average pitch across the whole recording (reuses the existing upload/measurement pipeline
+  under a new `tone_baseline` sample type, so it also feeds the personal baseline like any other
+  everyday recording) and can be saved directly as the Avg goal tone.
+- **Coach home page parity**: a coach account now sees an adapted version of the same home page
+  (rather than being redirected to `/coach`) — the singer-only sections are replaced with a
+  compact panel and a link into the Coach Portal, since a coach account has no check-in/exercise
+  data of its own.
+
 ## Fixed — production database migrations were never actually applied on deploy (2026-08-13)
 
 **Found deploying the Coach Pilot's migration to production for the first time**: coach signup

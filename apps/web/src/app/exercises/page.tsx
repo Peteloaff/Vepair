@@ -18,6 +18,7 @@ import {
   type Exercise,
   type ExerciseSessionRecord,
   type ExerciseTrend,
+  type RestCheck,
   type Routine,
   type RoutineLengthMinutes,
 } from "@/lib/types";
@@ -63,6 +64,7 @@ function ExercisesFlow() {
   const [micStatus, setMicStatus] = useState<MicStatus>("unknown");
   const [baseline, setBaseline] = useState<BaselineSummary | null>(null);
   const [trends, setTrends] = useState<ExerciseTrend[]>([]);
+  const [restCheck, setRestCheck] = useState<RestCheck | null>(null);
 
   const timerRef = useRef<number | null>(null);
   const feedbackClearRef = useRef<number | null>(null);
@@ -74,6 +76,13 @@ function ExercisesFlow() {
       .then(setBaseline)
       .catch(() => {
         // Live range coaching just won't have a personal baseline to check against yet.
+      });
+    apiFetch<RestCheck>("/api/v1/routine/rest-check", {
+      searchParams: { date: todayLocalDate() },
+    })
+      .then(setRestCheck)
+      .catch(() => {
+        // Best-effort — the length-picker screen still works without this banner.
       });
     return () => {
       if (timerRef.current !== null) window.clearInterval(timerRef.current);
@@ -254,6 +263,11 @@ function ExercisesFlow() {
         {error && (
           <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
         )}
+        {restCheck?.rest_day_recommended && (
+          <div className="mb-4 rounded-lg bg-red-950/40 px-4 py-3 text-sm text-red-300">
+            {restCheck.rest_day_reason}
+          </div>
+        )}
         <p className="mb-3 text-sm text-neutral-300">How much time do you have?</p>
         <div className="mb-6 grid grid-cols-2 gap-3">
           {ROUTINE_LENGTHS_MINUTES.map((minutes) => (
@@ -362,6 +376,13 @@ function ExercisesFlow() {
         {exercise.contraindications && (
           <div className="mb-4 rounded-lg bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
             {exercise.contraindications}
+          </div>
+        )}
+
+        {routine.exercise_tone_targets[exercise.id] && (
+          <div className="mb-4 rounded-lg bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300">
+            Your coach&apos;s target for this exercise:{" "}
+            {routine.exercise_tone_targets[exercise.id]}
           </div>
         )}
 

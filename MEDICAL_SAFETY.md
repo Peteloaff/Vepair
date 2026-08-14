@@ -157,7 +157,32 @@ mechanism: VepAIr's own copy is controlled by not writing prohibited language in
 a coach's freeform text can't be pre-controlled the same way, so the mitigations above are the
 next-best real defenses, not a weaker standard.
 
-## 13. Enforcement
+## 13. Rest day recommendations and coach-authored custom exercises (post-Stage-12 additions)
+
+**Rest day recommendations** (`app/exercise_routine.py`'s `_should_recommend_rest_day`) are a
+stricter tier above the existing "gentlest exercises only" cutoff (Section 7's discomfort
+override), triggered by either severe reported discomfort (>= 9/10) or 3+ consecutive days of a
+stored "red" recovery status. Same rules as everywhere else in this file apply:
+- **Never a hard block** — the routine underneath still resolves to a real, safe (lowest-
+  intensity) routine even when a rest day is recommended, so a user who chooses to exercise
+  anyway is never stopped from doing so. Recommending rest is guidance, not gatekeeping.
+- **Escalation language, not a diagnosis**: copy follows Section 2/3's pattern exactly — e.g.
+  "Today looks like a good day to rest your voice completely. If this continues, consider
+  checking in with a qualified voice professional." Never framed as a clinical order.
+
+**Coach-authored custom exercises** (`POST /api/v1/coach/exercises`) are a real, deliberate
+trade-off, not an oversight: unlike `SEED_EXERCISES` (Section 7 — hand-curated, explicitly
+excludes any aggressive/unproven technique), a coach's custom exercise is immediately active and
+immediately eligible for the *general* adaptive routine pool used by every user, not just that
+coach's own singers. There is no founder review step before it goes live. The one mechanical
+safeguard: `category` must be one of the existing, already-safety-tiered categories
+(`CATEGORY_INTENSITY` in `app/exercise_library.py`) rather than free text, so a custom exercise
+is still governed by the exact same intensity-cap gating as every seed exercise — a coach cannot
+invent a new, unreviewed intensity tier, only place their exercise into an existing one. This
+does shift real trust onto individual coaches; if pilot usage ever surfaces a problem here, the
+fix is a review/approval step before `is_active=True`, not a change to this section's principles.
+
+## 14. Enforcement
 
 - This file is reviewed at the end of every stage as part of the stage completion checklist.
 - Any UI copy, AI-generated explanation, or analysis label that could be read as a diagnosis is a

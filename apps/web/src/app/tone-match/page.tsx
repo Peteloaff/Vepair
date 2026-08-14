@@ -6,6 +6,8 @@ import { toBlob } from "html-to-image";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Waveform, type WaveformHandle } from "@/components/Waveform";
 import { ToneMatchResultCard } from "@/components/ToneMatchResultCard";
+import { GoalTonesEditor } from "@/components/GoalTonesEditor";
+import { AveragePitchRecorder } from "@/components/AveragePitchRecorder";
 import {
   AudioRecorder,
   MicrophonePermissionDeniedError,
@@ -257,6 +259,15 @@ function ToneMatchFlow() {
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Tone Match</h1>
         <p className="mb-6 text-sm text-neutral-400">Tap a note to hear it, then sing it back.</p>
+
+        <div className="mb-8">
+          <GoalTonesEditor />
+        </div>
+
+        <div className="mb-8">
+          <AveragePitchRecorder />
+        </div>
+
         <div className="grid grid-cols-6 gap-2">
           {NOTES.map((note) => (
             <button

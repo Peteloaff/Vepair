@@ -103,6 +103,20 @@ def test_upload_clean_recording(client, signed_up_user) -> None:
     assert flags["too_short"] is False
 
 
+def test_upload_tone_baseline_sample_gets_full_measurement(client, signed_up_user) -> None:
+    """The Tone Match "find your average pitch" recorder (Goal Tones, app/vocal_goals.py) --
+    an ordinary sustained sample, so it reuses the exact same upload/measurement pipeline as
+    sustained_ah, just under a different sample_type."""
+    _user, headers = signed_up_user
+    session_id = client.post("/api/v1/voice-sessions", headers=headers, json={}).json()["id"]
+
+    resp = upload_file(client, headers, session_id, sample_type="tone_baseline")
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["sample_type"] == "tone_baseline"
+    assert body["measurement"]["f0_mean_hz"] is not None
+
+
 def test_upload_rejects_invalid_sample_type(client, signed_up_user) -> None:
     _user, headers = signed_up_user
     session_id = client.post("/api/v1/voice-sessions", headers=headers, json={}).json()["id"]

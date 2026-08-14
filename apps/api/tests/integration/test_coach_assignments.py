@@ -135,3 +135,100 @@ def test_assignment_requires_active_access_not_just_a_coach_account(
         json={"exercise_ids": [exercise_id]},
     )
     assert resp.status_code == 403
+
+
+class TestExerciseToneTargets:
+    """Stage 12 Phase II: a coach's per-exercise target note on an assignment — purely
+    informational, surfaced back to the singer on both the assignment and the routine."""
+
+    def test_assignment_stores_and_returns_tone_targets(
+        self, client, signed_up_coach, signed_up_user
+    ) -> None:
+        _coach, coach_headers = signed_up_coach
+        singer, singer_headers = signed_up_user
+        _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+        exercise_id = _low_intensity_exercise_id(client, singer_headers)
+
+        resp = client.post(
+            f"/api/v1/coach/singers/{singer['user']['id']}/assignments",
+            headers=coach_headers,
+            json={"exercise_ids": [exercise_id], "exercise_tone_targets": {exercise_id: "G4"}},
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["exercise_tone_targets"] == {exercise_id: "G4"}
+
+    def test_tone_target_key_must_be_in_exercise_ids(
+        self, client, signed_up_coach, signed_up_user
+    ) -> None:
+        _coach, coach_headers = signed_up_coach
+        singer, singer_headers = signed_up_user
+        _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+        exercises = client.get("/api/v1/exercises", headers=singer_headers).json()
+        included_id = _low_intensity_exercise_id(client, singer_headers)
+        other_id = next(e["id"] for e in exercises if e["id"] != included_id)
+
+        resp = client.post(
+            f"/api/v1/coach/singers/{singer['user']['id']}/assignments",
+            headers=coach_headers,
+            json={
+                "exercise_ids": [included_id],
+                "exercise_tone_targets": {other_id: "G4"},
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_tone_target_value_must_be_a_valid_note(
+        self, client, signed_up_coach, signed_up_user
+    ) -> None:
+        _coach, coach_headers = signed_up_coach
+        singer, singer_headers = signed_up_user
+        _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+        exercise_id = _low_intensity_exercise_id(client, singer_headers)
+
+        resp = client.post(
+            f"/api/v1/coach/singers/{singer['user']['id']}/assignments",
+            headers=coach_headers,
+            json={
+                "exercise_ids": [exercise_id],
+                "exercise_tone_targets": {exercise_id: "not-a-note"},
+            },
+        )
+        assert resp.status_code == 422
+
+    def test_tone_target_surfaces_on_the_singers_routine(
+        self, client, signed_up_coach, signed_up_user
+    ) -> None:
+        _coach, coach_headers = signed_up_coach
+        singer, singer_headers = signed_up_user
+        _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+        exercise_id = _low_intensity_exercise_id(client, singer_headers)
+
+        client.post(
+            f"/api/v1/coach/singers/{singer['user']['id']}/assignments",
+            headers=coach_headers,
+            json={"exercise_ids": [exercise_id], "exercise_tone_targets": {exercise_id: "G4"}},
+        )
+
+        routine = client.get(
+            "/api/v1/routine",
+            headers=singer_headers,
+            params={"length_minutes": 20, "date": TODAY},
+        )
+        assert routine.status_code == 200
+        assert routine.json()["exercise_tone_targets"] == {exercise_id: "G4"}
+
+    def test_assignment_without_tone_targets_is_still_valid(
+        self, client, signed_up_coach, signed_up_user
+    ) -> None:
+        _coach, coach_headers = signed_up_coach
+        singer, singer_headers = signed_up_user
+        _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+        exercise_id = _low_intensity_exercise_id(client, singer_headers)
+
+        resp = client.post(
+            f"/api/v1/coach/singers/{singer['user']['id']}/assignments",
+            headers=coach_headers,
+            json={"exercise_ids": [exercise_id]},
+        )
+        assert resp.status_code == 201
+        assert resp.json()["exercise_tone_targets"] is None

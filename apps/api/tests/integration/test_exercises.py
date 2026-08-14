@@ -7,7 +7,7 @@ sleep, heavy rehearsal yesterday, and several rest days — and that dangerous c
 (e.g. heavy load stacked with high fatigue) are prevented.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -199,3 +199,57 @@ def test_all_valid_routine_lengths_work(client, signed_up_user, length_minutes) 
     body = get_routine(client, headers, length_minutes=length_minutes)
     assert len(body["items"]) > 0
     assert body["total_duration_seconds"] <= length_minutes * 60
+
+
+def test_severe_discomfort_recommends_rest_day_but_still_returns_a_routine(
+    client, signed_up_user
+) -> None:
+    _user, headers = signed_up_user
+    post_checkin(client, headers, {"throat_discomfort": 9})
+
+    body = get_routine(client, headers)
+    assert body["rest_day_recommended"] is True
+    assert body["rest_day_reason"] is not None
+    assert len(body["items"]) > 0  # a strong recommendation, never a block
+
+
+def test_moderate_discomfort_does_not_recommend_rest_day(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    post_checkin(client, headers, {"throat_discomfort": 6})
+
+    body = get_routine(client, headers)
+    assert body["rest_day_recommended"] is False
+    assert body["rest_day_reason"] is None
+
+
+def test_three_consecutive_red_days_recommends_rest_day(client, signed_up_user) -> None:
+    """Isolates the consecutive-red-days trigger from the direct severe-discomfort one:
+    discomfort=7 already forces a red recovery status (DISCOMFORT_SAFETY_THRESHOLD in
+    app/recovery_score.py) but is below the rest-day discomfort threshold of 9."""
+    _user, headers = signed_up_user
+    today = date.fromisoformat(TODAY)
+    for days_ago in (2, 1, 0):
+        day = (today - timedelta(days=days_ago)).isoformat()
+        post_checkin(client, headers, {"checkin_date": day, "throat_discomfort": 7})
+        # Triggers compute_and_store_recovery_score for that date so it's a real stored row —
+        # fetch_score_history (which the rest-day check reads) never backfills.
+        resp = client.get("/api/v1/recovery-score", headers=headers, params={"date": day})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "red"
+
+    body = get_routine(client, headers)
+    assert body["rest_day_recommended"] is True
+    assert "red" in body["rest_day_reason"].lower()
+
+
+def test_rest_check_endpoint_matches_routine(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    post_checkin(client, headers, {"throat_discomfort": 9})
+
+    routine = get_routine(client, headers)
+    rest_check = client.get(
+        "/api/v1/routine/rest-check", headers=headers, params={"date": TODAY}
+    )
+    assert rest_check.status_code == 200
+    assert rest_check.json()["rest_day_recommended"] == routine["rest_day_recommended"]
+    assert rest_check.json()["rest_day_reason"] == routine["rest_day_reason"]

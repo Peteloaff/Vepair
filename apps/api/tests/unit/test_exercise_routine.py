@@ -95,6 +95,45 @@ class TestHighDiscomfort:
         assert result.safety_message is None
 
 
+class TestRestDayRecommendation:
+    def test_severe_discomfort_recommends_rest_day(self) -> None:
+        exercises = make_exercises()
+        signals = healthy_signals(throat_discomfort=9)
+        result = generate_routine(exercises, 10, signals)
+        assert result.rest_day_recommended is True
+        assert result.rest_day_reason is not None
+
+    def test_moderate_discomfort_below_rest_threshold_does_not_recommend_rest(self) -> None:
+        """8/10 already forces the gentlest intensity tier (TestHighDiscomfort) but is below
+        the stricter rest-day threshold — a real distinction, not a rounding accident."""
+        exercises = make_exercises()
+        signals = healthy_signals(throat_discomfort=8)
+        result = generate_routine(exercises, 10, signals)
+        assert result.rest_day_recommended is False
+
+    def test_three_consecutive_red_days_recommends_rest_day(self) -> None:
+        exercises = make_exercises()
+        signals = healthy_signals(consecutive_red_days=3)
+        result = generate_routine(exercises, 10, signals)
+        assert result.rest_day_recommended is True
+
+    def test_two_consecutive_red_days_does_not_recommend_rest(self) -> None:
+        exercises = make_exercises()
+        signals = healthy_signals(consecutive_red_days=2)
+        result = generate_routine(exercises, 10, signals)
+        assert result.rest_day_recommended is False
+
+    def test_rest_day_recommendation_is_never_a_block(self) -> None:
+        """A strong recommendation, not a hard stop -- the routine underneath must still be a
+        real, safe (lowest-intensity) routine even when rest is recommended."""
+        exercises = make_exercises()
+        signals = healthy_signals(throat_discomfort=10)
+        result = generate_routine(exercises, 10, signals)
+        assert result.rest_day_recommended is True
+        assert len(result.items) > 0
+        assert result.intensity_cap == "low"
+
+
 class TestFatiguedUser:
     def test_high_fatigue_caps_at_moderate(self) -> None:
         exercises = make_exercises()
@@ -189,6 +228,42 @@ class TestGoalAdaptation:
     def test_goal_never_overrides_a_safety_cap(self) -> None:
         exercises = make_exercises()
         signals = healthy_signals(goal_text="I want to expand my vocal range", throat_discomfort=9)
+        result = generate_routine(exercises, 10, signals)
+        assert result.intensity_cap == "low"
+        categories = {item.category for item in result.items}
+        assert "Range exploration" not in categories
+        assert "Pitch glides" not in categories
+
+
+class TestGoalToneBias:
+    """Goal Tones (app/vocal_goals.py) affecting daily exercise selection — RoutineSignals only
+    ever carries goal_high_note/goal_low_note when there's an active, not-yet-reached target
+    (build_signals_for_user's job, not tested here); generate_routine just needs to react to
+    them correctly once set."""
+
+    def test_active_high_goal_prioritizes_range_exercises_when_safe(self) -> None:
+        exercises = make_exercises()
+        signals = healthy_signals(goal_high_note="G5")
+        result = generate_routine(exercises, 5, signals)
+        categories = {item.category for item in result.items}
+        assert "Range exploration" in categories or "Pitch glides" in categories
+        assert any("target tone" in r for r in result.reasons)
+
+    def test_active_low_goal_prioritizes_range_exercises_when_safe(self) -> None:
+        exercises = make_exercises()
+        signals = healthy_signals(goal_low_note="C2")
+        result = generate_routine(exercises, 5, signals)
+        categories = {item.category for item in result.items}
+        assert "Range exploration" in categories or "Pitch glides" in categories
+
+    def test_no_active_goal_does_not_mention_target_tone(self) -> None:
+        exercises = make_exercises()
+        result = generate_routine(exercises, 10, healthy_signals())
+        assert not any("target tone" in r for r in result.reasons)
+
+    def test_goal_tone_never_overrides_a_safety_cap(self) -> None:
+        exercises = make_exercises()
+        signals = healthy_signals(goal_high_note="G5", throat_discomfort=9)
         result = generate_routine(exercises, 10, signals)
         assert result.intensity_cap == "low"
         categories = {item.category for item in result.items}

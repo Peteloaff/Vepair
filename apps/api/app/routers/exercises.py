@@ -9,7 +9,11 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.database import get_db
 from app.exercise_audio import analyze_exercise_attempt
-from app.exercise_routine import VALID_ROUTINE_LENGTHS_MINUTES, build_routine_for_user
+from app.exercise_routine import (
+    VALID_ROUTINE_LENGTHS_MINUTES,
+    build_routine_for_user,
+    check_rest_day_for_user,
+)
 from app.exercise_trends import compute_exercise_trends
 from app.models import Exercise, ExerciseResult, ExerciseSession, User
 from app.schemas_exercise import (
@@ -18,6 +22,7 @@ from app.schemas_exercise import (
     ExerciseSessionCreate,
     ExerciseSessionOut,
     ExerciseSessionWithResultsOut,
+    RestCheckOut,
     RoutineOut,
 )
 from app.schemas_exercise_trend import ExerciseTrendOut
@@ -95,7 +100,20 @@ def get_routine(
         reasons=result.reasons,
         items=[ExerciseOut(audio_demo_url=None, **vars(item)) for item in result.items],
         assigned_exercise_ids=result.assigned_exercise_ids,
+        rest_day_recommended=result.rest_day_recommended,
+        rest_day_reason=result.rest_day_reason,
+        exercise_tone_targets=result.exercise_tone_targets,
     )
+
+
+@router.get("/routine/rest-check", response_model=RestCheckOut)
+def get_rest_check(
+    for_date: date = Query(..., alias="date"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RestCheckOut:
+    recommended, reason = check_rest_day_for_user(db, current_user.id, for_date)
+    return RestCheckOut(rest_day_recommended=recommended, rest_day_reason=reason)
 
 
 @router.post("/exercise-sessions", response_model=ExerciseSessionOut, status_code=201)
