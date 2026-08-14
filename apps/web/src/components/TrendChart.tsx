@@ -19,6 +19,14 @@ function formatDate(iso: string): string {
   return `${m}/${d}`;
 }
 
+// Same convention as components/share/ProgressCard.tsx: always the raw signed delta in a
+// single neutral color, never conditionally red/green by an assumed "good" direction --
+// MEDICAL_SAFETY.md's "report honestly, including decline" applies here too, and not every
+// metric here has an unambiguous good direction (e.g. more sleep isn't always better).
+function sign(n: number): string {
+  return n > 0 ? "+" : n < 0 ? "−" : "";
+}
+
 export function TrendChart({
   title,
   color,
@@ -84,6 +92,11 @@ export function TrendChart({
   }, [points, yMin, yMax]);
 
   const lastKnown = known.at(-1);
+  const firstKnown = known.at(0);
+  const delta =
+    firstKnown && lastKnown && known.length >= 2
+      ? Math.round((lastKnown.value - firstKnown.value) * 10) / 10
+      : null;
 
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
     const svgRect = e.currentTarget.getBoundingClientRect();
@@ -107,6 +120,12 @@ export function TrendChart({
         {lastKnown && (
           <span className="text-xs text-neutral-500">
             latest: <span className="text-neutral-200">{lastKnown.value}</span>
+            {delta !== null && firstKnown && (
+              <span className="ml-1.5">
+                (<span className="text-neutral-300">{sign(delta)}{Math.abs(delta)}</span>{" "}
+                vs {formatDate(firstKnown.date)})
+              </span>
+            )}
           </span>
         )}
       </div>
