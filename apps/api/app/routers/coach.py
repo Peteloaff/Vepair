@@ -46,9 +46,11 @@ from app.schemas_exercise import ExerciseOut, RoutineOut
 from app.schemas_exercise_trend import ExerciseTrendOut
 from app.schemas_recording import RecordingOut
 from app.schemas_training_consistency import ConsistencyDayOut, TrainingConsistencyOut
+from app.schemas_vocal_goals import VocalGoalOut
 from app.schemas_vocal_range import RangeChangeOut, VocalRangeSummaryOut
 from app.storage import get_storage
 from app.training_consistency import build_training_consistency
+from app.vocal_goals import get_active_goals
 from app.vocal_range import build_summary
 
 logger = logging.getLogger("vepair.coach")
@@ -311,6 +313,7 @@ def get_singer_summary(
         recovery_score_out = _recovery_score_to_out(recovery_result)
 
     vocal_range_out = None
+    vocal_goal_out = None
     if "vocal_range" in granted:
         checkin = db.scalar(
             select(DailyCheckIn).where(
@@ -341,6 +344,7 @@ def get_singer_summary(
             stretch_target_low_note=summary.stretch_target_low_note,
             stretch_target_low_reason=summary.stretch_target_low_reason,
         )
+        vocal_goal_out = VocalGoalOut(**get_active_goals(db, singer_user_id).__dict__)
 
     exercise_trends_out = None
     todays_routine_out = None
@@ -392,6 +396,7 @@ def get_singer_summary(
         granted_categories=sorted(granted),
         recovery_score=recovery_score_out,
         vocal_range=vocal_range_out,
+        vocal_goal=vocal_goal_out,
         exercise_trends=exercise_trends_out,
         training_consistency=training_consistency_out,
         todays_routine=todays_routine_out,

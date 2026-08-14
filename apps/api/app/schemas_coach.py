@@ -9,6 +9,7 @@ from app.schemas_exercise_trend import ExerciseTrendOut
 from app.schemas_recording import RecordingOut
 from app.schemas_recovery_score import RecoveryScoreOut
 from app.schemas_training_consistency import TrainingConsistencyOut
+from app.schemas_vocal_goals import VocalGoalOut
 from app.schemas_vocal_range import VocalRangeSummaryOut
 from app.vocal_range import note_name_to_midi
 
@@ -92,6 +93,10 @@ class CoachSingerSummaryOut(BaseModel):
     granted_categories: list[str]
     recovery_score: RecoveryScoreOut | None
     vocal_range: VocalRangeSummaryOut | None
+    # Gated on the same "vocal_range" category grant as vocal_range above -- a target range is
+    # naturally part of "vocal range history" from a sharing-consent standpoint, not a category
+    # of its own.
+    vocal_goal: VocalGoalOut | None
     exercise_trends: list[ExerciseTrendOut] | None
     training_consistency: TrainingConsistencyOut | None
     todays_routine: RoutineOut | None

@@ -458,6 +458,7 @@ export interface CoachSingerSummary {
   granted_categories: CoachShareCategory[];
   recovery_score: RecoveryScore | null;
   vocal_range: VocalRangeSummary | null;
+  vocal_goal: VocalGoal | null;
   exercise_trends: ExerciseTrend[] | null;
   training_consistency: TrainingConsistency | null;
   todays_routine: Routine | null;

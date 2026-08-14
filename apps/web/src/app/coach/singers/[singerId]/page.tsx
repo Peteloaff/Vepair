@@ -126,6 +126,41 @@ function SingerDashboardContent() {
       </section>
 
       <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-neutral-200">Target tones</h2>
+          {granted.has("vocal_range") && summary.vocal_goal && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs ${
+                summary.vocal_goal.source === "manual"
+                  ? "bg-emerald-500/10 text-emerald-300"
+                  : "bg-neutral-800 text-neutral-400"
+              }`}
+            >
+              {summary.vocal_goal.source === "manual" ? "Singer's target" : "AI-suggested"}
+            </span>
+          )}
+        </div>
+        {granted.has("vocal_range") && summary.vocal_goal ? (
+          <dl className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <dt className="text-xs text-neutral-500">Low</dt>
+              <dd className="text-neutral-200">{summary.vocal_goal.target_low_note ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-neutral-500">Average</dt>
+              <dd className="text-neutral-200">{summary.vocal_goal.target_avg_note ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-neutral-500">High</dt>
+              <dd className="text-neutral-200">{summary.vocal_goal.target_high_note ?? "—"}</dd>
+            </div>
+          </dl>
+        ) : (
+          <NotShared label="vocal range history" />
+        )}
+      </section>
+
+      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
         <h2 className="mb-4 text-sm font-medium text-neutral-200">Exercise trends</h2>
         {granted.has("exercise_history") && summary.exercise_trends ? (
           summary.exercise_trends.length === 0 ? (

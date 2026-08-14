@@ -165,6 +165,41 @@ def test_coach_vocal_range_summary_matches_singers_own_endpoint(
     assert coach_view.json()["vocal_range"] == singer_own.json()
 
 
+def test_coach_vocal_goal_matches_singers_own_endpoint_and_is_gated_on_vocal_range(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    _connect(client, coach_headers, singer["email"], singer_headers, ["vocal_range"])
+
+    singer_own = client.get("/api/v1/vocal-goals", headers=singer_headers)
+    assert singer_own.status_code == 200
+
+    coach_view = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/summary",
+        headers=coach_headers,
+        params={"date": TODAY},
+    )
+    assert coach_view.status_code == 200
+    assert coach_view.json()["vocal_goal"] == singer_own.json()
+
+
+def test_coach_vocal_goal_is_null_without_vocal_range_category(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    _connect(client, coach_headers, singer["email"], singer_headers, ["recovery_trends"])
+
+    coach_view = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/summary",
+        headers=coach_headers,
+        params={"date": TODAY},
+    )
+    assert coach_view.status_code == 200
+    assert coach_view.json()["vocal_goal"] is None
+
+
 def test_revoke_immediately_blocks_future_coach_reads(
     client, signed_up_coach, signed_up_user
 ) -> None:
