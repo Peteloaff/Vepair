@@ -8,13 +8,16 @@ export function TopNav() {
   const { status, user, logout } = useAuth();
 
   return (
-    <header className="flex items-center justify-between border-b border-neutral-800 px-6 py-4">
-      <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        <Image src="/brand/vepair-logo.png" alt="" width={28} height={28} priority />
+    <header className="flex items-center justify-between border-b border-neutral-800 px-4 py-3 sm:px-6 sm:py-4">
+      <Link
+        href="/"
+        className="flex items-center gap-1.5 text-base font-semibold tracking-tight sm:gap-2 sm:text-lg"
+      >
+        <Image src="/brand/vepair-logo.png" alt="" width={24} height={24} priority className="sm:h-7 sm:w-7" />
         VepAIr
       </Link>
       {status === "authenticated" && (
-        <div className="flex items-center gap-4 text-sm text-neutral-400">
+        <div className="flex items-center gap-2.5 text-xs text-neutral-400 sm:gap-4 sm:text-sm">
           <Link href="/onboarding" className="hover:text-neutral-100">
             Profile
           </Link>
@@ -28,7 +31,7 @@ export function TopNav() {
           <button
             type="button"
             onClick={() => logout()}
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
+            className="rounded-lg border border-neutral-700 px-2 py-1 text-xs hover:bg-neutral-800 sm:px-3 sm:py-1.5 sm:text-sm"
           >
             Log out
           </button>
