@@ -8,6 +8,7 @@ import { Waveform, type WaveformHandle } from "@/components/Waveform";
 import { ToneMatchResultCard } from "@/components/ToneMatchResultCard";
 import { GoalTonesEditor } from "@/components/GoalTonesEditor";
 import { AveragePitchRecorder } from "@/components/AveragePitchRecorder";
+import { PitchMeter } from "@/components/PitchMeter";
 import {
   AudioRecorder,
   MicrophonePermissionDeniedError,
@@ -39,6 +40,7 @@ function ToneMatchFlow() {
   const [selectedNote, setSelectedNote] = useState<ReferenceNote | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(LISTEN_DURATION_SECONDS);
   const [result, setResult] = useState<ToneMatchResult | null>(null);
+  const [liveHz, setLiveHz] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shareBusy, setShareBusy] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -96,11 +98,13 @@ function ToneMatchFlow() {
 
     pitchSamplesRef.current = [];
     waveformRef.current?.reset();
+    setLiveHz(null);
     recorder.onChunk = (chunk) => {
       waveformRef.current?.pushChunk(chunk);
       const sampleRate = recorder.getSampleRate();
       if (!sampleRate) return;
       const pitch = detectPitch(chunk, sampleRate);
+      setLiveHz(pitch?.frequencyHz ?? null);
       if (pitch) pitchSamplesRef.current.push(pitch.frequencyHz);
     };
     recorder.start();
@@ -123,6 +127,7 @@ function ToneMatchFlow() {
     // collected via onChunk above, and nothing here is uploaded or saved (see the founder's
     // scoping decision: this is an ephemeral practice tool, not a tracked measurement).
     recorder?.stop();
+    setLiveHz(null);
     const graded = gradeToneMatch(note.frequencyHz, note.label, pitchSamplesRef.current);
     setResult(graded);
     setPhase("graded");
@@ -301,6 +306,9 @@ function ToneMatchFlow() {
           {selectedNote.label}
         </p>
         <Waveform ref={waveformRef} active={true} />
+        <div className="mx-auto mt-4 max-w-xs text-left">
+          <PitchMeter liveHz={liveHz} goalHz={selectedNote.frequencyHz} />
+        </div>
         <p className="mt-3 font-mono text-2xl tabular-nums text-neutral-200">
           {remainingSeconds}s
         </p>
