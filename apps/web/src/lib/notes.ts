@@ -59,11 +59,19 @@ export function buildReferenceRange(startOctave = 3, octaveCount = 2): Reference
 }
 
 /** Plays a short pure tone via the Web Audio API with a brief fade in/out to avoid clicks. */
-export function playTone(frequencyHz: number, durationMs = 2000): Promise<void> {
+export async function playTone(frequencyHz: number, durationMs = 2000): Promise<void> {
   const AudioContextCtor =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new AudioContextCtor();
+  // A freshly created AudioContext can start "suspended" on some browsers (iOS Safari is the
+  // classic case) even when constructed synchronously inside a user-gesture click handler --
+  // everything below still runs (oscillator start/stop, onended firing) but produces no
+  // audible sound at all, with nothing to catch as an error. Must resume before scheduling
+  // anything against ctx.currentTime, since that clock may not even be advancing yet.
+  if (ctx.state !== "running") {
+    await ctx.resume();
+  }
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
   oscillator.type = "sine";
