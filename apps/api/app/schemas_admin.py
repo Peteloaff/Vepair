@@ -1,11 +1,39 @@
 import uuid
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class AdminSetAdminIn(BaseModel):
     is_admin: bool
+
+
+class AdminCreateUserIn(BaseModel):
+    """Admin-authorized account creation -- bypasses the public signup lockdown (see
+    AdminSiteSettingsIn / app/site_settings.py), since this is an operator deliberately
+    creating one account, not the public signup form."""
+
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+    account_type: Literal["singer", "coach"] = "singer"
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    studio_name: str | None = Field(default=None, max_length=200)
+    is_admin: bool = False
+
+    @model_validator(mode="after")
+    def _require_display_name_for_coach(self) -> "AdminCreateUserIn":
+        if self.account_type == "coach" and not self.display_name:
+            raise ValueError("display_name is required when account_type is 'coach'")
+        return self
+
+
+class AdminSiteSettingsOut(BaseModel):
+    signups_enabled: bool
+
+
+class AdminSiteSettingsIn(BaseModel):
+    signups_enabled: bool
 
 
 class AdminSetCoachIn(BaseModel):

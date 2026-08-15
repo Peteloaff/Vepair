@@ -2,6 +2,17 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Admin account creation and a public signup lockdown switch (2026-08-15)
+
+- **Admins can create accounts directly from the admin page** (`POST /api/v1/admin/users`, a
+  "+ Create user" form on `/admin`) — email/password, singer or coach, optionally admin, no
+  self-serve signup flow required. For support and testing accounts.
+- **A lockdown switch for public signups.** A new banner at the top of `/admin` toggles
+  `signups_enabled` (`GET`/`POST /api/v1/admin/site-settings`); while off, the public `/signup`
+  and `/coach-signup` pages return `403 signups_disabled`. Meant for temporarily locking down new
+  accounts during load testing without touching the database by hand. Admin-created accounts
+  above are unaffected — the lockdown only gates the public forms.
+
 ## Added — Admin-managed roles, dual-role accounts, and filterable reports (2026-08-15)
 
 - **Admin can now grant/revoke admin access for other accounts** (`POST

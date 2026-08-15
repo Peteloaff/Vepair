@@ -511,3 +511,7 @@ export interface AdminReportsSummary {
   dau: number;
   wau: number;
 }
+
+export interface AdminSiteSettings {
+  signups_enabled: boolean;
+}

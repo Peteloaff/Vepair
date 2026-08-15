@@ -1,4 +1,6 @@
-from app.models import AdminAuditLog, CoachProfile, Exercise, User
+import uuid
+
+from app.models import AdminAuditLog, AuthCredential, CoachProfile, Exercise, User
 
 
 def _make_admin(db_session, headers, user_email) -> None:
@@ -424,3 +426,188 @@ def test_reports_query_filters_combine(
     assert inactive_coaches.status_code == 200
     assert coach_user["email"] in [row["email"] for row in inactive_coaches.json()]
     assert all(row["is_active"] is False for row in inactive_coaches.json())
+
+
+def test_create_user_makes_a_singer_account_that_can_log_in(
+    client, signed_up_user, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    new_email = f"admin_created_{uuid.uuid4().hex[:12]}@example.com"
+
+    resp = client.post(
+        "/api/v1/admin/users",
+        headers=admin_headers,
+        json={"email": new_email, "password": "hunter22!"},
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["email"] == new_email
+    assert body["account_type"] == "singer"
+    assert body["is_admin"] is False
+
+    login = client.post(
+        "/api/v1/auth/login", json={"email": new_email, "password": "hunter22!"}
+    )
+    assert login.status_code == 200
+
+    row = db_session.query(User).filter_by(email=new_email).one()
+    assert db_session.query(AuthCredential).filter_by(user_id=row.id).first() is not None
+    action = (
+        db_session.query(AdminAuditLog)
+        .filter_by(action="create_user", target_user_id=row.id)
+        .one()
+    )
+    assert action.details["account_type"] == "singer"
+
+
+def test_create_user_can_make_a_coach_and_an_admin(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    new_email = f"admin_created_coach_{uuid.uuid4().hex[:12]}@example.com"
+
+    resp = client.post(
+        "/api/v1/admin/users",
+        headers=admin_headers,
+        json={
+            "email": new_email,
+            "password": "hunter22!",
+            "account_type": "coach",
+            "display_name": "Admin-Made Coach",
+            "is_admin": True,
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["account_type"] == "coach"
+    assert body["is_admin"] is True
+
+    row = db_session.query(User).filter_by(email=new_email).one()
+    profile = db_session.query(CoachProfile).filter_by(user_id=row.id).one()
+    assert profile.display_name == "Admin-Made Coach"
+
+
+def test_create_user_requires_display_name_for_coach(
+    client, signed_up_user, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    resp = client.post(
+        "/api/v1/admin/users",
+        headers=admin_headers,
+        json={
+            "email": f"missing_name_{uuid.uuid4().hex[:12]}@example.com",
+            "password": "hunter22!",
+            "account_type": "coach",
+        },
+    )
+    assert resp.status_code == 422
+
+
+def test_create_user_rejects_duplicate_email(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    resp = client.post(
+        "/api/v1/admin/users",
+        headers=admin_headers,
+        json={"email": admin_user["email"], "password": "hunter22!"},
+    )
+    assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == "email_taken"
+
+
+def test_create_user_requires_admin(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    resp = client.post(
+        "/api/v1/admin/users",
+        headers=headers,
+        json={"email": f"nope_{uuid.uuid4().hex[:12]}@example.com", "password": "hunter22!"},
+    )
+    assert resp.status_code == 403
+
+
+def test_site_settings_default_to_signups_enabled(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    resp = client.get("/api/v1/admin/site-settings", headers=admin_headers)
+    assert resp.status_code == 200
+    assert resp.json()["signups_enabled"] is True
+
+
+def test_disabling_signups_blocks_public_signup_but_not_admin_create(
+    client, signed_up_user, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    toggle = client.post(
+        "/api/v1/admin/site-settings",
+        headers=admin_headers,
+        json={"signups_enabled": False},
+    )
+    assert toggle.status_code == 200
+    assert toggle.json()["signups_enabled"] is False
+
+    blocked = client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": f"locked_out_{uuid.uuid4().hex[:12]}@example.com",
+            "password": "hunter22!",
+        },
+    )
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "signups_disabled"
+
+    blocked_coach = client.post(
+        "/api/v1/auth/coach-signup",
+        json={
+            "email": f"locked_out_coach_{uuid.uuid4().hex[:12]}@example.com",
+            "password": "hunter22!",
+            "display_name": "Locked Out Coach",
+        },
+    )
+    assert blocked_coach.status_code == 403
+
+    # Admin-created accounts still work while public signup is locked down.
+    still_works = client.post(
+        "/api/v1/admin/users",
+        headers=admin_headers,
+        json={
+            "email": f"admin_bypass_{uuid.uuid4().hex[:12]}@example.com",
+            "password": "hunter22!",
+        },
+    )
+    assert still_works.status_code == 201
+
+    action = (
+        db_session.query(AdminAuditLog).filter_by(action="disable_signups").first()
+    )
+    assert action is not None
+
+    # Re-enabling restores public signup.
+    reenable = client.post(
+        "/api/v1/admin/site-settings",
+        headers=admin_headers,
+        json={"signups_enabled": True},
+    )
+    assert reenable.status_code == 200
+    unblocked = client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": f"reenabled_{uuid.uuid4().hex[:12]}@example.com",
+            "password": "hunter22!",
+        },
+    )
+    assert unblocked.status_code == 201
+
+
+def test_site_settings_requires_admin(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    assert client.get("/api/v1/admin/site-settings", headers=headers).status_code == 403
+    resp = client.post(
+        "/api/v1/admin/site-settings", headers=headers, json={"signups_enabled": False}
+    )
+    assert resp.status_code == 403

@@ -644,3 +644,18 @@ class AdminAuditLog(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class SiteSettings(Base, TimestampMixin):
+    """Singleton row (id is always 1, seeded by its migration) holding site-wide operational
+    toggles -- currently just signups_enabled, the admin's kill switch for the public self-serve
+    signup forms (see app/routers/auth.py's signup/coach_signup and app/site_settings.py's
+    get_site_settings, the only reader/writer). Meant for temporary lockdown during load testing,
+    not a permanent feature flag system -- one row, one column, add more only if a real second
+    toggle shows up. Admin-created accounts (POST /api/v1/admin/users) deliberately bypass this;
+    it gates the public forms only, not an operator creating a specific account on purpose."""
+
+    __tablename__ = "site_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    signups_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")

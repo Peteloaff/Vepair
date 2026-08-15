@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.account_deletion import delete_user_and_storage
@@ -17,6 +18,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.email import send_password_reset_email
 from app.models import (
+    AuthCredential,
     CoachProfile,
     DailyCheckIn,
     PasswordResetToken,
@@ -27,14 +29,18 @@ from app.models import (
     VoiceSession,
 )
 from app.schemas_admin import (
+    AdminCreateUserIn,
     AdminReportsSummaryOut,
     AdminSetAdminIn,
     AdminSetCoachIn,
+    AdminSiteSettingsIn,
+    AdminSiteSettingsOut,
     AdminUserDetailOut,
     AdminUserListItemOut,
 )
 from app.schemas_auth import UserOut
-from app.security import generate_opaque_token
+from app.security import generate_opaque_token, hash_password
+from app.site_settings import get_site_settings
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 settings = get_settings()
@@ -109,6 +115,49 @@ def search_users(
         stmt = stmt.where(User.email.ilike(f"%{query}%"))
     users = db.scalars(stmt).all()
     return [_to_list_item(db, u) for u in users]
+
+
+@router.post("/users", response_model=AdminUserListItemOut, status_code=201)
+def create_user(
+    payload: AdminCreateUserIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminUserListItemOut:
+    """Admin-authorized account creation, mirroring POST /api/v1/auth/signup and
+    /coach-signup but authorized by an admin instead of self-serve -- for support/testing
+    accounts, and deliberately exempt from the site-wide signups_enabled lockdown (see
+    /site-settings below), since locking down the *public* forms is the whole point of that
+    toggle, not locking out the admin who set it."""
+    user = User(email=payload.email.lower(), is_admin=payload.is_admin)
+    db.add(user)
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "email_taken", "message": "An account with this email already exists."},
+        ) from None
+
+    db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
+    if payload.account_type == "coach":
+        db.add(
+            CoachProfile(
+                user_id=user.id,
+                display_name=payload.display_name,
+                studio_name=payload.studio_name,
+            )
+        )
+    log_admin_action(
+        db,
+        admin.id,
+        "create_user",
+        user.id,
+        {"email": user.email, "account_type": payload.account_type, "is_admin": payload.is_admin},
+    )
+    db.commit()
+    db.refresh(user)
+    return _to_list_item(db, user)
 
 
 @router.get("/users/{user_id}", response_model=AdminUserDetailOut)
@@ -363,6 +412,35 @@ def reports_summary(
         dau=dau,
         wau=wau,
     )
+
+
+@router.get("/site-settings", response_model=AdminSiteSettingsOut)
+def get_site_settings_endpoint(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminSiteSettingsOut:
+    return AdminSiteSettingsOut(signups_enabled=get_site_settings(db).signups_enabled)
+
+
+@router.post("/site-settings", response_model=AdminSiteSettingsOut)
+def set_site_settings(
+    payload: AdminSiteSettingsIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminSiteSettingsOut:
+    """The kill switch for the public signup/coach-signup forms (see app/routers/auth.py) --
+    for locking down new accounts during load testing without touching the database by hand.
+    Doesn't affect admin-created accounts (POST /users above) or logins for existing accounts."""
+    settings_row = get_site_settings(db)
+    settings_row.signups_enabled = payload.signups_enabled
+    log_admin_action(
+        db,
+        admin.id,
+        "enable_signups" if payload.signups_enabled else "disable_signups",
+    )
+    db.commit()
+    db.refresh(settings_row)
+    return AdminSiteSettingsOut(signups_enabled=settings_row.signups_enabled)
 
 
 @router.get("/reports/query", response_model=list[AdminUserListItemOut])

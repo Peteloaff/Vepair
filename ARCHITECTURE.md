@@ -922,6 +922,20 @@ check via `GET /api/v1/admin/profile`, never a client-trusted flag. `UserOut` (r
 `TopNav.tsx` can show an "Admin" link without a second request — never trusted as the actual
 authorization check, which every `/api/v1/admin/*` route still re-verifies server-side.
 
+**Admin-created accounts** (`POST /api/v1/admin/users`) mirror `POST /api/v1/auth/signup` and
+`/coach-signup`'s account-creation logic (User + AuthCredential, plus a CoachProfile when
+`account_type="coach"`), just admin-authorized and audit-logged instead of self-serve, with an
+`is_admin` flag the public forms never expose. For support/testing accounts, not a bulk-import
+tool.
+
+**Signup lockdown** (`app.models.SiteSettings`, a singleton row read/written by
+`app/site_settings.py`'s `get_site_settings`) is a kill switch for the public `/signup` and
+`/coach-signup` forms — `GET`/`POST /api/v1/admin/site-settings` toggles
+`signups_enabled`, and both public endpoints return `403 signups_disabled` while it's off.
+Meant for temporary lockdown during load testing, not a permanent feature-flag system — one row,
+one column. Admin-created accounts above deliberately bypass this check: the lockdown gates the
+*public* forms, not an operator deliberately creating an account while testing.
+
 Deferred past v1: bulk operations, multiple admin roles/permission tiers, impersonation ("log in
 as this user"), a real login-event table, contact-list/outreach export (needs a `PRIVACY.md`
 consent-purpose decision first, not just an engineering task).

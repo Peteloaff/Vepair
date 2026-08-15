@@ -35,6 +35,7 @@ from app.security import (
     hash_password,
     verify_password,
 )
+from app.site_settings import get_site_settings
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 settings = get_settings()
@@ -42,6 +43,14 @@ settings = get_settings()
 INVALID_CREDENTIALS = HTTPException(
     status_code=401,
     detail={"code": "invalid_credentials", "message": "Incorrect email or password."},
+)
+
+SIGNUPS_DISABLED = HTTPException(
+    status_code=403,
+    detail={
+        "code": "signups_disabled",
+        "message": "New signups are temporarily disabled. Please try again later.",
+    },
 )
 
 
@@ -68,6 +77,8 @@ def _issue_tokens(db: Session, user: User) -> TokenResponse:
 
 @router.post("/signup", response_model=TokenResponse, status_code=201)
 def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    if not get_site_settings(db).signups_enabled:
+        raise SIGNUPS_DISABLED
     user = User(email=payload.email.lower())
     db.add(user)
     try:
@@ -91,6 +102,8 @@ def coach_signup(payload: CoachSignupRequest, db: Session = Depends(get_db)) -> 
     """Stage 12 Phase II. Creates the User, AuthCredential, and CoachProfile together in one
     transaction — a coach account is a coach account from creation, never a later upgrade on
     an existing singer account (see CoachSignupRequest's docstring)."""
+    if not get_site_settings(db).signups_enabled:
+        raise SIGNUPS_DISABLED
     user = User(email=payload.email.lower())
     db.add(user)
     try:
