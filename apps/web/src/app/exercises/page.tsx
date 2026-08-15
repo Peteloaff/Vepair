@@ -65,6 +65,7 @@ function ExercisesFlow() {
   const [baseline, setBaseline] = useState<BaselineSummary | null>(null);
   const [trends, setTrends] = useState<ExerciseTrend[]>([]);
   const [restCheck, setRestCheck] = useState<RestCheck | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const timerRef = useRef<number | null>(null);
   const feedbackClearRef = useRef<number | null>(null);
@@ -188,9 +189,16 @@ function ExercisesFlow() {
   }
 
   async function logCurrentExercise(completed: boolean, difficulty: number | null) {
-    if (!routine || !session) return;
+    if (!routine || !session || submitting) return;
+    setSubmitting(true);
     const exercise = routine.items[stepIndex];
-    const summary = stopCoaching();
+    let summary: LiveCoachSummary | null = null;
+    try {
+      summary = stopCoaching();
+    } catch {
+      // The recorder can throw if it was never fully started (e.g. mic permission still
+      // resolving) -- losing the live-measured summary shouldn't block marking the step done.
+    }
     try {
       const form = new FormData();
       form.append("exercise_id", exercise.id);
@@ -250,6 +258,7 @@ function ExercisesFlow() {
       }
       setPhase("complete");
     }
+    setSubmitting(false);
   }
 
   if (phase === "choose-length") {
@@ -410,16 +419,18 @@ function ExercisesFlow() {
           <button
             type="button"
             onClick={() => logCurrentExercise(false, null)}
-            className="flex-1 rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+            disabled={submitting}
+            className="flex-1 rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Skip
           </button>
           <button
             type="button"
             onClick={() => logCurrentExercise(true, null)}
-            className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            disabled={submitting}
+            className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Mark done
+            {submitting ? "Saving..." : "Mark done"}
           </button>
         </div>
       </div>
