@@ -24,6 +24,7 @@ function UserDetailContent() {
   const [busy, setBusy] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [newCoachName, setNewCoachName] = useState("");
 
   function load() {
     apiFetch<AdminUserDetail>(`/api/v1/admin/users/${params.userId}`)
@@ -95,6 +96,93 @@ function UserDetailContent() {
         </p>
       )}
       {error && <p className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>}
+
+      <section className="rounded-2xl border border-neutral-800 p-5">
+        <h2 className="mb-3 text-sm font-medium text-neutral-300">Roles</h2>
+        <div className="flex flex-wrap items-start gap-4">
+          <div>
+            <p className="mb-1.5 text-xs text-neutral-500">Admin</p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                runAction(
+                  () =>
+                    apiFetch(`/api/v1/admin/users/${detail.id}/set-admin`, {
+                      method: "POST",
+                      body: { is_admin: !detail.is_admin },
+                    }),
+                  detail.is_admin ? "Admin access revoked." : "Admin access granted."
+                )
+              }
+              className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+            >
+              {detail.is_admin ? "Revoke admin" : "Grant admin"}
+            </button>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-xs text-neutral-500">Coach</p>
+            {detail.account_type === "coach" ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    !window.confirm(
+                      "Remove coach status? This deletes any exercises this account authored — including from every other singer's routine that included one. This cannot be undone."
+                    )
+                  ) {
+                    return;
+                  }
+                  runAction(
+                    () =>
+                      apiFetch(`/api/v1/admin/users/${detail.id}/set-coach`, {
+                        method: "POST",
+                        body: { is_coach: false },
+                      }),
+                    "Coach status removed."
+                  );
+                }}
+                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+              >
+                Remove coach
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Display name"
+                  value={newCoachName}
+                  onChange={(e) => setNewCoachName(e.target.value)}
+                  className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500"
+                />
+                <button
+                  type="button"
+                  disabled={busy || newCoachName.trim().length === 0}
+                  onClick={() =>
+                    runAction(
+                      () =>
+                        apiFetch(`/api/v1/admin/users/${detail.id}/set-coach`, {
+                          method: "POST",
+                          body: { is_coach: true, display_name: newCoachName.trim() },
+                        }),
+                      "Coach access granted."
+                    ).then(() => setNewCoachName(""))
+                  }
+                  className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Make coach
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-neutral-500">
+          Making a singer account a coach doesn&apos;t remove their singer data — the account
+          keeps both.
+        </p>
+      </section>
 
       <section className="rounded-2xl border border-neutral-800 p-5">
         <h2 className="mb-3 text-sm font-medium text-neutral-300">Account actions</h2>

@@ -849,8 +849,28 @@ it).
 `get_current_coach` exactly, except the "is this an admin" check is a flag on `User` itself
 (`is_admin`) rather than a separate profile table — there's no equivalent of `CoachProfile` for
 admins, since admin isn't a distinct account type with its own data, just an authenticated
-account with elevated privileges. No self-serve or API path ever sets `is_admin = true` — see
-`TECHNICAL_GUIDE.md` §9 for the one-time manual bootstrap.
+account with elevated privileges. No *self-serve* path ever sets `is_admin = true` — the very
+first admin still requires the one-time manual bootstrap (`TECHNICAL_GUIDE.md` §9), since there
+is by definition no existing admin yet to grant it through the UI. Once at least one admin
+exists, `POST /api/v1/admin/users/{id}/set-admin` lets them grant or revoke it for *other*
+accounts (self-targeting is blocked — see below) — deliberately not "self-serve," since it
+still requires an existing admin to act.
+
+**Dual-role accounts (singer + coach)**: `POST /api/v1/admin/users/{id}/set-coach` attaches or
+detaches a `CoachProfile` on any *existing* account — something no self-serve flow does;
+`POST /api/v1/auth/coach-signup` still only ever creates a coach account from scratch (see
+`CoachProfile`'s model docstring). Granting coach status to an account that already has a
+`UserProfile` doesn't touch that singer data, so the account ends up with both. The home page
+(`apps/web/src/app/page.tsx`) reflects this: it used to treat "has a `CoachProfile`" as
+sufficient to show the compact coach-only panel (`isCoachView`), but that assumption broke once
+an existing singer could become a coach too. `Home()` now also checks whether a `UserProfile`
+exists before deciding — an account with both renders the full singer dashboard plus a "Coach
+Portal" quick-link in the header, and only an account with a `CoachProfile` and no `UserProfile`
+at all (the original coach-signup shape) gets the compact panel. Revoking coach status deletes
+the `CoachProfile` row, which cascades to every `Exercise` that coach authored
+(`Exercise.created_by_coach_id` is `ON DELETE CASCADE`) — a real, documented consequence, not an
+oversight; the admin frontend confirms this explicitly before calling the endpoint with
+`is_coach=false`.
 
 **Audit**: every state-changing `/api/v1/admin/*` endpoint calls `app/admin_audit.py`'s
 `log_admin_action(db, admin_user_id, action, target_user_id, details)` in the same transaction as
@@ -886,11 +906,21 @@ as a documented proxy rather than building a login-event table just for this. Th
 endpoint's DAU/WAU are similarly a proxy (distinct users with a check-in or recording in the
 window), not a true session-based metric.
 
+**Filterable reports** (`GET /api/v1/admin/reports/query`) builds a SQL query from any
+combination of optional filters (email substring, account type, active/admin/onboarding-complete
+flags, signup date range) over the same fields `search_users`/`get_user_detail` already expose —
+every filter is `AND`ed together, capped at 200 rows, same operator-tool-not-export reasoning as
+`search_users`'s 100-row cap. Reuses `_to_list_item` rather than a second row-shaping path.
+
 **Frontend** (`apps/web/src/app/admin/*`, `components/RequireAdmin.tsx`) is deliberately
 minimal/unstyled — a search page, a per-user detail/actions page (with the same
-type-`DELETE`-to-confirm pattern the singer-side `/settings` delete flow already uses), and a
-reports page. `RequireAdmin.tsx` mirrors `RequireCoach.tsx`: a server-truth check via
-`GET /api/v1/admin/profile`, never a client-trusted flag.
+type-`DELETE`-to-confirm pattern the singer-side `/settings` delete flow already uses, plus
+Roles controls for admin/coach status), and a reports page with both the aggregate stat tiles
+and the filter-driven query above. `RequireAdmin.tsx` mirrors `RequireCoach.tsx`: a server-truth
+check via `GET /api/v1/admin/profile`, never a client-trusted flag. `UserOut` (returned from
+`/api/v1/auth/me` and every login/signup/refresh response) also carries `is_admin` now, purely so
+`TopNav.tsx` can show an "Admin" link without a second request — never trusted as the actual
+authorization check, which every `/api/v1/admin/*` route still re-verifies server-side.
 
 Deferred past v1: bulk operations, multiple admin roles/permission tiers, impersonation ("log in
 as this user"), a real login-event table, contact-list/outreach export (needs a `PRIVACY.md`

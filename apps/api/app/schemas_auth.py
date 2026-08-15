@@ -52,6 +52,11 @@ class UserOut(BaseModel):
     id: uuid.UUID
     email: str
     created_at: datetime
+    # Surfaced here (not just via /api/v1/admin/profile) so the frontend's global auth
+    # context already knows this on every page load without a second request -- used only
+    # to decide whether to show a link to /admin, never trusted as the actual authorization
+    # check (every /api/v1/admin/* route re-verifies server-side via get_current_admin).
+    is_admin: bool
 
     model_config = {"from_attributes": True}
 

@@ -1,7 +1,19 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class AdminSetAdminIn(BaseModel):
+    is_admin: bool
+
+
+class AdminSetCoachIn(BaseModel):
+    is_coach: bool
+    # Required the first time an account becomes a coach (CoachProfile.display_name is
+    # NOT NULL); ignored when is_coach=False. If the account is already a coach and this is
+    # provided again, it updates the existing display_name.
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
 
 
 class AdminUserListItemOut(BaseModel):

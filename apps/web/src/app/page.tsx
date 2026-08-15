@@ -49,7 +49,13 @@ function buildSeries(history: CheckIn[], dates: string[], metric: keyof CheckIn)
   });
 }
 
-function Dashboard({ isCoachView = false }: { isCoachView?: boolean }) {
+function Dashboard({
+  isCoachView = false,
+  showCoachPortalLink = false,
+}: {
+  isCoachView?: boolean;
+  showCoachPortalLink?: boolean;
+}) {
   const { apiFetch, user } = useAuth();
   const [history, setHistory] = useState<CheckIn[] | null>(null);
   const [baseline, setBaseline] = useState<BaselineSummary | null>(null);
@@ -242,6 +248,14 @@ function Dashboard({ isCoachView = false }: { isCoachView?: boolean }) {
           >
             Tone Match
           </Link>
+          {showCoachPortalLink && (
+            <Link
+              href="/coach"
+              className="rounded-lg border border-violet-800 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-950/40"
+            >
+              Coach Portal
+            </Link>
+          )}
           {(pendingInviteCount > 0 || hasCoachConnection) && (
             <Link
               href="/coach-access"
@@ -495,21 +509,40 @@ function LandingChooser() {
 export default function Home() {
   const { status, apiFetch } = useAuth();
   const [coachCheck, setCoachCheck] = useState<"pending" | "coach" | "singer">("pending");
+  // Only meaningful once coachCheck === "coach" -- an admin can now attach a CoachProfile to
+  // an existing singer account (POST /api/v1/admin/users/{id}/set-coach), so "has a
+  // CoachProfile" no longer implies "has no singer data." null = not checked yet.
+  const [hasSingerProfile, setHasSingerProfile] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    // A coach account has no singer UserProfile/onboarding at all, so the singer-specific
-    // sections of the dashboard must never render for it — same server-truth coach check
-    // RequireCoach uses. Unlike before, this no longer redirects to /coach: the coach sees an
-    // adapted version of this same page, with a link into the Coach Portal (see isCoachView on
-    // Dashboard) rather than being bounced away from it.
+    // Unlike before, this no longer redirects to /coach: the coach sees an adapted version of
+    // this same page, with a link into the Coach Portal (see isCoachView on Dashboard) rather
+    // than being bounced away from it.
     apiFetch("/api/v1/coach/profile")
       .then(() => setCoachCheck("coach"))
       .catch(() => setCoachCheck("singer"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-  if (status === "loading" || (status === "authenticated" && coachCheck === "pending")) {
+  useEffect(() => {
+    if (coachCheck !== "coach") return;
+    // A coach-signup-only account has no singer UserProfile at all, so the full dashboard
+    // would just be a wall of empty states -- the compact panel is the right view for it.
+    // A dual-role account (admin-granted coach status on top of an existing singer account)
+    // does have one, and should see everything, plus a way into the Coach Portal.
+    apiFetch("/api/v1/profile")
+      .then(() => setHasSingerProfile(true))
+      .catch(() => setHasSingerProfile(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coachCheck]);
+
+  const stillResolvingCoachAccountKind = coachCheck === "coach" && hasSingerProfile === null;
+
+  if (
+    status === "loading" ||
+    (status === "authenticated" && (coachCheck === "pending" || stillResolvingCoachAccountKind))
+  ) {
     return (
       <main className="flex flex-1 items-center justify-center">
         <p className="text-sm text-neutral-500">Loading...</p>
@@ -521,5 +554,8 @@ export default function Home() {
     return <LandingChooser />;
   }
 
-  return <Dashboard isCoachView={coachCheck === "coach"} />;
+  const isPureCoachView = coachCheck === "coach" && hasSingerProfile === false;
+  return (
+    <Dashboard isCoachView={isPureCoachView} showCoachPortalLink={coachCheck === "coach"} />
+  );
 }

@@ -474,10 +474,13 @@ class ConsentRecord(Base, TimestampMixin):
 
 class CoachProfile(Base, TimestampMixin):
     """Stage 12 Phase II. Presence of this row is what makes a User a coach — same optional
-    1:1-extension shape as UserProfile, not a role flag. Created only via
-    POST /api/v1/auth/coach-signup (app/routers/auth.py), never as a self-serve upgrade on an
-    existing account — a coach account is a coach account from creation, so the same user can
-    never also be a singer. See ROADMAP.md Stage 12 / the Phase II plan for why."""
+    1:1-extension shape as UserProfile, not a role flag. No self-serve path ever attaches this
+    to an existing (singer) account — POST /api/v1/auth/coach-signup only ever creates a coach
+    account from scratch, still never an upgrade a user can trigger themselves. Post-Stage-12,
+    an admin can attach or detach this on any existing account via
+    POST /api/v1/admin/users/{id}/set-coach, which is what makes a dual singer+coach account
+    possible — see app/routers/admin.py's set_coach for the consequences (deleting this row
+    cascades to every Exercise this coach authored)."""
 
     __tablename__ = "coach_profiles"
 

@@ -27,6 +27,11 @@ export function TopNav() {
           <Link href="/settings" className="hover:text-neutral-100">
             Settings
           </Link>
+          {user?.is_admin && (
+            <Link href="/admin" className="font-medium text-amber-400 hover:text-amber-300">
+              Admin
+            </Link>
+          )}
           <span className="hidden sm:inline">{user?.email}</span>
           <button
             type="button"

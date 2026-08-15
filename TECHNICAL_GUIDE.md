@@ -271,16 +271,22 @@ credential — never commit it, never log it.
 ## 9. Bootstrapping the first admin
 
 The backend admin section (`/admin` in the frontend, `/api/v1/admin/*` in the backend — see
-`ARCHITECTURE.md` §6h) has no self-serve or API path to grant admin access, ever, by design. The
-only way an account becomes an admin is a one-time manual UPDATE against the production database,
-using the same §8 connection:
+`ARCHITECTURE.md` §6o) has no self-serve path to grant admin access, ever, by design. The *very
+first* admin still requires a one-time manual UPDATE against the production database, using the
+same §8 connection, since there is by definition no existing admin yet to grant it through the
+UI:
 
 ```sql
 UPDATE users SET is_admin = true WHERE email = '<founder email>';
 ```
 
 Run this once for the founder's own account after the admin migration has been deployed. There is
-no "list current admins" UI either — if that's ever needed, query `users WHERE is_admin = true`
-directly. Granting admin to anyone else should go through this same manual path, deliberately,
-rather than adding a self-serve "promote to admin" endpoint later without thinking through who
-should be allowed to call it.
+no "list current admins" UI — if that's ever needed, query `users WHERE is_admin = true` directly.
+
+Once at least one admin exists, granting or revoking admin (and coach) access for *other*
+accounts goes through the UI itself — on a user's detail page (`/admin/users/{id}`), the "Roles"
+section has "Grant admin"/"Revoke admin" and "Make coach"/"Remove coach" controls
+(`POST /api/v1/admin/users/{id}/set-admin` / `.../set-coach`). An admin can't target their own
+account with either (self-lockout prevention) — only this manual SQL path can recover from
+"every admin account got revoked/deactivated," which is exactly why it stays documented here
+rather than being fully replaced by the UI.

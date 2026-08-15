@@ -1,4 +1,4 @@
-from app.models import AdminAuditLog, User
+from app.models import AdminAuditLog, CoachProfile, Exercise, User
 
 
 def _make_admin(db_session, headers, user_email) -> None:
@@ -248,3 +248,179 @@ def test_reports_summary_reflects_signups_and_active_state(
     client.post(f"/api/v1/admin/users/{target_row.id}/deactivate", headers=admin_headers)
     after = client.get("/api/v1/admin/reports/summary", headers=admin_headers).json()
     assert after["deactivated_count"] >= 1
+
+
+def test_set_admin_grants_and_revokes(client, signed_up_user, signed_up_coach, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    target_user, target_headers = signed_up_coach
+    target_row = db_session.query(User).filter_by(email=target_user["email"]).one()
+
+    grant = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-admin",
+        headers=admin_headers,
+        json={"is_admin": True},
+    )
+    assert grant.status_code == 200
+    assert grant.json()["is_admin"] is True
+    assert client.get("/api/v1/admin/profile", headers=target_headers).status_code == 200
+
+    revoke = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-admin",
+        headers=admin_headers,
+        json={"is_admin": False},
+    )
+    assert revoke.status_code == 200
+    assert revoke.json()["is_admin"] is False
+    assert client.get("/api/v1/admin/profile", headers=target_headers).status_code == 403
+
+    actions = [
+        row.action
+        for row in db_session.query(AdminAuditLog).filter_by(target_user_id=target_row.id).all()
+    ]
+    assert "grant_admin" in actions
+    assert "revoke_admin" in actions
+
+
+def test_set_admin_blocks_self_target(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    admin_row = db_session.query(User).filter_by(email=admin_user["email"]).one()
+
+    resp = client.post(
+        f"/api/v1/admin/users/{admin_row.id}/set-admin",
+        headers=admin_headers,
+        json={"is_admin": False},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "cannot_target_self"
+
+
+def test_set_coach_requires_display_name_for_a_new_coach(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    target_user, _target_headers = signed_up_coach
+    target_row = db_session.query(User).filter_by(email=target_user["email"]).one()
+    # signed_up_coach is already a coach -- flip it back to a plain singer first so this is a
+    # genuine "no existing CoachProfile" case.
+    db_session.query(CoachProfile).filter_by(user_id=target_row.id).delete()
+    db_session.commit()
+
+    resp = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-coach",
+        headers=admin_headers,
+        json={"is_coach": True},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "display_name_required"
+
+
+def test_set_coach_creates_and_removes_coach_profile(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    target_user, _target_headers = signed_up_coach
+    target_row = db_session.query(User).filter_by(email=target_user["email"]).one()
+    db_session.query(CoachProfile).filter_by(user_id=target_row.id).delete()
+    db_session.commit()
+
+    grant = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-coach",
+        headers=admin_headers,
+        json={"is_coach": True, "display_name": "Coach Admin-Granted"},
+    )
+    assert grant.status_code == 200
+    assert grant.json()["account_type"] == "coach"
+    profile = db_session.query(CoachProfile).filter_by(user_id=target_row.id).one()
+    assert profile.display_name == "Coach Admin-Granted"
+
+    revoke = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-coach",
+        headers=admin_headers,
+        json={"is_coach": False},
+    )
+    assert revoke.status_code == 200
+    assert revoke.json()["account_type"] == "singer"
+    assert db_session.query(CoachProfile).filter_by(user_id=target_row.id).first() is None
+
+
+def test_set_coach_revoke_cascades_coach_authored_exercises(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    """Documents a real, deliberate consequence: Exercise.created_by_coach_id is ON DELETE
+    CASCADE, so revoking coach status deletes exercises that coach authored, even ones already
+    sitting in other singers' routines."""
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    coach_user, coach_headers = signed_up_coach
+
+    created = client.post(
+        "/api/v1/coach/exercises",
+        headers=coach_headers,
+        json={
+            "name": "Admin-cascade test exercise",
+            "instructions": "Do the thing.",
+            "category": "Breathing",
+            "duration_seconds": 60,
+            "difficulty": "easy",
+        },
+    )
+    assert created.status_code == 201, created.text
+    exercise_id = created.json()["id"]
+    assert db_session.query(Exercise).filter_by(id=exercise_id).first() is not None
+
+    coach_row = db_session.query(User).filter_by(email=coach_user["email"]).one()
+    revoke = client.post(
+        f"/api/v1/admin/users/{coach_row.id}/set-coach",
+        headers=admin_headers,
+        json={"is_coach": False},
+    )
+    assert revoke.status_code == 200
+    assert db_session.query(Exercise).filter_by(id=exercise_id).first() is None
+
+
+def test_reports_query_filters_combine(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    coach_user, _coach_headers = signed_up_coach
+    coach_row = db_session.query(User).filter_by(email=coach_user["email"]).one()
+
+    by_email = client.get(
+        "/api/v1/admin/reports/query",
+        headers=admin_headers,
+        params={"email": coach_user["email"][:10]},
+    )
+    assert by_email.status_code == 200
+    assert coach_user["email"] in [row["email"] for row in by_email.json()]
+
+    coaches_only = client.get(
+        "/api/v1/admin/reports/query",
+        headers=admin_headers,
+        params={"account_type": "coach"},
+    )
+    assert coaches_only.status_code == 200
+    assert all(row["account_type"] == "coach" for row in coaches_only.json())
+    assert coach_user["email"] in [row["email"] for row in coaches_only.json()]
+
+    singers_only = client.get(
+        "/api/v1/admin/reports/query",
+        headers=admin_headers,
+        params={"account_type": "singer"},
+    )
+    assert singers_only.status_code == 200
+    assert coach_user["email"] not in [row["email"] for row in singers_only.json()]
+
+    client.post(f"/api/v1/admin/users/{coach_row.id}/deactivate", headers=admin_headers)
+    inactive_coaches = client.get(
+        "/api/v1/admin/reports/query",
+        headers=admin_headers,
+        params={"account_type": "coach", "is_active": "false"},
+    )
+    assert inactive_coaches.status_code == 200
+    assert coach_user["email"] in [row["email"] for row in inactive_coaches.json()]
+    assert all(row["is_active"] is False for row in inactive_coaches.json())

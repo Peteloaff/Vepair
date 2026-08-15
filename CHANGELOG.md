@@ -2,6 +2,28 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Admin-managed roles, dual-role accounts, and filterable reports (2026-08-15)
+
+- **Admin can now grant/revoke admin access for other accounts** (`POST
+  /api/v1/admin/users/{id}/set-admin`), from the account detail page's new "Roles" section —
+  previously the only way to make anyone an admin was a manual production SQL `UPDATE`. The very
+  first admin still requires that manual bootstrap (there's no admin yet to grant it through the
+  UI); every admin after that can be granted this way. An admin can't change their own status,
+  to prevent an accidental self-lockout with no one left to undo it.
+- **An account can now be both a singer and a coach.** `POST
+  /api/v1/admin/users/{id}/set-coach` attaches or detaches a `CoachProfile` on any existing
+  account — something no self-serve flow does. The home page used to assume "has a
+  `CoachProfile`" meant "has no singer data" and showed a compact coach-only panel accordingly;
+  it now also checks for a singer profile, so a dual-role account gets the full singer dashboard
+  plus a "Coach Portal" quick-link, and only a true coach-signup-only account (no singer profile
+  at all) still gets the compact view. Removing coach status deletes every exercise that coach
+  authored (a real, confirmed-before-you-click consequence, not a surprise).
+- **A visible "Admin" link** now appears in the top nav for admin accounts — previously `/admin`
+  had no discoverable entry point anywhere in the UI.
+- **Reports gained a filter-built query** (`GET /api/v1/admin/reports/query`) on top of the
+  existing aggregate stat tiles: email substring, account type, active/admin/onboarding-complete
+  flags, and a signup date range, all combinable, returning a results table.
+
 ## Added — Backend Admin (2026-08-13)
 
 An internal operator surface (`/admin` in the frontend, `/api/v1/admin/*` in the backend) closing

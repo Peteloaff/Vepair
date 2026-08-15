@@ -4,7 +4,7 @@ app/admin_auth.py and app/models.AdminAuditLog for the mechanism this router rel
 """
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -26,7 +26,13 @@ from app.models import (
     UserProfile,
     VoiceSession,
 )
-from app.schemas_admin import AdminReportsSummaryOut, AdminUserDetailOut, AdminUserListItemOut
+from app.schemas_admin import (
+    AdminReportsSummaryOut,
+    AdminSetAdminIn,
+    AdminSetCoachIn,
+    AdminUserDetailOut,
+    AdminUserListItemOut,
+)
 from app.schemas_auth import UserOut
 from app.security import generate_opaque_token
 
@@ -38,6 +44,14 @@ CANNOT_TARGET_SELF = HTTPException(
     detail={
         "code": "cannot_target_self",
         "message": "An admin cannot deactivate or delete their own account.",
+    },
+)
+
+CANNOT_CHANGE_OWN_ADMIN_STATUS = HTTPException(
+    status_code=400,
+    detail={
+        "code": "cannot_target_self",
+        "message": "An admin cannot change their own admin status.",
     },
 )
 
@@ -197,6 +211,80 @@ def hard_delete_user(
     delete_user_and_storage(db, user)
 
 
+@router.post("/users/{user_id}/set-admin", response_model=AdminUserListItemOut)
+def set_admin(
+    user_id: uuid.UUID,
+    payload: AdminSetAdminIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminUserListItemOut:
+    """No self-serve signup path ever sets is_admin -- but once at least one admin exists,
+    granting or revoking it for *other* accounts through this UI is fine; a manual psql
+    UPDATE is only required for the very first admin (see TECHNICAL_GUIDE.md). Blocking
+    self-targeting isn't about the grant path being untrusted, it's to stop an admin from
+    accidentally revoking their own access with no one left to undo it."""
+    if user_id == admin.id:
+        raise CANNOT_CHANGE_OWN_ADMIN_STATUS
+    user = _get_target(db, user_id)
+
+    user.is_admin = payload.is_admin
+    log_admin_action(
+        db,
+        admin.id,
+        "grant_admin" if payload.is_admin else "revoke_admin",
+        user.id,
+        {"email": user.email},
+    )
+    db.commit()
+    db.refresh(user)
+    return _to_list_item(db, user)
+
+
+@router.post("/users/{user_id}/set-coach", response_model=AdminUserListItemOut)
+def set_coach(
+    user_id: uuid.UUID,
+    payload: AdminSetCoachIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminUserListItemOut:
+    """Lets a singer account also become a coach (or a coach-only account also be a singer --
+    same mechanism, just starting from the other side) by attaching/detaching a CoachProfile
+    on an *existing* account, something no self-serve flow does -- coach-signup only ever
+    creates a coach account from scratch (see CoachSignupRequest's docstring). The frontend
+    home page renders the full singer dashboard whenever a UserProfile exists, regardless of
+    CoachProfile, so a dual-role account keeps both; only an account with a CoachProfile and
+    no UserProfile at all gets the compact coach-only view.
+
+    Removing coach status deletes the CoachProfile row, which cascades to every Exercise this
+    coach authored (Exercise.created_by_coach_id is ON DELETE CASCADE) -- including ones
+    already sitting in other singers' routines. That's a real, sharp consequence, not an
+    oversight; the frontend confirms this explicitly before calling here with is_coach=False."""
+    user = _get_target(db, user_id)
+    existing = db.scalar(select(CoachProfile).where(CoachProfile.user_id == user.id))
+
+    if payload.is_coach:
+        if existing is None:
+            if not payload.display_name:
+                raise HTTPException(
+                    status_code=422,
+                    detail={
+                        "code": "display_name_required",
+                        "message": "A display name is required to make this account a coach.",
+                    },
+                )
+            db.add(CoachProfile(user_id=user.id, display_name=payload.display_name))
+        elif payload.display_name:
+            existing.display_name = payload.display_name
+        log_admin_action(db, admin.id, "grant_coach", user.id, {"email": user.email})
+    else:
+        if existing is not None:
+            db.delete(existing)
+        log_admin_action(db, admin.id, "revoke_coach", user.id, {"email": user.email})
+
+    db.commit()
+    return _to_list_item(db, user)
+
+
 @router.post("/users/{user_id}/send-password-reset", status_code=202)
 def send_password_reset(
     user_id: uuid.UUID,
@@ -275,3 +363,44 @@ def reports_summary(
         dau=dau,
         wau=wau,
     )
+
+
+@router.get("/reports/query", response_model=list[AdminUserListItemOut])
+def query_report(
+    email: str | None = Query(default=None),
+    account_type: str | None = Query(default=None, pattern="^(singer|coach)$"),
+    is_active: bool | None = Query(default=None),
+    is_admin: bool | None = Query(default=None),
+    onboarding_complete: bool | None = Query(default=None),
+    created_after: date | None = Query(default=None),
+    created_before: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> list[AdminUserListItemOut]:
+    """A filter-built report over the same fields the rest of /admin already exposes per
+    account -- every filter is optional and they combine with AND. Capped at 200 rows, same
+    reasoning as search_users's 100-row cap: this is an operator tool for a founder-scale
+    user base, not a paginated export."""
+    stmt = select(User).order_by(User.created_at.desc()).limit(200)
+
+    if email:
+        stmt = stmt.where(User.email.ilike(f"%{email}%"))
+    if is_active is not None:
+        stmt = stmt.where(User.is_active.is_(is_active))
+    if is_admin is not None:
+        stmt = stmt.where(User.is_admin.is_(is_admin))
+    if created_after is not None:
+        stmt = stmt.where(User.created_at >= created_after)
+    if created_before is not None:
+        stmt = stmt.where(User.created_at < created_before + timedelta(days=1))
+    if account_type == "coach":
+        stmt = stmt.where(User.id.in_(select(CoachProfile.user_id)))
+    elif account_type == "singer":
+        stmt = stmt.where(User.id.not_in(select(CoachProfile.user_id)))
+    if onboarding_complete is True:
+        stmt = stmt.where(User.id.in_(select(UserProfile.user_id)))
+    elif onboarding_complete is False:
+        stmt = stmt.where(User.id.not_in(select(UserProfile.user_id)))
+
+    users = db.scalars(stmt).all()
+    return [_to_list_item(db, u) for u in users]
