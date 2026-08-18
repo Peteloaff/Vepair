@@ -63,6 +63,56 @@ export default function HelpPage() {
         </p>
 
         <section className="mb-10">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            How it works
+          </h2>
+          <FeatureCard title="How VepAIr adapts to you">
+            <p>
+              Nothing in VepAIr is measured against anyone else&apos;s voice. Every exercise,
+              every piece of live feedback, and every target note comes from one loop: compare
+              today against your own history, then adjust. It repeats every time you practice:
+            </p>
+            <Steps
+              items={[
+                <>
+                  <strong className="text-neutral-200">Record &amp; measure</strong> — every
+                  recording gets its pitch and quality measured automatically.
+                </>,
+                <>
+                  <strong className="text-neutral-200">Your personal baseline</strong> — those
+                  measurements build a picture of what&apos;s normal for you specifically, never a
+                  population average.
+                </>,
+                <>
+                  <strong className="text-neutral-200">Recovery score &amp; safety check</strong> —
+                  today is checked against your baseline; an off day gets flagged, and several
+                  rough days in a row can trigger a rest-day recommendation.
+                </>,
+                <>
+                  <strong className="text-neutral-200">Adaptive daily routine</strong> —
+                  today&apos;s exercises are picked and sequenced from where your baseline says
+                  you are right now.
+                </>,
+                <>
+                  <strong className="text-neutral-200">Live coaching &amp; Goal Tones</strong> —
+                  while you sing, real-time feedback compares your voice against a target: your
+                  Goal Tone, a coach&apos;s target, or the exercise&apos;s own.
+                </>,
+                <>
+                  <strong className="text-neutral-200">Track growth over time</strong> — vocal
+                  range, exercise trends, and your plan all update from what just happened, then
+                  feed straight back into step one next time you practice.
+                </>,
+              ]}
+            />
+            <Callout tone="info">
+              The loop never stops — every new recording refines the baseline everything else is
+              measured against.
+            </Callout>
+          </FeatureCard>
+        </section>
+
+        <section className="mb-10">
           <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-emerald-400">
             For everyone
           </h2>
