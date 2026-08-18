@@ -50,6 +50,102 @@ function Callout({
   return <p className={`rounded-lg px-3 py-2 text-xs ${styles}`}>{children}</p>;
 }
 
+// Six-stage loop diagram: Record & Measure -> Your Personal Baseline -> Recovery Score & Safety
+// Check -> Adaptive Daily Routine -> Live Coaching & Goal Tones -> Track Growth Over Time, back
+// to Record & Measure. Node/edge coordinates are a regular hexagon (center 450,450, radius 330,
+// node radius 92) -- edges run center-to-center and are drawn under the node circles so the
+// overlap at the source end is hidden, with the end pulled back 103px so the arrowhead marker
+// lands right at the target node's edge.
+function AdaptiveLoopDiagram() {
+  return (
+    <figure className="my-1">
+      <style>{`
+        .loopdiag-circle { fill: #1b1b1b; stroke: #2a2a2a; stroke-width: 2; }
+        .loopdiag-circle.is-hub { fill: #143d2e; stroke: #34d399; }
+        .loopdiag-num { font-size: 16px; fill: #78786f; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+        .loopdiag-num.is-hub { fill: #34d399; }
+        .loopdiag-title { font-weight: 600; font-size: 19px; fill: #f2f2f0; }
+        .loopdiag-line { fill: none; stroke: #78786f; stroke-width: 1.6; }
+        .loopdiag-label { font-size: 12.5px; fill: #a3a39e; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+        .loopdiag-label-bg { fill: #0a0a0a; }
+        .loopdiag-center { font-size: 12px; letter-spacing: 0.08em; fill: #78786f; text-transform: uppercase; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+      `}</style>
+      <svg
+        viewBox="0 0 900 900"
+        role="img"
+        aria-label="A six-stage loop: Record and Measure feeds Your Personal Baseline, which is checked against Recovery Score and Safety Check, which shapes the Adaptive Daily Routine, which is guided in real time by Live Coaching and Goal Tones, which is logged by Track Growth Over Time, which starts the loop again at Record and Measure."
+        className="mx-auto block h-auto w-full max-w-[480px]"
+      >
+        <defs>
+          <marker id="loopdiag-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#78786f" />
+          </marker>
+        </defs>
+
+        <line className="loopdiag-line" x1="450" y1="120" x2="646.8" y2="233.5" markerEnd="url(#loopdiag-arrow)" />
+        <line className="loopdiag-line" x1="736" y1="285" x2="736" y2="512" markerEnd="url(#loopdiag-arrow)" />
+        <line className="loopdiag-line" x1="736" y1="615" x2="539.2" y2="728.5" markerEnd="url(#loopdiag-arrow)" />
+        <line className="loopdiag-line" x1="450" y1="780" x2="253.2" y2="666.5" markerEnd="url(#loopdiag-arrow)" />
+        <line className="loopdiag-line" x1="164" y1="615" x2="164" y2="388" markerEnd="url(#loopdiag-arrow)" />
+        <line className="loopdiag-line" x1="164" y1="285" x2="360.8" y2="171.5" markerEnd="url(#loopdiag-arrow)" />
+
+        <g className="loopdiag-label" textAnchor="middle">
+          <rect className="loopdiag-label-bg" x="565" y="152" width="98" height="18" rx="4" />
+          <text x="614" y="165">gets measured</text>
+
+          <rect className="loopdiag-label-bg" x="738" y="441" width="108" height="18" rx="4" />
+          <text x="792" y="454">checked against it</text>
+
+          <rect className="loopdiag-label-bg" x="565" y="725" width="118" height="18" rx="4" />
+          <text x="624" y="738">shapes today&apos;s plan</text>
+
+          <rect className="loopdiag-label-bg" x="163" y="725" width="126" height="18" rx="4" />
+          <text x="226" y="738">guided in real time</text>
+
+          <rect className="loopdiag-label-bg" x="8" y="441" width="120" height="18" rx="4" />
+          <text x="68" y="454">logged as new data</text>
+
+          <rect className="loopdiag-label-bg" x="163" y="152" width="152" height="18" rx="4" />
+          <text x="239" y="165">next time you practice</text>
+        </g>
+
+        <text className="loopdiag-center" x="450" y="446" textAnchor="middle">measured only</text>
+        <text className="loopdiag-center" x="450" y="462" textAnchor="middle">against you</text>
+
+        <g textAnchor="middle">
+          <circle className="loopdiag-circle" cx="450" cy="120" r="92" />
+          <text className="loopdiag-num" x="450" y="98" textAnchor="middle">01</text>
+          <text className="loopdiag-title" x="450" y="126"><tspan x="450" dy="0">Record &amp;</tspan><tspan x="450" dy="20">Measure</tspan></text>
+
+          <circle className="loopdiag-circle is-hub" cx="736" cy="285" r="92" />
+          <text className="loopdiag-num is-hub" x="736" y="263" textAnchor="middle">02</text>
+          <text className="loopdiag-title" x="736" y="291"><tspan x="736" dy="0">Your Personal</tspan><tspan x="736" dy="20">Baseline</tspan></text>
+
+          <circle className="loopdiag-circle" cx="736" cy="615" r="92" />
+          <text className="loopdiag-num" x="736" y="583" textAnchor="middle">03</text>
+          <text className="loopdiag-title" x="736" y="609"><tspan x="736" dy="0">Recovery Score &amp;</tspan><tspan x="736" dy="20">Safety Check</tspan></text>
+
+          <circle className="loopdiag-circle" cx="450" cy="780" r="92" />
+          <text className="loopdiag-num" x="450" y="748" textAnchor="middle">04</text>
+          <text className="loopdiag-title" x="450" y="774"><tspan x="450" dy="0">Adaptive Daily</tspan><tspan x="450" dy="20">Routine</tspan></text>
+
+          <circle className="loopdiag-circle" cx="164" cy="615" r="92" />
+          <text className="loopdiag-num" x="164" y="583" textAnchor="middle">05</text>
+          <text className="loopdiag-title" x="164" y="609"><tspan x="164" dy="0">Live Coaching &amp;</tspan><tspan x="164" dy="20">Goal Tones</tspan></text>
+
+          <circle className="loopdiag-circle" cx="164" cy="285" r="92" />
+          <text className="loopdiag-num" x="164" y="253" textAnchor="middle">06</text>
+          <text className="loopdiag-title" x="164" y="279"><tspan x="164" dy="0">Track Growth</tspan><tspan x="164" dy="20">Over Time</tspan></text>
+        </g>
+      </svg>
+      <figcaption className="mt-3 text-center text-xs text-neutral-500">
+        The loop never stops — stage 6 feeds straight back into stage 1, so every new recording
+        refines the baseline everything else is measured against.
+      </figcaption>
+    </figure>
+  );
+}
+
 export default function HelpPage() {
   return (
     <RequireAuth>
@@ -72,6 +168,7 @@ export default function HelpPage() {
               every piece of live feedback, and every target note comes from one loop: compare
               today against your own history, then adjust. It repeats every time you practice:
             </p>
+            <AdaptiveLoopDiagram />
             <Steps
               items={[
                 <>
