@@ -25,6 +25,7 @@ function UserDetailContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [newCoachName, setNewCoachName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   function load() {
     apiFetch<AdminUserDetail>(`/api/v1/admin/users/${params.userId}`)
@@ -235,6 +236,40 @@ function UserDetailContent() {
           >
             Send password reset
           </button>
+        </div>
+
+        <div className="mt-4 border-t border-neutral-800 pt-4">
+          <p className="mb-1.5 text-xs text-neutral-500">
+            Or set a new password directly — takes effect immediately, no email required. Every
+            existing session for this account is signed out.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="New password (min 8 characters)"
+              autoComplete="off"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full max-w-xs rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500"
+            />
+            <button
+              type="button"
+              disabled={busy || newPassword.length < 8}
+              onClick={() =>
+                runAction(
+                  () =>
+                    apiFetch(`/api/v1/admin/users/${detail.id}/set-password`, {
+                      method: "POST",
+                      body: { new_password: newPassword },
+                    }),
+                  "Password updated. Every existing session was signed out."
+                ).then(() => setNewPassword(""))
+              }
+              className="shrink-0 rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Set password
+            </button>
+          </div>
         </div>
       </section>
 

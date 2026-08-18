@@ -611,3 +611,75 @@ def test_site_settings_requires_admin(client, signed_up_user) -> None:
         "/api/v1/admin/site-settings", headers=headers, json={"signups_enabled": False}
     )
     assert resp.status_code == 403
+
+
+def test_set_password_lets_the_user_log_in_with_the_new_password(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    target_user, target_headers = signed_up_coach
+    target_row = db_session.query(User).filter_by(email=target_user["email"]).one()
+
+    resp = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-password",
+        headers=admin_headers,
+        json={"new_password": "brand-new-pw-1"},
+    )
+    assert resp.status_code == 204
+
+    old_password_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": target_user["email"], "password": target_user["password"]},
+    )
+    assert old_password_login.status_code == 401
+
+    new_password_login = client.post(
+        "/api/v1/auth/login",
+        json={"email": target_user["email"], "password": "brand-new-pw-1"},
+    )
+    assert new_password_login.status_code == 200
+
+    # The account's existing refresh token (issued before the change) is revoked, same as a
+    # self-serve password reset -- the short-lived access token in target_headers is still
+    # technically valid until it expires on its own, but the session can no longer be renewed.
+    refresh = client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": target_user["refresh_token"]}
+    )
+    assert refresh.status_code == 401
+
+    action = (
+        db_session.query(AdminAuditLog)
+        .filter_by(action="set_password", target_user_id=target_row.id)
+        .one()
+    )
+    assert action.details["email"] == target_user["email"]
+    assert "brand-new-pw-1" not in str(action.details)
+
+
+def test_set_password_requires_admin(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    _user, headers = signed_up_user
+    target_user, _target_headers = signed_up_coach
+    target_row = db_session.query(User).filter_by(email=target_user["email"]).one()
+    resp = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-password",
+        headers=headers,
+        json={"new_password": "irrelevant1"},
+    )
+    assert resp.status_code == 403
+
+
+def test_set_password_rejects_too_short(client, signed_up_user, signed_up_coach, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    target_user, _target_headers = signed_up_coach
+    target_row = db_session.query(User).filter_by(email=target_user["email"]).one()
+
+    resp = client.post(
+        f"/api/v1/admin/users/{target_row.id}/set-password",
+        headers=admin_headers,
+        json={"new_password": "short"},
+    )
+    assert resp.status_code == 422

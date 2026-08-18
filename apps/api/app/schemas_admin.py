@@ -9,6 +9,10 @@ class AdminSetAdminIn(BaseModel):
     is_admin: bool
 
 
+class AdminSetPasswordIn(BaseModel):
+    new_password: str = Field(min_length=8, max_length=200)
+
+
 class AdminCreateUserIn(BaseModel):
     """Admin-authorized account creation -- bypasses the public signup lockdown (see
     AdminSiteSettingsIn / app/site_settings.py), since this is an operator deliberately

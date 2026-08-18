@@ -33,6 +33,7 @@ from app.schemas_admin import (
     AdminReportsSummaryOut,
     AdminSetAdminIn,
     AdminSetCoachIn,
+    AdminSetPasswordIn,
     AdminSiteSettingsIn,
     AdminSiteSettingsOut,
     AdminUserDetailOut,
@@ -357,6 +358,40 @@ def send_password_reset(
     log_admin_action(db, admin.id, "send_password_reset", user.id, {"email": user.email})
     db.commit()
     send_password_reset_email(user.email, raw_token)
+
+
+@router.post("/users/{user_id}/set-password", status_code=204)
+def set_password(
+    user_id: uuid.UUID,
+    payload: AdminSetPasswordIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> None:
+    """Sets a user's password directly, for when an admin needs the account usable right away
+    rather than waiting on the user to receive and act on a reset email (see
+    send_password_reset above, which stays available for the normal case). Same effect as a
+    self-serve password reset otherwise: revokes every active session so a stale token from
+    before the change can't keep working. The new password itself is never logged -- only the
+    fact that it was changed, and by whom."""
+    user = _get_target(db, user_id)
+    credential = db.scalar(select(AuthCredential).where(AuthCredential.user_id == user.id))
+    if credential is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "no_credential", "message": "This account has no password set."},
+        )
+
+    credential.password_hash = hash_password(payload.new_password)
+    active_tokens = db.scalars(
+        select(RefreshToken).where(
+            RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None)
+        )
+    ).all()
+    for t in active_tokens:
+        t.revoked_at = datetime.now(UTC)
+
+    log_admin_action(db, admin.id, "set_password", user.id, {"email": user.email})
+    db.commit()
 
 
 @router.get("/reports/summary", response_model=AdminReportsSummaryOut)

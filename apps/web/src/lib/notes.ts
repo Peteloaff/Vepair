@@ -82,9 +82,10 @@ export async function playTone(frequencyHz: number, durationMs = 2000): Promise<
   const now = ctx.currentTime;
   const fadeSeconds = 0.03;
   const durationSeconds = durationMs / 1000;
+  const peakGain = 0.45;
   gain.gain.setValueAtTime(0, now);
-  gain.gain.linearRampToValueAtTime(0.2, now + fadeSeconds);
-  gain.gain.setValueAtTime(0.2, now + Math.max(fadeSeconds, durationSeconds - fadeSeconds));
+  gain.gain.linearRampToValueAtTime(peakGain, now + fadeSeconds);
+  gain.gain.setValueAtTime(peakGain, now + Math.max(fadeSeconds, durationSeconds - fadeSeconds));
   gain.gain.linearRampToValueAtTime(0, now + durationSeconds);
 
   oscillator.start(now);
