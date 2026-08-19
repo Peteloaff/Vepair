@@ -454,7 +454,10 @@ def get_site_settings_endpoint(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ) -> AdminSiteSettingsOut:
-    return AdminSiteSettingsOut(signups_enabled=get_site_settings(db).signups_enabled)
+    settings_row = get_site_settings(db)
+    return AdminSiteSettingsOut(
+        signups_enabled=settings_row.signups_enabled, nda_required=settings_row.nda_required
+    )
 
 
 @router.post("/site-settings", response_model=AdminSiteSettingsOut)
@@ -463,19 +466,38 @@ def set_site_settings(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ) -> AdminSiteSettingsOut:
-    """The kill switch for the public signup/coach-signup forms (see app/routers/auth.py) --
-    for locking down new accounts during load testing without touching the database by hand.
-    Doesn't affect admin-created accounts (POST /users above) or logins for existing accounts."""
+    """Two independent toggles sharing one settings row: signups_enabled is the kill switch for
+    the public signup/coach-signup forms (see app/routers/auth.py) -- for locking down new
+    accounts during load testing without touching the database by hand, and doesn't affect
+    admin-created accounts (POST /users above) or logins for existing accounts. nda_required
+    controls whether NdaGate.tsx blocks the authenticated app behind the beta NDA click-through
+    -- turn it off once the beta phase ends, no redeploy required. Both values are sent on every
+    call (full replace, not a partial patch), same as the rest of this admin surface."""
     settings_row = get_site_settings(db)
+    previous = {
+        "signups_enabled": settings_row.signups_enabled,
+        "nda_required": settings_row.nda_required,
+    }
     settings_row.signups_enabled = payload.signups_enabled
+    settings_row.nda_required = payload.nda_required
     log_admin_action(
         db,
         admin.id,
-        "enable_signups" if payload.signups_enabled else "disable_signups",
+        "update_site_settings",
+        None,
+        {
+            "from": previous,
+            "to": {
+                "signups_enabled": payload.signups_enabled,
+                "nda_required": payload.nda_required,
+            },
+        },
     )
     db.commit()
     db.refresh(settings_row)
-    return AdminSiteSettingsOut(signups_enabled=settings_row.signups_enabled)
+    return AdminSiteSettingsOut(
+        signups_enabled=settings_row.signups_enabled, nda_required=settings_row.nda_required
+    )
 
 
 @router.get("/reports/query", response_model=list[AdminUserListItemOut])

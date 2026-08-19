@@ -58,6 +58,12 @@ class User(Base, TimestampMixin):
     # app/admin_auth.py's docstring and TECHNICAL_GUIDE.md for the one-time manual bootstrap.
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # Beta NDA click-through (see app/models.SiteSettings.nda_required and NdaGate.tsx). Null
+    # means never accepted -- nothing backfills this, so every pre-existing account is correctly
+    # treated as not yet having seen the current beta notice the first time NdaGate checks.
+    nda_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     profile: Mapped["UserProfile | None"] = relationship(back_populates="user", uselist=False)
 
@@ -648,14 +654,19 @@ class AdminAuditLog(Base, TimestampMixin):
 
 class SiteSettings(Base, TimestampMixin):
     """Singleton row (id is always 1, seeded by its migration) holding site-wide operational
-    toggles -- currently just signups_enabled, the admin's kill switch for the public self-serve
-    signup forms (see app/routers/auth.py's signup/coach_signup and app/site_settings.py's
-    get_site_settings, the only reader/writer). Meant for temporary lockdown during load testing,
-    not a permanent feature flag system -- one row, one column, add more only if a real second
-    toggle shows up. Admin-created accounts (POST /api/v1/admin/users) deliberately bypass this;
-    it gates the public forms only, not an operator creating a specific account on purpose."""
+    toggles -- signups_enabled (the admin's kill switch for the public self-serve signup forms)
+    and nda_required (whether NdaGate.tsx blocks every authenticated page behind the beta NDA
+    click-through -- see GET/POST /api/v1/auth/nda-status). Both read/written only through
+    app/site_settings.py's get_site_settings. Meant for temporary toggles, not a permanent
+    feature flag system -- add more only if a real additional toggle shows up. Admin-created
+    accounts (POST /api/v1/admin/users) deliberately bypass signups_enabled; it gates the public
+    forms only, not an operator creating a specific account on purpose."""
 
     __tablename__ = "site_settings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     signups_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # Default true: the beta NDA gate is meant to be live for every user from the moment this
+    # ships, not opt-in -- an admin turns it off (via POST /api/v1/admin/site-settings) once the
+    # beta phase ends, no redeploy required.
+    nda_required: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")

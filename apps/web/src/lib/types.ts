@@ -514,4 +514,10 @@ export interface AdminReportsSummary {
 
 export interface AdminSiteSettings {
   signups_enabled: boolean;
+  nda_required: boolean;
+}
+
+export interface NdaStatus {
+  required: boolean;
+  accepted_at: string | null;
 }

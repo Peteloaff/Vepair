@@ -20,16 +20,16 @@ function SiteSettingsPanel() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Something went wrong."));
   }, [apiFetch]);
 
-  async function toggle() {
+  async function update(next: Partial<AdminSiteSettings>) {
     if (!settings) return;
     setBusy(true);
     setError(null);
     try {
-      const next = await apiFetch<AdminSiteSettings>("/api/v1/admin/site-settings", {
+      const updated = await apiFetch<AdminSiteSettings>("/api/v1/admin/site-settings", {
         method: "POST",
-        body: { signups_enabled: !settings.signups_enabled },
+        body: { ...settings, ...next },
       });
-      setSettings(next);
+      setSettings(updated);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -40,37 +40,71 @@ function SiteSettingsPanel() {
   if (!settings) return null;
 
   return (
-    <section
-      className={`mb-8 flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
-        settings.signups_enabled
-          ? "border-neutral-800 bg-neutral-900/40"
-          : "border-red-900 bg-red-950/40"
-      }`}
-    >
-      <div>
-        <p className="font-medium">
-          New signups are {settings.signups_enabled ? "open" : "locked down"}
-        </p>
-        <p className="text-xs text-neutral-400">
-          {settings.signups_enabled
-            ? "Anyone can create an account from the public signup pages."
-            : "The public signup and coach-signup pages are rejecting new accounts. Admin-created accounts still work."}
-        </p>
-        {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
-      </div>
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={busy}
-        className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+    <div className="mb-8 space-y-3">
+      <section
+        className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
           settings.signups_enabled
-            ? "border-red-800 text-red-300 hover:bg-red-950/60"
-            : "border-emerald-700 text-emerald-300 hover:bg-emerald-950/60"
+            ? "border-neutral-800 bg-neutral-900/40"
+            : "border-red-900 bg-red-950/40"
         }`}
       >
-        {busy ? "..." : settings.signups_enabled ? "Lock down signups" : "Re-open signups"}
-      </button>
-    </section>
+        <div>
+          <p className="font-medium">
+            New signups are {settings.signups_enabled ? "open" : "locked down"}
+          </p>
+          <p className="text-xs text-neutral-400">
+            {settings.signups_enabled
+              ? "Anyone can create an account from the public signup pages."
+              : "The public signup and coach-signup pages are rejecting new accounts. Admin-created accounts still work."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => update({ signups_enabled: !settings.signups_enabled })}
+          disabled={busy}
+          className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+            settings.signups_enabled
+              ? "border-red-800 text-red-300 hover:bg-red-950/60"
+              : "border-emerald-700 text-emerald-300 hover:bg-emerald-950/60"
+          }`}
+        >
+          {busy ? "..." : settings.signups_enabled ? "Lock down signups" : "Re-open signups"}
+        </button>
+      </section>
+
+      <section
+        className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
+          settings.nda_required
+            ? "border-amber-900 bg-amber-950/20"
+            : "border-neutral-800 bg-neutral-900/40"
+        }`}
+      >
+        <div>
+          <p className="font-medium">
+            Beta NDA is {settings.nda_required ? "required" : "not required"} on login
+          </p>
+          <p className="text-xs text-neutral-400">
+            {settings.nda_required
+              ? "Every user has to accept the beta NDA before they can use the app. Turn this off once the beta phase ends."
+              : "The NDA pop-up is off — users go straight into the app after logging in."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => update({ nda_required: !settings.nda_required })}
+          disabled={busy}
+          className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+            settings.nda_required
+              ? "border-amber-700 text-amber-300 hover:bg-amber-950/60"
+              : "border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+          }`}
+        >
+          {busy ? "..." : settings.nda_required ? "Turn off NDA gate" : "Turn on NDA gate"}
+        </button>
+      </section>
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
   );
 }
 

@@ -34,10 +34,12 @@ class AdminCreateUserIn(BaseModel):
 
 class AdminSiteSettingsOut(BaseModel):
     signups_enabled: bool
+    nda_required: bool
 
 
 class AdminSiteSettingsIn(BaseModel):
     signups_enabled: bool
+    nda_required: bool
 
 
 class AdminSetCoachIn(BaseModel):

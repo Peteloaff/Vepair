@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { TopNav } from "@/components/TopNav";
+import { NdaGate } from "@/components/NdaGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,7 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-neutral-950 text-neutral-100">
         <AuthProvider>
           <TopNav />
-          {children}
+          <NdaGate>{children}</NdaGate>
           <footer className="border-t border-neutral-800 px-6 py-4 text-center text-xs text-neutral-600">
             <Link href="/terms" className="hover:text-neutral-400">
               Terms of Service

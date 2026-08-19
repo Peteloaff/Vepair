@@ -67,3 +67,12 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: UserOut
+
+
+class NdaStatusOut(BaseModel):
+    """required reflects the site-wide SiteSettings.nda_required toggle; accepted_at is this
+    specific user's own acceptance timestamp (or null). NdaGate.tsx blocks the whole
+    authenticated app whenever required is true and accepted_at is null."""
+
+    required: bool
+    accepted_at: datetime | None

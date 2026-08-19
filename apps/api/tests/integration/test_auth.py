@@ -248,3 +248,33 @@ def test_delete_account_wipes_recording_storage(client, signed_up_user, db_sessi
     )
     assert resp.status_code == 204
     assert not storage.exists(file_path)
+
+
+def test_nda_status_defaults_to_required_and_unaccepted(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    resp = client.get("/api/v1/auth/nda-status", headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["required"] is True
+    assert body["accepted_at"] is None
+
+
+def test_accept_nda_persists_and_is_reflected_in_status(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+
+    accept = client.post("/api/v1/auth/accept-nda", headers=headers)
+    assert accept.status_code == 200
+    assert accept.json()["accepted_at"] is not None
+
+    status = client.get("/api/v1/auth/nda-status", headers=headers)
+    assert status.status_code == 200
+    assert status.json()["accepted_at"] is not None
+
+    # Accepting again (e.g. a stray double-click) is idempotent, not an error.
+    accept_again = client.post("/api/v1/auth/accept-nda", headers=headers)
+    assert accept_again.status_code == 200
+
+
+def test_nda_status_requires_auth(client) -> None:
+    assert client.get("/api/v1/auth/nda-status").status_code == 401
+    assert client.post("/api/v1/auth/accept-nda").status_code == 401

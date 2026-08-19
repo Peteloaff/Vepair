@@ -535,6 +535,7 @@ def test_site_settings_default_to_signups_enabled(client, signed_up_user, db_ses
     resp = client.get("/api/v1/admin/site-settings", headers=admin_headers)
     assert resp.status_code == 200
     assert resp.json()["signups_enabled"] is True
+    assert resp.json()["nda_required"] is True
 
 
 def test_disabling_signups_blocks_public_signup_but_not_admin_create(
@@ -546,7 +547,7 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
     toggle = client.post(
         "/api/v1/admin/site-settings",
         headers=admin_headers,
-        json={"signups_enabled": False},
+        json={"signups_enabled": False, "nda_required": True},
     )
     assert toggle.status_code == 200
     assert toggle.json()["signups_enabled"] is False
@@ -583,15 +584,16 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
     assert still_works.status_code == 201
 
     action = (
-        db_session.query(AdminAuditLog).filter_by(action="disable_signups").first()
+        db_session.query(AdminAuditLog).filter_by(action="update_site_settings").first()
     )
     assert action is not None
+    assert action.details["to"]["signups_enabled"] is False
 
     # Re-enabling restores public signup.
     reenable = client.post(
         "/api/v1/admin/site-settings",
         headers=admin_headers,
-        json={"signups_enabled": True},
+        json={"signups_enabled": True, "nda_required": True},
     )
     assert reenable.status_code == 200
     unblocked = client.post(
@@ -608,7 +610,9 @@ def test_site_settings_requires_admin(client, signed_up_user) -> None:
     _user, headers = signed_up_user
     assert client.get("/api/v1/admin/site-settings", headers=headers).status_code == 403
     resp = client.post(
-        "/api/v1/admin/site-settings", headers=headers, json={"signups_enabled": False}
+        "/api/v1/admin/site-settings",
+        headers=headers,
+        json={"signups_enabled": False, "nda_required": True},
     )
     assert resp.status_code == 403
 
@@ -671,7 +675,9 @@ def test_set_password_requires_admin(
     assert resp.status_code == 403
 
 
-def test_set_password_rejects_too_short(client, signed_up_user, signed_up_coach, db_session) -> None:
+def test_set_password_rejects_too_short(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
     admin_user, admin_headers = signed_up_user
     _make_admin(db_session, admin_headers, admin_user["email"])
     target_user, _target_headers = signed_up_coach
@@ -683,3 +689,27 @@ def test_set_password_rejects_too_short(client, signed_up_user, signed_up_coach,
         json={"new_password": "short"},
     )
     assert resp.status_code == 422
+
+
+def test_admin_can_turn_off_nda_requirement(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    still_on = client.get("/api/v1/auth/nda-status", headers=admin_headers)
+    assert still_on.json()["required"] is True
+
+    toggle = client.post(
+        "/api/v1/admin/site-settings",
+        headers=admin_headers,
+        json={"signups_enabled": True, "nda_required": False},
+    )
+    assert toggle.status_code == 200
+    assert toggle.json()["nda_required"] is False
+
+    turned_off = client.get("/api/v1/auth/nda-status", headers=admin_headers)
+    assert turned_off.json()["required"] is False
+
+    action = (
+        db_session.query(AdminAuditLog).filter_by(action="update_site_settings").first()
+    )
+    assert action.details["to"]["nda_required"] is False

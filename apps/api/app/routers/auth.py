@@ -22,6 +22,7 @@ from app.schemas_auth import (
     CoachSignupRequest,
     LoginRequest,
     LogoutRequest,
+    NdaStatusOut,
     PasswordResetConfirmSchema,
     PasswordResetRequestSchema,
     RefreshRequest,
@@ -247,6 +248,34 @@ def confirm_password_reset(
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.get("/nda-status", response_model=NdaStatusOut)
+def nda_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> NdaStatusOut:
+    """Checked by NdaGate.tsx on every authenticated page load -- required is the site-wide
+    toggle (see app/site_settings.py), accepted_at is this user's own click-through, so the
+    frontend can tell "nobody needs to accept right now" apart from "I already did."""
+    return NdaStatusOut(
+        required=get_site_settings(db).nda_required,
+        accepted_at=current_user.nda_accepted_at,
+    )
+
+
+@router.post("/accept-nda", response_model=NdaStatusOut)
+def accept_nda(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> NdaStatusOut:
+    current_user.nda_accepted_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(current_user)
+    return NdaStatusOut(
+        required=get_site_settings(db).nda_required,
+        accepted_at=current_user.nda_accepted_at,
+    )
 
 
 @router.delete("/me", status_code=204)
