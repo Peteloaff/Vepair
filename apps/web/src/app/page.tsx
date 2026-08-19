@@ -508,7 +508,9 @@ function LandingChooser() {
 
 export default function Home() {
   const { status, apiFetch } = useAuth();
-  const [coachCheck, setCoachCheck] = useState<"pending" | "coach" | "singer">("pending");
+  const [coachCheck, setCoachCheck] = useState<
+    "pending" | "coach" | "coach-inactive" | "singer"
+  >("pending");
   // Only meaningful once coachCheck === "coach" -- an admin can now attach a CoachProfile to
   // an existing singer account (POST /api/v1/admin/users/{id}/set-coach), so "has a
   // CoachProfile" no longer implies "has no singer data." null = not checked yet.
@@ -521,7 +523,16 @@ export default function Home() {
     // than being bounced away from it.
     apiFetch("/api/v1/coach/profile")
       .then(() => setCoachCheck("coach"))
-      .catch(() => setCoachCheck("singer"));
+      .catch((err) => {
+        // Post-Stage-12 Part 2: a real coach account whose Organization isn't coach_pro-active
+        // yet 403s with "coach_pro_required" (see app.coach_auth.get_current_coach), not the
+        // generic "not a coach" case -- that account has no singer data either, so it needs its
+        // own pending-activation message rather than silently falling through to the singer
+        // dashboard as if it were an ordinary singer account.
+        setCoachCheck(
+          err instanceof ApiError && err.code === "coach_pro_required" ? "coach-inactive" : "singer"
+        );
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
@@ -552,6 +563,22 @@ export default function Home() {
 
   if (status === "unauthenticated") {
     return <LandingChooser />;
+  }
+
+  if (coachCheck === "coach-inactive") {
+    return (
+      <main className="flex flex-1 items-center justify-center px-6">
+        <div className="max-w-sm text-center">
+          <h1 className="mb-2 text-lg font-semibold text-neutral-100">
+            Your account is pending activation
+          </h1>
+          <p className="text-sm text-neutral-400">
+            Your coach account has been created, but isn&apos;t active yet. Contact us to get
+            started.
+          </p>
+        </div>
+      </main>
+    );
   }
 
   const isPureCoachView = coachCheck === "coach" && hasSingerProfile === false;

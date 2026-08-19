@@ -583,8 +583,15 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
     )
     assert still_works.status_code == 201
 
+    # .order_by(created_at.desc()) -- action-only filters here aren't scoped to a specific
+    # target_user_id (this action logs with target_user_id=None), so an unordered .first() can
+    # return a stray row from unrelated manual testing against the same dev database rather than
+    # the row this test just created. The most recent matching row is always this test's own.
     action = (
-        db_session.query(AdminAuditLog).filter_by(action="update_site_settings").first()
+        db_session.query(AdminAuditLog)
+        .filter_by(action="update_site_settings")
+        .order_by(AdminAuditLog.created_at.desc())
+        .first()
     )
     assert action is not None
     assert action.details["to"]["signups_enabled"] is False
@@ -710,6 +717,157 @@ def test_admin_can_turn_off_nda_requirement(client, signed_up_user, db_session) 
     assert turned_off.json()["required"] is False
 
     action = (
-        db_session.query(AdminAuditLog).filter_by(action="update_site_settings").first()
+        db_session.query(AdminAuditLog)
+        .filter_by(action="update_site_settings")
+        .order_by(AdminAuditLog.created_at.desc())
+        .first()
     )
     assert action.details["to"]["nda_required"] is False
+
+
+def test_new_coach_organization_starts_inactive(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    """signed_up_coach activates coach_pro as part of the fixture (see tests/conftest.py) --
+    this test instead signs up a coach directly to see the real, unactivated default."""
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    signup = client.post(
+        "/api/v1/auth/coach-signup",
+        json={
+            "email": f"org_default_{uuid.uuid4().hex[:12]}@example.com",
+            "password": "hunter22!",
+            "display_name": "Fresh Coach",
+            "studio_name": "Fresh Studio",
+        },
+    )
+    assert signup.status_code == 201, signup.text
+    coach_row = (
+        db_session.query(CoachProfile).filter_by(user_id=signup.json()["user"]["id"]).one()
+    )
+
+    orgs = client.get(
+        "/api/v1/admin/organizations", headers=admin_headers, params={"query": "Fresh"}
+    )
+    assert orgs.status_code == 200
+    matches = [o for o in orgs.json() if o["id"] == str(coach_row.organization_id)]
+    assert len(matches) == 1
+    org = matches[0]
+    assert org["name"] == "Fresh Studio"
+    assert org["is_coach_pro_active"] is False
+    assert org["invite_quota_included"] == 50
+    assert org["invites_used_this_period"] == 0
+
+
+def test_admin_can_activate_and_deactivate_coach_pro(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    signup = client.post(
+        "/api/v1/auth/coach-signup",
+        json={
+            "email": f"org_activate_{uuid.uuid4().hex[:12]}@example.com",
+            "password": "hunter22!",
+            "display_name": "Pending Coach",
+        },
+    )
+    coach_headers = {"Authorization": f"Bearer {signup.json()['access_token']}"}
+    coach_row = (
+        db_session.query(CoachProfile).filter_by(user_id=signup.json()["user"]["id"]).one()
+    )
+    org_id = coach_row.organization_id
+
+    blocked = client.get("/api/v1/coach/profile", headers=coach_headers)
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "coach_pro_required"
+
+    activate = client.post(
+        f"/api/v1/admin/organizations/{org_id}/set-coach-pro",
+        headers=admin_headers,
+        json={"is_coach_pro_active": True},
+    )
+    assert activate.status_code == 200, activate.text
+    assert activate.json()["is_coach_pro_active"] is True
+    assert activate.json()["coach_pro_period_end"] is not None
+
+    now_works = client.get("/api/v1/coach/profile", headers=coach_headers)
+    assert now_works.status_code == 200
+
+    action = (
+        db_session.query(AdminAuditLog)
+        .filter_by(action="set_coach_pro")
+        .order_by(AdminAuditLog.created_at.desc())
+        .first()
+    )
+    assert action is not None
+    assert action.details["organization_id"] == str(org_id)
+
+    deactivate = client.post(
+        f"/api/v1/admin/organizations/{org_id}/set-coach-pro",
+        headers=admin_headers,
+        json={"is_coach_pro_active": False},
+    )
+    assert deactivate.status_code == 200
+    assert deactivate.json()["is_coach_pro_active"] is False
+
+    blocked_again = client.get("/api/v1/coach/profile", headers=coach_headers)
+    assert blocked_again.status_code == 403
+    assert blocked_again.json()["error"]["code"] == "coach_pro_required"
+
+
+def test_invite_quota_excludes_declined_and_revoked_invites(
+    client, signed_up_coach, signed_up_user, db_session
+) -> None:
+    admin_email = f"admin_quota_{uuid.uuid4().hex[:12]}@example.com"
+    admin_signup = client.post(
+        "/api/v1/auth/signup", json={"email": admin_email, "password": "hunter22!"}
+    )
+    admin_headers = {"Authorization": f"Bearer {admin_signup.json()['access_token']}"}
+    _make_admin(db_session, admin_headers, admin_email)
+
+    coach, coach_headers = signed_up_coach
+    coach_row = db_session.query(CoachProfile).filter_by(user_id=coach["user"]["id"]).one()
+
+    _singer1, singer1_headers = signed_up_user
+    invite1 = client.post(
+        "/api/v1/coach/invites", headers=coach_headers, json={"singer_email": _singer1["email"]}
+    )
+    assert invite1.status_code == 201, invite1.text
+    decline = client.post(
+        f"/api/v1/invites/{invite1.json()['id']}/decline", headers=singer1_headers
+    )
+    assert decline.status_code == 204, decline.text
+
+    detail = client.get(
+        f"/api/v1/admin/organizations/{coach_row.organization_id}", headers=admin_headers
+    )
+    assert detail.status_code == 200
+    assert detail.json()["invites_used_this_period"] == 0
+
+
+def test_organization_endpoints_require_admin(client, signed_up_coach) -> None:
+    _coach, coach_headers = signed_up_coach
+    assert client.get("/api/v1/admin/organizations", headers=coach_headers).status_code == 403
+    assert (
+        client.post(
+            f"/api/v1/admin/organizations/{uuid.uuid4()}/set-coach-pro",
+            headers=coach_headers,
+            json={"is_coach_pro_active": True},
+        ).status_code
+        == 403
+    )
+
+
+def test_set_coach_pro_404s_for_unknown_organization(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+
+    resp = client.post(
+        f"/api/v1/admin/organizations/{uuid.uuid4()}/set-coach-pro",
+        headers=admin_headers,
+        json={"is_coach_pro_active": True},
+    )
+    assert resp.status_code == 404

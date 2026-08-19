@@ -144,49 +144,151 @@ each is a real feature with its own scope, not a checkbox to add to v1's list.
 Same non-negotiables as the rest of Stage 12 apply here: no clinical/diagnostic data exposure,
 audit-logged access, never a shortcut around the consent model.
 
-### Subscription tiers / paywall (confirmed coming, details not yet decided)
+### Subscription tiers / paywall (pricing decided 2026-08-19, not yet built)
 
 **Founder confirmed directly (2026-08-13): a paid tier is coming for the consumer app, not just
-for VepAIr Coach.** Until now, every monetization plan on this roadmap was B2B — VepAIr Coach's
+for VepAIr Coach.** Until then, every monetization plan on this roadmap was B2B — VepAIr Coach's
 own Phase III–V pricing above is coaches/studios paying for the coach portal. This is a
-**second, separate axis**: individual accounts (both singers and coaches) will have Free vs.
-Pro tiers on the consumer/coach-pilot product itself. Three named tiers so far: **Free**,
-**User Pro** (paid singer tier), **Coach Pro** (paid coach tier) — the founder was explicit that
-feature boundaries, pricing, and whether a free Coach tier exists at all are **not decided yet**.
-Nothing below should be read as locking in those decisions; it's scoped so the architecture
-doesn't accidentally make them harder to make later.
+**second, separate axis**: individual accounts (both singers and coaches) get Free vs. Pro tiers
+on the consumer/coach-pilot product itself. As of 2026-08-19 the founder made the feature-boundary
+and business-model calls below; nothing has been built yet — no schema, no billing integration,
+no gating code — this section still documents scope, not shipped work, per the standing rule that
+nothing gets built until real pricing decisions exist. What changed is that those decisions now
+exist and are recorded here so they aren't re-derived or re-litigated later.
 
-**What's worth building structurally now vs. waiting entirely:** nothing — no schema, no billing
-integration, no gating code should be built until real pricing decisions exist, same as every
-other "confirmed coming, not yet specified" item on this roadmap. This subsection exists so that
-when those decisions land, the shape of the work is already understood rather than re-derived,
-and so that nothing built in the meantime (the Coach Pilot's schema in particular) has to be
-reworked to make room for it.
+**Decided:**
 
-**Shape of the eventual work, for when it's scoped for real:**
+- **Three tiers**: **Free**, **User Pro** (paid singer tier), **Coach Pro** (paid coach tier).
+- **Feature boundary**: Free covers tracking — check-ins, recordings, and history stay available
+  with no card on file, forever. User Pro is required for the "AI coaching" surface: live
+  coaching feedback during exercises, the adaptive daily routine, Goal Tones, and Recovery Score
+  insights. (Exact endpoint-by-endpoint gating list still needs to be drawn up when this is
+  actually built — this is the boundary, not yet the implementation checklist.)
+- **No free Coach tier.** `coach_pro` is required from signup to use any coach feature at all —
+  inviting a singer, viewing a dashboard, everything. There is no capped free-coach state to
+  design around.
+- **Billing cadence**: both monthly and annual, with an annual discount. Two Stripe price points
+  per paid tier, not one.
+- **Trial**: a 7-day free trial of the paid tier, one-time per account (not repeatable by
+  clearing/re-subscribing on the same account). No card-required gate before the trial starts is
+  assumed unless payment-provider constraints force one when this is actually built. A trial that
+  ends without conversion drops the account to Free (tracking-only), not to zero access.
+- **Lapsed `CoachAccess` on a lapsed coach subscription**: access pauses immediately. The coach
+  loses the ability to view singer data or send new notes the moment `coach_pro` lapses; existing
+  `CoachNote` rows and the connection itself aren't deleted, just inaccessible to the coach until
+  they resubscribe. A singer's own data is never affected by their coach's subscription state.
+- **Downgrade/cancellation timing**: takes effect at the end of the current billing period, not
+  immediately — standard Stripe pattern. The account keeps paid-tier access through whatever
+  they already paid for, then reverts to Free (or loses coach access entirely, for a lapsed
+  `coach_pro`) at `current_period_end`.
+
+**Shape of the eventual work, for when building actually starts:**
 
 - **A tier/entitlement record, not a flag**: one row per account (singer or coach) with a tier,
-  status, and renewal date — its own table (e.g. `Subscription`), not a column bolted onto
-  `UserProfile`/`CoachProfile`. A growing ledger of tier *changes* (matching `ConsentRecord`'s
-  append-only pattern) is worth considering too, since "when did this account upgrade/downgrade"
-  is exactly the kind of question that comes up later and is expensive to reconstruct after the
-  fact if only current state was ever stored.
+  status, and renewal date — its own table (`Subscription`), not a column bolted onto
+  `UserProfile`/`CoachProfile`. An append-only `SubscriptionEvent` ledger (matching
+  `ConsentRecord`'s pattern) for upgrade/downgrade/cancel/renew, since "when did this account's
+  tier change and why" is exactly the kind of question that's expensive to reconstruct later if
+  only current state was ever stored.
 - **One enforcement seam, reused everywhere a feature needs gating** — the same shape as
-  `app/coach_auth.py`'s `require_coach_access`: a single dependency every tier-gated endpoint
-  calls, so whichever features end up Free vs. Pro, the mechanism enforcing that boundary is
-  already correct and tested before the business decision is even finalized.
-- **A payment provider integration point.** Not chosen yet; Stripe is the default assumption
-  worth validating when this is actually scoped (subscriptions, webhooks, and a customer portal
-  for self-serve plan changes are all standard Stripe primitives that would otherwise be
-  reinvented). Webhook handling needs to keep the `Subscription` table in sync with the
-  provider's own source of truth for renewal/cancellation/payment-failure events — never trust
-  client-reported subscription state for gating.
-- **Open questions, founder's call, not decided here** (mirroring how Stage 12's own coach-pilot
-  plan flagged its open questions rather than guessing): exact Free vs. User Pro feature
-  boundary; whether Coach accounts have a Free tier or Coach Pro is the only option; monthly vs.
-  annual and proration; trial periods; what happens to an active coach-singer connection
-  (`CoachAccess`) if the coach's subscription lapses — does access pause, or does the singer keep
-  what they had; whether a downgrade is immediate or takes effect at the end of a billing period.
+  `app/coach_auth.py`'s `require_coach_access`: `app/subscription_auth.py`'s `require_tier(min_tier)`,
+  a single dependency every tier-gated endpoint calls.
+- **Stripe as the payment provider** (subscriptions, webhooks, and a hosted customer portal for
+  self-serve plan changes/cancellation, rather than building that UI from scratch). A
+  `POST /api/v1/billing/webhook` keeps `Subscription` in sync with Stripe's own event stream
+  (`checkout.session.completed`, `customer.subscription.updated/deleted`,
+  `invoice.payment_failed`) — the webhook is the source of truth; client-reported subscription
+  state is never trusted for gating.
+- **Still open when this is actually scoped for real**: exact endpoint-by-endpoint gating list
+  for what counts as "AI coaching" (live coaching, adaptive routine, Goal Tones, Recovery Score —
+  confirm each surfaces individually or as one bundled unlock); exact User Pro / Coach Pro price
+  points; whether the 7-day trial requires a card up front or not, which depends on what Stripe's
+  trial primitives make easiest.
+
+### Coach organizations & invite quota (decided 2026-08-19, not yet built)
+
+A second piece of the coach monetization model, decided alongside the subscription tiers above.
+Not built yet — same rule as everything else in this section.
+
+**Decided:**
+
+- **A new `Organization` entity, one per coach, always.** Not a multi-coach tenant (no org with
+  several coach logins under it, no owner/member roles to design) — it formalizes what
+  `CoachProfile.studio_name` is today (a free-text label) into a real record with its own id,
+  billing fields, and invite pool. `CoachProfile` gets a foreign key to it. The 1:1 constraint is
+  deliberate for now, not an oversight — if a real multi-coach studio need shows up later, the
+  entity already exists to loosen that constraint against, rather than retrofitting a tenant
+  concept onto `CoachProfile` after the fact.
+- **The 50-invite quota lives on `Organization`, not on `CoachProfile` directly** — same
+  forward-compatibility reasoning: even though it's always exactly one coach's pool today,
+  metering against the org record rather than the user record means nothing has to move later.
+- **Every `Organization` gets 50 coach-invites (`CoachInvite` rows) included per year of the
+  `coach_pro` subscription** — an annual allowance, not a lifetime one-time grant and not a
+  monthly reset. The pay-per-invite model stacks with `coach_pro`, it doesn't replace it: a coach
+  still needs an active subscription to use coach features at all, and the invite quota is a
+  second, independent dimension on top.
+- **A declined or revoked `CoachInvite` frees its unit back up** — the org's remaining quota for
+  the year goes back up by one, it isn't permanently consumed just because an invite didn't lead
+  to a connection.
+- **Resending an invite to the same email does not consume a second unit.**
+- **Going over 50 in a given year bills automatically, per invite, as a line item on the coach's
+  next invoice** — there's no separate "buy a block of additional licenses" purchase path;
+  "license" and "invite" are the same unit, and exceeding the included 50 is metered overage, not
+  a manual top-up a coach has to remember to buy. Exact per-invite overage price not yet set —
+  same "confirmed coming, not yet specified" status as the base tier prices above.
+
+**Still open, worth nailing down before this is built:** the exact per-invite overage price
+(pure pricing decision, same status as the base tier prices above).
+
+**Resolved (2026-08-19), superseding the Stripe-modeling concern this section originally raised**:
+overage doesn't get billed through Stripe's metered/usage-based billing at all — see "QuickBooks
+Online monthly invoicing sync" immediately below. Stripe's job (once it exists) is limited to
+collecting the recurring `coach_pro`/`user_pro` subscription charge itself; the variable
+per-organization invite/license overage is computed by VepAIr and handed to QuickBooks as a
+draft invoice, not metered inside Stripe. This sidesteps the annual-allowance-vs-monthly-overage
+billing-interval mismatch entirely, rather than solving it inside Stripe.
+
+### QuickBooks Online monthly invoicing sync (decided 2026-08-19, not yet built)
+
+**Founder's call: invoicing for the license/invite overage isn't automated through Stripe at
+all — VepAIr computes the numbers, QuickBooks Online is where the actual invoice gets created
+and sent.** Not built yet, same rule as everything else in this section.
+
+**Decided:**
+
+- **QuickBooks Online**, not QuickBooks Desktop — QBO has a real REST API (Intuit Developer
+  platform, OAuth2), so a scheduled backend job can call it directly. Desktop has no equivalent;
+  it would need Intuit's older Web Connector running as an agent on a machine with QuickBooks
+  Desktop installed, a materially different and more fragile architecture. Ruled out.
+- **A monthly scheduled job, once per organization**, computes that org's current license count
+  and creates a **draft Invoice in QuickBooks Online** — not sent automatically. The founder
+  reviews it in QuickBooks and sends it themselves. VepAIr is the data source, QuickBooks is the
+  invoicing system of record; nothing about actually collecting payment or emailing an invoice to
+  a coach happens inside VepAIr for this piece.
+- The line item(s) on that draft invoice reflect **new/removed licenses for the period** — i.e.
+  the invite-quota accounting already decided above (revoked invites free their unit, resends
+  don't cost a unit), rolled up into whatever net count changed since the last sync.
+
+**Still open, worth nailing down before this is built:**
+
+- **How an `Organization` maps to a QuickBooks Customer.** QBO invoices are created against a
+  `Customer` object on Intuit's side — does VepAIr auto-create a matching QBO Customer the first
+  time an organization needs a draft invoice, or does the founder manually match/link each
+  `Organization` to an existing QBO Customer record once, with VepAIr storing that mapping
+  (e.g. `Organization.quickbooks_customer_id`)?
+- **Whether this draft invoice covers only the overage/license line items, or also restates the
+  base `coach_pro` subscription fee as its own line.** If the base subscription fee is still
+  meant to be charged automatically via Stripe (as scoped earlier in this document), the
+  QuickBooks draft invoice should probably show *only* the variable license overage, to avoid
+  double-billing the base fee through two different systems. Worth confirming explicitly rather
+  than assumed, since "we can do the invoicing ourselves" could also mean the founder wants *all*
+  coach billing — base fee included — to move through QuickBooks instead of Stripe's automated
+  recurring charge. That's a bigger scope difference (it would mean `coach_pro` isn't
+  Stripe-auto-billed at all) and hasn't been explicitly confirmed either way yet.
+- The OAuth connection itself: QuickBooks Online API access requires the founder to
+  authorize VepAIr's backend against their specific QBO company file once (standard OAuth2
+  consent flow) — a one-time manual setup step, not something to design further until this is
+  actually built.
 
 ### Deployment milestone (between Stage 11 and Stage 12)
 

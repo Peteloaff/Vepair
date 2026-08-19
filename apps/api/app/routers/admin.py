@@ -21,6 +21,7 @@ from app.models import (
     AuthCredential,
     CoachProfile,
     DailyCheckIn,
+    Organization,
     PasswordResetToken,
     Recording,
     RefreshToken,
@@ -28,11 +29,14 @@ from app.models import (
     UserProfile,
     VoiceSession,
 )
+from app.organizations import invites_used_this_period
 from app.schemas_admin import (
     AdminCreateUserIn,
+    AdminOrganizationOut,
     AdminReportsSummaryOut,
     AdminSetAdminIn,
     AdminSetCoachIn,
+    AdminSetCoachProIn,
     AdminSetPasswordIn,
     AdminSiteSettingsIn,
     AdminSiteSettingsOut,
@@ -142,11 +146,14 @@ def create_user(
 
     db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
     if payload.account_type == "coach":
+        organization = Organization(name=payload.studio_name)
+        db.add(organization)
+        db.flush()
         db.add(
             CoachProfile(
                 user_id=user.id,
                 display_name=payload.display_name,
-                studio_name=payload.studio_name,
+                organization_id=organization.id,
             )
         )
     log_admin_action(
@@ -322,7 +329,16 @@ def set_coach(
                         "message": "A display name is required to make this account a coach.",
                     },
                 )
-            db.add(CoachProfile(user_id=user.id, display_name=payload.display_name))
+            organization = Organization()
+            db.add(organization)
+            db.flush()
+            db.add(
+                CoachProfile(
+                    user_id=user.id,
+                    display_name=payload.display_name,
+                    organization_id=organization.id,
+                )
+            )
         elif payload.display_name:
             existing.display_name = payload.display_name
         log_admin_action(db, admin.id, "grant_coach", user.id, {"email": user.email})
@@ -333,6 +349,112 @@ def set_coach(
 
     db.commit()
     return _to_list_item(db, user)
+
+
+def _organization_not_found() -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail={"code": "organization_not_found", "message": "No such organization."},
+    )
+
+
+def _organization_to_out(db: Session, organization: Organization) -> AdminOrganizationOut:
+    coach = db.scalar(
+        select(CoachProfile).where(CoachProfile.organization_id == organization.id)
+    )
+    coach_user = db.get(User, coach.user_id) if coach else None
+    return AdminOrganizationOut(
+        id=organization.id,
+        name=organization.name,
+        coach_email=coach_user.email if coach_user else "",
+        coach_display_name=coach.display_name if coach else "",
+        is_coach_pro_active=organization.is_coach_pro_active,
+        coach_pro_period_start=organization.coach_pro_period_start,
+        coach_pro_period_end=organization.coach_pro_period_end,
+        invite_quota_included=organization.invite_quota_included,
+        invites_used_this_period=invites_used_this_period(db, organization),
+    )
+
+
+@router.get("/organizations", response_model=list[AdminOrganizationOut])
+def search_organizations(
+    query: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> list[AdminOrganizationOut]:
+    """Search by org name or coach email/display name -- mirrors search_users's shape. One coach
+    per organization today (see Organization's docstring), so the join is always 1:1."""
+    stmt = (
+        select(Organization)
+        .join(CoachProfile, CoachProfile.organization_id == Organization.id)
+        .join(User, User.id == CoachProfile.user_id)
+        .order_by(Organization.created_at.desc())
+        .limit(100)
+    )
+    if query:
+        stmt = stmt.where(
+            (Organization.name.ilike(f"%{query}%"))
+            | (User.email.ilike(f"%{query}%"))
+            | (CoachProfile.display_name.ilike(f"%{query}%"))
+        )
+    orgs = db.scalars(stmt).all()
+    return [_organization_to_out(db, o) for o in orgs]
+
+
+@router.get("/organizations/{organization_id}", response_model=AdminOrganizationOut)
+def get_organization_detail(
+    organization_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminOrganizationOut:
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    return _organization_to_out(db, organization)
+
+
+@router.post("/organizations/{organization_id}/set-coach-pro", response_model=AdminOrganizationOut)
+def set_coach_pro(
+    organization_id: uuid.UUID,
+    payload: AdminSetCoachProIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminOrganizationOut:
+    """The manual entitlement-activation action every coach account needs, since coach billing
+    goes entirely through QuickBooks (see ROADMAP.md's "QuickBooks Online monthly invoicing
+    sync") -- no payment processor reports back into VepAIr automatically, so an admin flips
+    this once payment is confirmed outside the app. Same audit-logged shape as
+    set_admin/set_coach above. Activating sets a fresh coach_pro_period_start/end (also resets
+    the invite quota window, since invites_used_this_period only counts from period_start
+    forward); deactivating clears the period end but leaves period_start alone, so past usage
+    stays attributable to the period it happened in."""
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+
+    organization.is_coach_pro_active = payload.is_coach_pro_active
+    if payload.is_coach_pro_active:
+        organization.coach_pro_period_start = datetime.now(UTC)
+        # 30-day months, not calendar months -- no dateutil dependency yet for exact month
+        # arithmetic. Fine for v1 (the period only gates invite-quota windowing and the
+        # QuickBooks sync's period boundaries, both tolerant of a few days' slack); revisit if
+        # exact calendar-month billing periods turn out to matter.
+        organization.coach_pro_period_end = datetime.now(UTC) + timedelta(
+            days=30 * payload.period_months
+        )
+    else:
+        organization.coach_pro_period_end = datetime.now(UTC)
+
+    log_admin_action(
+        db,
+        admin.id,
+        "set_coach_pro" if payload.is_coach_pro_active else "revoke_coach_pro",
+        None,
+        {"organization_id": str(organization.id), "organization_name": organization.name},
+    )
+    db.commit()
+    db.refresh(organization)
+    return _organization_to_out(db, organization)
 
 
 @router.post("/users/{user_id}/send-password-reset", status_code=202)

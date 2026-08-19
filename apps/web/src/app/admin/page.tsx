@@ -356,6 +356,12 @@ export default function AdminPage() {
               >
                 Admin guide
               </a>
+              <Link
+                href="/admin/organizations"
+                className="text-sm underline hover:text-neutral-200"
+              >
+                Organizations
+              </Link>
               <Link href="/admin/reports" className="text-sm underline hover:text-neutral-200">
                 Reports
               </Link>

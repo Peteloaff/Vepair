@@ -69,6 +69,25 @@ class AdminUserDetailOut(AdminUserListItemOut):
     last_recording_at: datetime | None
 
 
+class AdminSetCoachProIn(BaseModel):
+    is_coach_pro_active: bool
+    # Only meaningful when activating (is_coach_pro_active=True); ignored when deactivating.
+    # Defaults to a one-year period from now if omitted, matching the decided annual cadence.
+    period_months: int = Field(default=12, ge=1, le=24)
+
+
+class AdminOrganizationOut(BaseModel):
+    id: uuid.UUID
+    name: str | None
+    coach_email: str
+    coach_display_name: str
+    is_coach_pro_active: bool
+    coach_pro_period_start: datetime | None
+    coach_pro_period_end: datetime | None
+    invite_quota_included: int
+    invites_used_this_period: int
+
+
 class AdminReportsSummaryOut(BaseModel):
     total_users: int
     singer_count: int

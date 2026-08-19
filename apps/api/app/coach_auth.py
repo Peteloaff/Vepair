@@ -25,13 +25,30 @@ NOT_A_COACH = HTTPException(
     detail={"code": "not_a_coach", "message": "This account is not a coach account."},
 )
 
+COACH_PRO_REQUIRED = HTTPException(
+    status_code=403,
+    detail={
+        "code": "coach_pro_required",
+        "message": "This account's Coach Pro subscription is not active.",
+    },
+)
+
 
 def get_current_coach(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> CoachProfile:
+    """SaaS billing (post-Stage-12 Part 2): this is the single enforcement seam for coach_pro --
+    every coach endpoint depends on this (directly, or transitively through
+    require_coach_access below), so gating here blocks the entire coach surface at once rather
+    than requiring each router to check Organization.is_coach_pro_active itself. No free coach
+    tier: a freshly signed-up coach's Organization starts with is_coach_pro_active=False (see
+    that model's docstring) and stays blocked until an admin activates it via
+    POST /api/v1/admin/organizations/{id}/set-coach-pro."""
     coach = db.scalar(select(CoachProfile).where(CoachProfile.user_id == current_user.id))
     if coach is None:
         raise NOT_A_COACH
+    if not coach.organization.is_coach_pro_active:
+        raise COACH_PRO_REQUIRED
     return coach
 
 

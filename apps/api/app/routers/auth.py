@@ -13,6 +13,7 @@ from app.email import send_password_reset_email
 from app.models import (
     AuthCredential,
     CoachProfile,
+    Organization,
     PasswordResetToken,
     RefreshToken,
     User,
@@ -100,9 +101,11 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> TokenRespon
 
 @router.post("/coach-signup", response_model=TokenResponse, status_code=201)
 def coach_signup(payload: CoachSignupRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    """Stage 12 Phase II. Creates the User, AuthCredential, and CoachProfile together in one
-    transaction — a coach account is a coach account from creation, never a later upgrade on
-    an existing singer account (see CoachSignupRequest's docstring)."""
+    """Stage 12 Phase II. Creates the User, AuthCredential, CoachProfile, and (post-Stage-12
+    Part 2) that coach's Organization together in one transaction — a coach account is a coach
+    account from creation, never a later upgrade on an existing singer account (see
+    CoachSignupRequest's docstring). The Organization starts with is_coach_pro_active=False (no
+    free coach tier); every coach endpoint stays blocked until an admin activates it."""
     if not get_site_settings(db).signups_enabled:
         raise SIGNUPS_DISABLED
     user = User(email=payload.email.lower())
@@ -117,11 +120,14 @@ def coach_signup(payload: CoachSignupRequest, db: Session = Depends(get_db)) -> 
         ) from None
 
     db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
+    organization = Organization(name=payload.studio_name)
+    db.add(organization)
+    db.flush()
     db.add(
         CoachProfile(
             user_id=user.id,
             display_name=payload.display_name,
-            studio_name=payload.studio_name,
+            organization_id=organization.id,
         )
     )
     db.commit()

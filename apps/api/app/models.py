@@ -478,6 +478,45 @@ class ConsentRecord(Base, TimestampMixin):
     )
 
 
+class Organization(Base, TimestampMixin):
+    """SaaS billing (post-Stage-12 Part 2). One per coach, always -- not a multi-coach tenant
+    (see ROADMAP.md's "Coach organizations & invite quota" section for the founder's decision on
+    why this stays 1:1 for now). Formalizes what used to be CoachProfile.studio_name into a real
+    entity that owns coach_pro billing state and the 50-invite/year quota, so that quota lives on
+    the org record rather than the user record -- forward-compatible if the 1:1 constraint ever
+    loosens, without a schema migration to move it later.
+
+    No free coach tier: is_coach_pro_active defaults False, and app/coach_auth.py's
+    get_current_coach blocks every coach endpoint until an admin activates it via
+    POST /api/v1/admin/organizations/{id}/set-coach-pro (see app/routers/admin.py). All coach
+    billing -- base subscription fee and invite overage alike -- goes through QuickBooks Online
+    as founder-reviewed draft invoices, never Stripe; there is no automatic payment-confirmation
+    signal flowing back into VepAIr, so activation is a manual admin action, same pattern as
+    set-admin/set-coach/set-password.
+
+    invite_quota_included is not decremented anywhere -- app/organizations.py's
+    invites_used_this_period computes usage live by counting CoachInvite rows, rather than
+    maintaining a counter that could drift out of sync with accept/decline/revoke transitions."""
+
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    is_coach_pro_active: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    coach_pro_period_start: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    coach_pro_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    invite_quota_included: Mapped[int] = mapped_column(Integer, default=50, server_default="50")
+    # Populated by app/quickbooks_client.py the first time a draft invoice is created for this
+    # org (see OrganizationInvoiceLog) -- null until then.
+    quickbooks_customer_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
 class CoachProfile(Base, TimestampMixin):
     """Stage 12 Phase II. Presence of this row is what makes a User a coach — same optional
     1:1-extension shape as UserProfile, not a role flag. No self-serve path ever attaches this
@@ -495,7 +534,22 @@ class CoachProfile(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
     )
     display_name: Mapped[str] = mapped_column(String(200))
-    studio_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # SaaS billing (post-Stage-12 Part 2). Replaces the old free-text studio_name -- every coach
+    # gets exactly one Organization, formalizing what was a display label into the real entity
+    # that owns coach_pro billing state and the invite quota (see Organization's own docstring).
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), unique=True
+    )
+
+    organization: Mapped["Organization"] = relationship()
+
+    @property
+    def studio_name(self) -> str | None:
+        """Read-only proxy to organization.name, kept so every existing schema/response that
+        reads coach.studio_name (CoachProfileOut, CoachInviteOut's coach_studio_name, etc. --
+        see app/schemas_coach.py) keeps working unchanged now that the real column has moved to
+        Organization -- Pydantic's from_attributes reads this exactly like a mapped column."""
+        return self.organization.name if self.organization else None
 
 
 class CoachInvite(Base, TimestampMixin):
@@ -670,3 +724,49 @@ class SiteSettings(Base, TimestampMixin):
     # ships, not opt-in -- an admin turns it off (via POST /api/v1/admin/site-settings) once the
     # beta phase ends, no redeploy required.
     nda_required: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
+class UserSubscription(Base, TimestampMixin):
+    """SaaS billing, singer side (post-Stage-12 Part 2, Stage 5 -- not yet enforced anywhere;
+    this table is laid down now so Stage 5 doesn't need its own migration later). Automated,
+    Stripe-driven billing -- unlike the coach side's Organization/QuickBooks model, a webhook
+    (once built) keeps this in sync with Stripe's own event stream, which is the source of truth
+    for gating; client-reported subscription state is never trusted. tier is a whitelist
+    ("free"|"user_pro"), same discipline as CoachAccessCategoryGrant.category -- never free
+    text."""
+
+    __tablename__ = "user_subscriptions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True
+    )
+    tier: Mapped[str] = mapped_column(String(20), default="free", server_default="free")
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class OrganizationInvoiceLog(Base, TimestampMixin):
+    """SaaS billing, coach side (post-Stage-12 Part 2, Stage 4). Append-only idempotency record
+    for the monthly QuickBooks draft-invoice job (see app/quickbooks_client.py, not yet built) --
+    one row per organization per billing period that's already been invoiced, so a re-run of the
+    job doesn't create a second draft invoice for the same period. Also doubles as the "when was
+    this org billed and for what" record, the coach-side equivalent of a SubscriptionEvent
+    ledger, scoped to what invoicing actually needs rather than a generic event table."""
+
+    __tablename__ = "organization_invoice_logs"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE")
+    )
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Null until the QuickBooks API call actually succeeds -- a row can exist mid-attempt.
+    quickbooks_invoice_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    invite_overage_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

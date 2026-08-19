@@ -1,6 +1,23 @@
 """Stage 12 Phase II invite lifecycle — coach invites a singer, singer accepts/declines. Driven
 through the real API endpoints, per this codebase's established testing convention."""
 
+from datetime import UTC, datetime, timedelta
+
+
+def _activate_coach_pro(db_session, coach_email: str) -> None:
+    """Post-Stage-12 Part 2: a coach signed up directly (not through the signed_up_coach fixture,
+    which does this automatically) needs its Organization's coach_pro flipped on before any
+    coach endpoint will work -- see app.coach_auth.get_current_coach."""
+    from app.models import CoachProfile, Organization, User
+
+    user = db_session.query(User).filter_by(email=coach_email).one()
+    coach = db_session.query(CoachProfile).filter_by(user_id=user.id).one()
+    org = db_session.query(Organization).filter_by(id=coach.organization_id).one()
+    org.is_coach_pro_active = True
+    org.coach_pro_period_start = datetime.now(UTC)
+    org.coach_pro_period_end = datetime.now(UTC) + timedelta(days=365)
+    db_session.commit()
+
 
 def test_coach_can_invite_an_existing_singer_by_email(
     client, signed_up_coach, signed_up_user
@@ -190,7 +207,7 @@ def test_singer_cannot_accept_an_invite_addressed_to_someone_else(
 
 
 def test_cannot_accept_a_second_invite_while_one_coach_is_already_active(
-    client, signed_up_user
+    client, signed_up_user, db_session
 ) -> None:
     """One active coach at a time (founder decision) — enforced at the API layer, backed by a
     DB-level partial unique index."""
@@ -205,6 +222,7 @@ def test_cannot_accept_a_second_invite_while_one_coach_is_already_active(
         },
     )
     coach_a_headers = {"Authorization": f"Bearer {signup_coach_a.json()['access_token']}"}
+    _activate_coach_pro(db_session, "coach-a-onecoach-test@example.com")
 
     signup_coach_b = client.post(
         "/api/v1/auth/coach-signup",
@@ -215,6 +233,7 @@ def test_cannot_accept_a_second_invite_while_one_coach_is_already_active(
         },
     )
     coach_b_headers = {"Authorization": f"Bearer {signup_coach_b.json()['access_token']}"}
+    _activate_coach_pro(db_session, "coach-b-onecoach-test@example.com")
 
     invite_a = client.post(
         "/api/v1/coach/invites", headers=coach_a_headers, json={"singer_email": singer["email"]}

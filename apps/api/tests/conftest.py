@@ -52,10 +52,19 @@ def signed_up_user(client):
 
 
 @pytest.fixture()
-def signed_up_coach(client):
+def signed_up_coach(client, db_session):
     """Signs up a fresh coach account (Stage 12 Phase II) and returns (tokens_json, auth_headers).
-    A coach account is a coach account from creation — see app.models.CoachProfile."""
+    A coach account is a coach account from creation — see app.models.CoachProfile.
+
+    Also activates the new Organization's coach_pro subscription (post-Stage-12 Part 2) so every
+    existing test that uses this fixture to exercise coach *functionality* keeps working
+    unchanged -- a fresh signup's org otherwise starts is_coach_pro_active=False (no free coach
+    tier). Tests of the coach_pro gate itself (test_coach_auth.py) sign up their own account
+    directly instead of using this fixture, precisely so they see the unactivated state."""
     import uuid
+    from datetime import UTC, datetime, timedelta
+
+    from app.models import CoachProfile, Organization
 
     email = f"coach_{uuid.uuid4().hex[:12]}@example.com"
     password = "correcthorse123"
@@ -71,4 +80,12 @@ def signed_up_coach(client):
     assert resp.status_code == 201, resp.text
     body = resp.json()
     headers = {"Authorization": f"Bearer {body['access_token']}"}
+
+    coach = db_session.query(CoachProfile).filter_by(user_id=body["user"]["id"]).one()
+    org = db_session.query(Organization).filter_by(id=coach.organization_id).one()
+    org.is_coach_pro_active = True
+    org.coach_pro_period_start = datetime.now(UTC)
+    org.coach_pro_period_end = datetime.now(UTC) + timedelta(days=365)
+    db_session.commit()
+
     return {"email": email, "password": password, **body}, headers

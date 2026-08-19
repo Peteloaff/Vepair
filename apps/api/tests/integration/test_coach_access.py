@@ -3,9 +3,24 @@ enforce coach dashboard reads reuse the singer's own endpoints exactly rather th
 reimplementing them. Driven through the real API endpoints."""
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
 TODAY = date.today().isoformat()
+
+
+def _activate_coach_pro(db_session, coach_email: str) -> None:
+    """Post-Stage-12 Part 2: a coach signed up directly (not through the signed_up_coach fixture,
+    which does this automatically) needs its Organization's coach_pro flipped on before any
+    coach endpoint will work -- see app.coach_auth.get_current_coach."""
+    from app.models import CoachProfile, Organization, User
+
+    user = db_session.query(User).filter_by(email=coach_email).one()
+    coach = db_session.query(CoachProfile).filter_by(user_id=user.id).one()
+    org = db_session.query(Organization).filter_by(id=coach.organization_id).one()
+    org.is_coach_pro_active = True
+    org.coach_pro_period_start = datetime.now(UTC)
+    org.coach_pro_period_end = datetime.now(UTC) + timedelta(days=365)
+    db_session.commit()
 
 
 def _connect(client, coach_headers, singer_email, singer_headers, categories) -> str:
@@ -78,7 +93,7 @@ def test_category_gating_only_populates_granted_sections(
     assert body["todays_routine"] is None
 
 
-def test_coach_a_cannot_read_coach_bs_singer(client, signed_up_user) -> None:
+def test_coach_a_cannot_read_coach_bs_singer(client, signed_up_user, db_session) -> None:
     singer, singer_headers = signed_up_user
 
     signup_a = client.post(
@@ -90,6 +105,7 @@ def test_coach_a_cannot_read_coach_bs_singer(client, signed_up_user) -> None:
         },
     )
     coach_a_headers = {"Authorization": f"Bearer {signup_a.json()['access_token']}"}
+    _activate_coach_pro(db_session, "coach-a-isolation-test@example.com")
 
     signup_b = client.post(
         "/api/v1/auth/coach-signup",
@@ -100,6 +116,7 @@ def test_coach_a_cannot_read_coach_bs_singer(client, signed_up_user) -> None:
         },
     )
     coach_b_headers = {"Authorization": f"Bearer {signup_b.json()['access_token']}"}
+    _activate_coach_pro(db_session, "coach-b-isolation-test@example.com")
 
     _connect(client, coach_a_headers, singer["email"], singer_headers, ["recovery_trends"])
 

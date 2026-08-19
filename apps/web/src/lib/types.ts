@@ -499,6 +499,19 @@ export interface AdminUserDetail extends AdminUserListItem {
   last_recording_at: string | null;
 }
 
+// SaaS billing, coach side (post-Stage-12 Part 2) -- see app.models.Organization.
+export interface AdminOrganization {
+  id: string;
+  name: string | null;
+  coach_email: string;
+  coach_display_name: string;
+  is_coach_pro_active: boolean;
+  coach_pro_period_start: string | null;
+  coach_pro_period_end: string | null;
+  invite_quota_included: number;
+  invites_used_this_period: number;
+}
+
 export interface AdminReportsSummary {
   total_users: number;
   singer_count: number;
