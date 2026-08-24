@@ -8,17 +8,26 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
     try {
       await requestPasswordReset(email);
-    } finally {
       // Always show the same confirmation, whether or not the email exists — the API
-      // deliberately doesn't reveal that either, to avoid leaking account existence.
-      setSubmitting(false);
+      // deliberately doesn't reveal that either, to avoid leaking account existence. This is
+      // only reached once the request actually completed -- a network-level failure (blocked
+      // by a browser extension, offline, DNS, etc.) never even reaches the API, so it must not
+      // be treated the same as "the API responded, and we're not saying whether it existed."
       setDone(true);
+    } catch {
+      setError(
+        "Could not reach the server. Check your connection (or try disabling browser extensions/ad blockers) and try again."
+      );
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -36,6 +45,9 @@ export default function ForgotPasswordPage() {
           </p>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <p className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>
+            )}
             <div>
               <label htmlFor="email" className="mb-1 block text-xs text-neutral-400">
                 Email
