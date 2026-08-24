@@ -74,20 +74,30 @@ export function TrendChart({
   const yFor = (v: number) =>
     PAD_TOP + plotHeight - ((v - yMin) / (yMax - yMin)) * plotHeight;
 
-  const linePath = useMemo(() => {
-    let d = "";
-    let started = false;
+  // Two paths, not one: `solidPath` connects only real consecutive-day data (adjacent indices
+  // both non-null); `bridgePath` connects across a skipped day so the line still reads as one
+  // continuous trend instead of a series of disconnected fragments, rendered visually distinct
+  // (dashed, muted) below so a gap is never mistaken for a real day-over-day data point.
+  const { solidPath, bridgePath } = useMemo(() => {
+    let solid = "";
+    let bridge = "";
+    let lastKnownIndex: number | null = null;
     points.forEach((p, i) => {
-      if (p.value === null) {
-        started = false;
-        return;
-      }
+      if (p.value === null) return;
       const x = xFor(i);
       const y = yFor(p.value);
-      d += started ? ` L ${x} ${y}` : `M ${x} ${y}`;
-      started = true;
+      if (lastKnownIndex === null) {
+        solid += `M ${x} ${y}`;
+      } else if (lastKnownIndex === i - 1) {
+        solid += ` L ${x} ${y}`;
+      } else {
+        const prevValue = points[lastKnownIndex].value as number;
+        bridge += `M ${xFor(lastKnownIndex)} ${yFor(prevValue)} L ${x} ${y}`;
+        solid += ` M ${x} ${y}`;
+      }
+      lastKnownIndex = i;
     });
-    return d;
+    return { solidPath: solid, bridgePath: bridge };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [points, yMin, yMax]);
 
@@ -162,7 +172,23 @@ export function TrendChart({
               </g>
             ))}
 
-            <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d={bridgePath}
+              fill="none"
+              stroke={color}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeDasharray="5 5"
+              opacity={0.4}
+            />
+            <path
+              d={solidPath}
+              fill="none"
+              stroke={color}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
 
             {lastKnown && (
               <circle
@@ -211,6 +237,16 @@ export function TrendChart({
               </div>
             )}
           </div>
+
+          {bridgePath && (
+            <p className="mt-1 text-xs text-neutral-600">
+              <span
+                className="mr-1 inline-block w-3 border-t border-dashed align-middle"
+                style={{ borderColor: color }}
+              />
+              dashed = no data recorded that day
+            </p>
+          )}
 
           <button
             type="button"
