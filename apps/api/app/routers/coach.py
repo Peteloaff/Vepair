@@ -27,8 +27,9 @@ from app.models import (
     UserProfile,
     VoiceSession,
 )
-from app.recovery_score import compute_and_store_recovery_score
+from app.recovery_score import compute_and_store_recovery_score, fetch_score_history
 from app.routers.recovery_score import _to_out as _recovery_score_to_out
+from app.schemas_checkin import CheckInOut
 from app.schemas_coach import (
     CoachAssignmentCreate,
     CoachAssignmentOut,
@@ -38,6 +39,7 @@ from app.schemas_coach import (
     CoachNoteCreate,
     CoachNoteOut,
     CoachProfileOut,
+    CoachSingerHistoryOut,
     CoachSingerListItemOut,
     CoachSingerSummaryOut,
     CoachVoiceSessionOut,
@@ -45,6 +47,7 @@ from app.schemas_coach import (
 from app.schemas_exercise import ExerciseOut, RoutineOut
 from app.schemas_exercise_trend import ExerciseTrendOut
 from app.schemas_recording import RecordingOut
+from app.schemas_recovery_score import ScoreHistoryPointOut
 from app.schemas_training_consistency import ConsistencyDayOut, TrainingConsistencyOut
 from app.schemas_vocal_goals import VocalGoalOut
 from app.schemas_vocal_range import RangeChangeOut, VocalRangeSummaryOut
@@ -400,6 +403,85 @@ def get_singer_summary(
         exercise_trends=exercise_trends_out,
         training_consistency=training_consistency_out,
         todays_routine=todays_routine_out,
+    )
+
+
+@router.get("/singers/{singer_user_id}/history", response_model=CoachSingerHistoryOut)
+def get_singer_history(
+    singer_user_id: uuid.UUID,
+    from_date: date = Query(...),
+    to_date: date = Query(...),
+    access: CoachAccess = Depends(require_coach_access()),
+    db: Session = Depends(get_db),
+) -> CoachSingerHistoryOut:
+    """Long-range trend data for the coach's Progress tab on a singer -- the date-ranged
+    sibling of get_singer_summary above, same discipline: calls the exact same functions the
+    singer's own /progress page uses (app/routers/recovery_score.py's history endpoint,
+    app/routers/checkins.py's list endpoint, app/training_consistency.py,
+    app.exercise_trends.compute_exercise_trends), parameterized by singer_user_id instead of
+    the caller's own id. score_history/checkins are gated on "recovery_trends" (matching what
+    the singer's own Progress page charts from that same data); training_consistency and
+    exercise_trends are gated on "exercise_history", matching how the existing summary
+    endpoint above already gates those two fields."""
+    granted = _granted_categories(db, access)
+
+    score_history_out = None
+    checkins_out = None
+    if "recovery_trends" in granted:
+        history = fetch_score_history(db, singer_user_id, from_date, to_date)
+        score_history_out = [
+            ScoreHistoryPointOut(
+                score_date=p.score_date,
+                score_value=p.score_value,
+                confidence_label=p.confidence_label,
+                status=p.status,
+            )
+            for p in history
+        ]
+        checkins = db.scalars(
+            select(DailyCheckIn)
+            .where(
+                DailyCheckIn.user_id == singer_user_id,
+                DailyCheckIn.checkin_date >= from_date,
+                DailyCheckIn.checkin_date <= to_date,
+            )
+            .order_by(DailyCheckIn.checkin_date.desc())
+        ).all()
+        checkins_out = [CheckInOut.model_validate(c) for c in checkins]
+
+    training_consistency_out = None
+    exercise_trends_out = None
+    if "exercise_history" in granted:
+        consistency = build_training_consistency(db, singer_user_id, from_date, to_date, to_date)
+        training_consistency_out = TrainingConsistencyOut(
+            days=[
+                ConsistencyDayOut(for_date=d.for_date, sessions_completed=d.sessions_completed)
+                for d in consistency.days
+            ],
+            current_streak_days=consistency.current_streak_days,
+            longest_streak_days=consistency.longest_streak_days,
+            total_sessions_in_range=consistency.total_sessions_in_range,
+        )
+        trends = compute_exercise_trends(db, singer_user_id)
+        exercise_trends_out = [
+            ExerciseTrendOut(
+                exercise_id=t.exercise_id,
+                exercise_name=t.exercise_name,
+                metric_name=t.metric_name,
+                direction=t.direction,
+                recent_median=t.recent_median,
+                prior_median=t.prior_median,
+                attempt_count=t.attempt_count,
+            )
+            for t in trends
+        ]
+
+    return CoachSingerHistoryOut(
+        granted_categories=sorted(granted),
+        score_history=score_history_out,
+        checkins=checkins_out,
+        training_consistency=training_consistency_out,
+        exercise_trends=exercise_trends_out,
     )
 
 

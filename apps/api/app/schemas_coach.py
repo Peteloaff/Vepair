@@ -4,10 +4,11 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.exercise_library import CATEGORY_INTENSITY
+from app.schemas_checkin import CheckInOut
 from app.schemas_exercise import RoutineOut
 from app.schemas_exercise_trend import ExerciseTrendOut
 from app.schemas_recording import RecordingOut
-from app.schemas_recovery_score import RecoveryScoreOut
+from app.schemas_recovery_score import RecoveryScoreOut, ScoreHistoryPointOut
 from app.schemas_training_consistency import TrainingConsistencyOut
 from app.schemas_vocal_goals import VocalGoalOut
 from app.schemas_vocal_range import VocalRangeSummaryOut
@@ -100,6 +101,20 @@ class CoachSingerSummaryOut(BaseModel):
     exercise_trends: list[ExerciseTrendOut] | None
     training_consistency: TrainingConsistencyOut | None
     todays_routine: RoutineOut | None
+
+
+class CoachSingerHistoryOut(BaseModel):
+    """Long-range trend data for the coach Progress tab -- the date-ranged sibling of
+    CoachSingerSummaryOut above, same "None unless granted" discipline. score_history and
+    checkins are bounded by the caller's from_date/to_date; exercise_trends is all-time by
+    design (see app.exercise_trends.compute_exercise_trends), so it isn't affected by the
+    requested range."""
+
+    granted_categories: list[str]
+    score_history: list[ScoreHistoryPointOut] | None
+    checkins: list[CheckInOut] | None
+    training_consistency: TrainingConsistencyOut | None
+    exercise_trends: list[ExerciseTrendOut] | None
 
 
 class CoachSingerListItemOut(BaseModel):

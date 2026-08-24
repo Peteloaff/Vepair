@@ -66,6 +66,12 @@ function SingerDashboardContent() {
         <h1 className="text-2xl font-semibold tracking-tight">Singer dashboard</h1>
         <div className="flex gap-2 text-sm">
           <Link
+            href={`/coach/singers/${params.singerId}/progress`}
+            className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
+          >
+            Progress
+          </Link>
+          <Link
             href={`/coach/singers/${params.singerId}/recordings`}
             className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
           >

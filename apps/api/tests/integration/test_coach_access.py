@@ -338,3 +338,94 @@ def test_dailycheckin_free_text_fields_never_appear_in_any_coach_response(
     assert secret_illness not in raw
     assert secret_reflux not in raw
     assert secret_notes not in raw
+
+
+def test_coach_history_matches_singers_own_endpoints(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """The same reuse discipline as test_coach_dashboard_recovery_score_matches_singers_own_endpoint
+    above, for the date-ranged Progress-tab endpoint."""
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    from_date = (date.today() - timedelta(days=6)).isoformat()
+
+    client.post(
+        "/api/v1/checkins",
+        headers=singer_headers,
+        json={"checkin_date": TODAY, "voice_quality": 7, "fatigue": 3, "throat_discomfort": 1},
+    )
+    _connect(
+        client,
+        coach_headers,
+        singer["email"],
+        singer_headers,
+        ["recovery_trends", "exercise_history"],
+    )
+
+    singer_history = client.get(
+        "/api/v1/recovery-score/history",
+        headers=singer_headers,
+        params={"from_date": from_date, "to_date": TODAY},
+    )
+    assert singer_history.status_code == 200
+    singer_checkins = client.get(
+        "/api/v1/checkins",
+        headers=singer_headers,
+        params={"from_date": from_date, "to_date": TODAY},
+    )
+    assert singer_checkins.status_code == 200
+    singer_consistency = client.get(
+        "/api/v1/training-consistency",
+        headers=singer_headers,
+        params={"from_date": from_date, "to_date": TODAY, "as_of": TODAY},
+    )
+    assert singer_consistency.status_code == 200
+
+    coach_view = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/history",
+        headers=coach_headers,
+        params={"from_date": from_date, "to_date": TODAY},
+    )
+    assert coach_view.status_code == 200
+    body = coach_view.json()
+    assert body["score_history"] == singer_history.json()
+    assert {c["id"] for c in body["checkins"]} == {c["id"] for c in singer_checkins.json()}
+    assert body["training_consistency"] == singer_consistency.json()
+    assert body["exercise_trends"] == []
+
+
+def test_coach_history_respects_per_category_grants(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    from_date = (date.today() - timedelta(days=6)).isoformat()
+
+    # Only exercise_history granted -- recovery_trends withheld.
+    _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+
+    resp = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/history",
+        headers=coach_headers,
+        params={"from_date": from_date, "to_date": TODAY},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["score_history"] is None
+    assert body["checkins"] is None
+    assert body["training_consistency"] is not None
+    assert body["exercise_trends"] is not None
+
+
+def test_coach_history_requires_active_access(client, signed_up_coach, signed_up_user) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, _singer_headers = signed_up_user
+    from_date = (date.today() - timedelta(days=6)).isoformat()
+
+    resp = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/history",
+        headers=coach_headers,
+        params={"from_date": from_date, "to_date": TODAY},
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "no_active_access"

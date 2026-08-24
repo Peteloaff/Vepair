@@ -464,6 +464,14 @@ export interface CoachSingerSummary {
   todays_routine: Routine | null;
 }
 
+export interface CoachSingerHistory {
+  granted_categories: CoachShareCategory[];
+  score_history: ScoreHistoryPoint[] | null;
+  checkins: CheckIn[] | null;
+  training_consistency: TrainingConsistency | null;
+  exercise_trends: ExerciseTrend[] | null;
+}
+
 export interface CoachAssignment {
   id: string;
   exercise_ids: string[];
