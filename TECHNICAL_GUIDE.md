@@ -290,3 +290,44 @@ section has "Grant admin"/"Revoke admin" and "Make coach"/"Remove coach" control
 account with either (self-lockout prevention) — only this manual SQL path can recover from
 "every admin account got revoked/deactivated," which is exactly why it stays documented here
 rather than being fully replaced by the UI.
+
+## 10. Coach billing — activating Coach Pro
+
+Every coach account belongs to an `Organization` (one per coach, created automatically at
+signup — see `ARCHITECTURE.md` §4/§6o for the data model). Each org has an `is_coach_pro_active`
+flag that defaults to **false**: there is no free coach tier, so a brand-new coach account is
+locked out of the entire Coach Portal (dashboard, invites, assignments, notes — every coach
+endpoint) the moment they sign up, with a "Your account is pending activation" message on their
+home page. This is expected, not a bug — see `ROADMAP.md`'s "Subscription tiers / paywall"
+section for why the model has no free coach tier.
+
+There is **no Stripe on the coach side**. Coach payment (the base subscription fee, and any
+invite overage past the 50 included per year) goes through QuickBooks and is collected outside
+the app — see `ROADMAP.md`'s "QuickBooks Online monthly invoicing sync" section. That sync job
+isn't built yet (it needs the founder's Intuit Developer app registered first), so today
+activation is a manual switch you flip once you've confirmed payment yourself:
+
+1. Log in as an admin.
+2. Go to `/admin` → **Organizations**.
+3. Search by org name, coach email, or coach name (empty search lists the 100 most recent).
+4. Click into the org.
+5. Click **Activate Coach Pro**.
+
+This sets a 12-month period from that moment (`coach_pro_period_start`/`coach_pro_period_end`)
+and unblocks the coach's account immediately — no redeploy needed, and the coach doesn't need to
+log out/in. The same page has **Deactivate Coach Pro** to pull access back (e.g. non-payment,
+lapsed renewal) — this only locks the coach out of the Coach Portal; it never touches their own
+account data or any singer's data.
+
+The detail page also shows invites used this period vs. the 50 included. Going over 50 doesn't
+block sending more invites — it's meant to accrue as overage that bills on the org's next
+QuickBooks invoice once that sync exists. Until then, overage just displays; nothing invoices
+automatically.
+
+Equivalent API call, if driving this from a script rather than the UI (admin token required):
+
+```bash
+curl -X POST "$API_URL/api/v1/admin/organizations/<org_id>/set-coach-pro" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"is_coach_pro_active": true}'
+```
