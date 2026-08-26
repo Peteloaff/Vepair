@@ -23,6 +23,7 @@ from app.routers import profile as profile_router
 from app.routers import recordings as recordings_router
 from app.routers import recovery_score as recovery_score_router
 from app.routers import share_progress as share_progress_router
+from app.routers import tone_game as tone_game_router
 from app.routers import training_consistency as training_consistency_router
 from app.routers import vocal_goals as vocal_goals_router
 from app.routers import vocal_plan as vocal_plan_router
@@ -108,6 +109,7 @@ app.include_router(consent_router.router)
 app.include_router(coach_router.router)
 app.include_router(coach_access_router.router)
 app.include_router(admin_router.router)
+app.include_router(tone_game_router.router)
 
 
 @app.get("/api/v1/health", response_model=HealthResponse)

@@ -232,6 +232,25 @@ export interface ExerciseTrend {
   attempt_count: number;
 }
 
+export interface ToneGameAttempt {
+  order_index: number;
+  target_note: string;
+  target_hz: number;
+  detected_hz: number | null;
+  semitones_off: number | null;
+  grade: "spot_on" | "close" | "off" | "no_pitch";
+  hold_fraction: number;
+  reaction_ms: number | null;
+  score: number;
+}
+
+export interface ToneGameSession {
+  id: string;
+  played_at: string;
+  total_score: number;
+  attempts: ToneGameAttempt[];
+}
+
 export interface RangeChange {
   semitones: number | null;
   from_note: string | null;

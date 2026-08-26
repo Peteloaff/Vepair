@@ -770,3 +770,50 @@ class OrganizationInvoiceLog(Base, TimestampMixin):
     # Null until the QuickBooks API call actually succeeds -- a row can exist mid-attempt.
     quickbooks_invoice_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     invite_overage_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+
+class ToneGameSession(Base, TimestampMixin):
+    """One playthrough of the Tone Match 5-tone challenge (see app/routers/tone_game.py). A new,
+    separate activity type from ExerciseSession -- deliberately not counted toward
+    training_consistency's streaks, since grading happens client-side (see pitchGrading.ts /
+    toneGame.ts) and the backend's role here is persistence only. Personal only for now: no
+    coach-sharing category exists for this table, matching the founder's explicit scoping
+    decision -- a coach never sees a singer's game results."""
+
+    __tablename__ = "tone_game_sessions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    played_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    total_score: Mapped[int] = mapped_column(Integer)
+
+    attempts: Mapped[list["ToneGameAttempt"]] = relationship(
+        back_populates="session", order_by="ToneGameAttempt.order_index"
+    )
+
+
+class ToneGameAttempt(Base, TimestampMixin):
+    """One of the 5 notes within a ToneGameSession. Every scoring field (semitones_off, grade,
+    hold_fraction, reaction_ms, score) is computed client-side and sent as-is -- the backend
+    never re-derives audio analysis in Python, matching how gradeToneMatch already works for
+    the ungraded single-note practice flow this game mode sits alongside."""
+
+    __tablename__ = "tone_game_attempts"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tone_game_sessions.id", ondelete="CASCADE")
+    )
+    order_index: Mapped[int] = mapped_column(Integer)
+    target_note: Mapped[str] = mapped_column(String(10))
+    target_hz: Mapped[float] = mapped_column(Float)
+    detected_hz: Mapped[float | None] = mapped_column(Float, nullable=True)
+    semitones_off: Mapped[float | None] = mapped_column(Float, nullable=True)
+    grade: Mapped[str] = mapped_column(String(20))  # spot_on|close|off|no_pitch
+    hold_fraction: Mapped[float] = mapped_column(Float)
+    reaction_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score: Mapped[int] = mapped_column(Integer)
+
+    session: Mapped[ToneGameSession] = relationship(back_populates="attempts")

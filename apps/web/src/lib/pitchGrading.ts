@@ -21,7 +21,10 @@ export interface ToneMatchResult {
 }
 
 const SPOT_ON_SEMITONES = 0.25;
-const CLOSE_SEMITONES = 0.5;
+// Exported for toneGame.ts's hold-fraction scoring — "matching" a note during the 5-tone
+// challenge uses the same closeness band as this single-note grader's "close" tier, so the
+// two never drift apart into different definitions of "close enough."
+export const CLOSE_SEMITONES = 0.5;
 
 export const GRADE_LABEL: Record<ToneMatchGrade, string> = {
   spot_on: "Spot on!",

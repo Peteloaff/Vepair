@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckInForm } from "@/components/CheckInForm";
 import { GoalTonesCard } from "@/components/GoalTonesCard";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
+import { ToneGameTrendCard } from "@/components/ToneGameTrendCard";
 import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { VocalBaseline } from "@/components/VocalBaseline";
 import { useAuth } from "@/lib/auth-context";
@@ -445,6 +446,8 @@ function Dashboard({
           .
         </p>
       </section>
+
+      <ToneGameTrendCard />
     </main>
   );
 }

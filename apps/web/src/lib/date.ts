@@ -1,4 +1,7 @@
-function toLocalIsoDate(d: Date): string {
+// Exported so callers with an existing Date (or a timestamp to convert, e.g. ToneGameTrendCard
+// turning a played_at datetime into a calendar-day bucket) can reuse this instead of
+// re-deriving the same local-date formatting.
+export function toLocalIsoDate(d: Date): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
