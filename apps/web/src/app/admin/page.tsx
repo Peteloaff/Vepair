@@ -109,6 +109,12 @@ function SiteSettingsPanel() {
 }
 
 const ACCOUNT_TYPE_OPTIONS = ["singer", "coach"] as const;
+// Display-only relabeling -- the stored account_type value stays "singer" (API contract,
+// database), only what an admin sees on the button changes.
+const ACCOUNT_TYPE_LABEL: Record<(typeof ACCOUNT_TYPE_OPTIONS)[number], string> = {
+  singer: "Vrotégé",
+  coach: "Coach",
+};
 
 function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) => void }) {
   const { apiFetch } = useAuth();
@@ -195,13 +201,13 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
                   key={t}
                   type="button"
                   onClick={() => setAccountType(t)}
-                  className={`rounded-md px-2.5 py-1.5 capitalize ${
+                  className={`rounded-md px-2.5 py-1.5 ${
                     accountType === t
                       ? "bg-emerald-500 text-neutral-950"
                       : "text-neutral-400 hover:bg-neutral-800"
                   }`}
                 >
-                  {t}
+                  {ACCOUNT_TYPE_LABEL[t]}
                 </button>
               ))}
             </div>
@@ -320,7 +326,7 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
                   </Link>
                   {u.is_admin && <span className="ml-2 text-xs text-amber-400">(admin)</span>}
                 </td>
-                <td className="py-2 pr-4">{u.account_type}</td>
+                <td className="py-2 pr-4">{ACCOUNT_TYPE_LABEL[u.account_type]}</td>
                 <td className="py-2 pr-4">
                   {u.is_active ? "active" : <span className="text-red-400">deactivated</span>}
                 </td>

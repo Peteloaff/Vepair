@@ -56,7 +56,7 @@ function AssignContent() {
       setExercises(exercisesData);
       setHistory(historyData);
     } catch {
-      setError("Could not load exercises for this singer.");
+      setError("Could not load exercises for this Vrotégé.");
     }
   }
 
@@ -156,7 +156,7 @@ function AssignContent() {
     <div className="mx-auto w-full max-w-2xl">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Assign training</h1>
       <p className="mb-6 text-sm text-neutral-400">
-        Assigned exercises are included in the singer&apos;s daily routine only where today&apos;s
+        Assigned exercises are included in the Vrotégé&apos;s daily routine only where today&apos;s
         own safety limits already allow — an assignment can never push past what would be safe
         for them today.
       </p>
@@ -313,7 +313,7 @@ function AssignContent() {
       </div>
 
       <textarea
-        placeholder="Note to singer (optional)"
+        placeholder="Note to Vrotégé (optional)"
         value={note}
         onChange={(e) => setNote(e.target.value)}
         rows={2}

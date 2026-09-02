@@ -76,7 +76,7 @@ def require_coach_access(category: str | None = None) -> Callable[..., CoachAcce
                 status_code=403,
                 detail={
                     "code": "no_active_access",
-                    "message": "No active access to this singer.",
+                    "message": "No active access to this Vrotégé.",
                 },
             )
         if category is not None:
@@ -92,7 +92,7 @@ def require_coach_access(category: str | None = None) -> Callable[..., CoachAcce
                     status_code=403,
                     detail={
                         "code": "category_not_shared",
-                        "message": f"This singer has not shared '{category}' with you.",
+                        "message": f"This Vrotégé has not shared '{category}' with you.",
                     },
                 )
         return access

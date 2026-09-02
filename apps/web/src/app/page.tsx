@@ -196,9 +196,9 @@ function Dashboard({
         <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
           <h2 className="mb-2 text-sm font-medium text-neutral-200">Coach Portal</h2>
           <p className="text-sm text-neutral-400">
-            Manage your singer roster, send invites, assign training, and write notes from your
+            Manage your Vrotégé roster, send invites, assign training, and write notes from your
             Coach Portal — a coach account doesn&apos;t have its own voice check-in or exercise
-            data the way a singer account does.
+            data the way a Vrotégé account does.
           </p>
           <Link
             href="/coach"
@@ -466,7 +466,7 @@ function LandingChooser() {
         />
         <h1 className="text-3xl font-semibold tracking-tight">Welcome to VepAIr</h1>
         <p className="mt-2 text-sm text-neutral-400">
-          AI-assisted vocal recovery, conditioning, and performance &mdash; for singers and the
+          AI-assisted vocal recovery, conditioning, and performance &mdash; for Vrotégés and the
           coaches who train them.
         </p>
 
@@ -475,7 +475,7 @@ function LandingChooser() {
             href="/signup"
             className="group rounded-2xl border border-neutral-800 bg-neutral-900/60 p-8 text-left transition hover:border-emerald-700 hover:bg-neutral-900"
           >
-            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Singer</p>
+            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Vrotégé</p>
             <p className="mt-2 text-sm text-neutral-400">
               Track your voice, get personalized daily exercises, and train safely with VepAIr.
             </p>
@@ -490,7 +490,7 @@ function LandingChooser() {
           >
             <p className="text-lg font-semibold text-neutral-100">I&apos;m a Coach</p>
             <p className="mt-2 text-sm text-neutral-400">
-              Invite singers, assign custom training, and follow their progress in real time.
+              Invite Vrotégés, assign custom training, and follow their progress in real time.
             </p>
             <span className="mt-4 inline-block text-sm font-medium text-emerald-400 group-hover:text-emerald-300">
               Get started &rarr;

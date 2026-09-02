@@ -26,7 +26,7 @@ function NotesContent() {
       );
       setNotes(data);
     } catch {
-      setError("Could not load notes for this singer.");
+      setError("Could not load notes for this Vrotégé.");
     }
   }
 
@@ -76,7 +76,7 @@ function NotesContent() {
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Notes</h1>
       <p className="mb-2 rounded-lg border border-amber-900 bg-amber-950/20 px-3 py-2 text-xs text-amber-300">
         Notes are for coaching purposes only — not a medical or clinical record. Do not record
-        diagnoses, medical history, or clinical assessments here. The singer can read every
+        diagnoses, medical history, or clinical assessments here. The Vrotégé can read every
         note you write.
       </p>
 

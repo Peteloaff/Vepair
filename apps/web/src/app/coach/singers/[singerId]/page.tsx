@@ -138,7 +138,7 @@ function SingerDashboardContent() {
         setReassessmentInput(summaryData.next_reassessment_date ?? "");
         setError(null);
       })
-      .catch(() => setError("Could not load this singer's dashboard."));
+      .catch(() => setError("Could not load this Vrotégé's dashboard."));
   }
 
   useEffect(() => {
@@ -149,7 +149,7 @@ function SingerDashboardContent() {
   async function removeSinger() {
     if (
       !window.confirm(
-        "Remove this singer from your roster? You'll lose access to their data immediately. This does not delete their VepAIr account or any of their own data — they keep everything, and can invite you again later if they choose to."
+        "Remove this Vrotégé from your roster? You'll lose access to their data immediately. This does not delete their VepAIr account or any of their own data — they keep everything, and can invite you again later if they choose to."
       )
     ) {
       return;
@@ -159,7 +159,7 @@ function SingerDashboardContent() {
       await apiFetch(`/api/v1/coach/singers/${params.singerId}`, { method: "DELETE" });
       router.replace("/coach");
     } catch {
-      setError("Could not remove this singer. Please try again.");
+      setError("Could not remove this Vrotégé. Please try again.");
       setRemoving(false);
     }
   }
@@ -284,7 +284,7 @@ function SingerDashboardContent() {
     <div className="mx-auto w-full max-w-3xl">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">Singer dashboard</p>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Vrotégé dashboard</p>
           <h1 className="text-2xl font-semibold tracking-tight">{summary.singer_email}</h1>
         </div>
         <div className="flex gap-3 text-xs text-neutral-500">
@@ -418,7 +418,7 @@ function SingerDashboardContent() {
 
       <div className="mt-8">
         <Link href="/coach" className="text-xs text-neutral-500 hover:text-neutral-300">
-          &larr; Back to your singers
+          &larr; Back to your Vrotégés
         </Link>
       </div>
     </div>

@@ -41,7 +41,7 @@ function SingerProgressContent() {
         setHistory(data);
         setError(null);
       })
-      .catch(() => setError("Could not load this singer's progress."));
+      .catch(() => setError("Could not load this Vrotégé's progress."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.singerId, rangeDays]);
 
@@ -80,7 +80,7 @@ function SingerProgressContent() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Progress</h1>
           <p className="mt-1 text-sm text-neutral-400">
-            Long-range trends, compared only against this singer&apos;s own history.
+            Long-range trends, compared only against this Vrotégé&apos;s own history.
           </p>
         </div>
         <Link
@@ -235,7 +235,7 @@ function SingerProgressContent() {
       </section>
 
       <p className="mt-6 text-xs text-neutral-600">
-        Every trend here is compared only against this singer&apos;s own history, never a
+        Every trend here is compared only against this Vrotégé&apos;s own history, never a
         population norm — see MEDICAL_SAFETY.md.
       </p>
     </div>

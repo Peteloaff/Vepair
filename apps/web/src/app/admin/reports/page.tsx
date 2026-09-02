@@ -18,6 +18,12 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 const TRI_STATE_LABEL: Record<string, string> = { "": "Any", true: "Yes", false: "No" };
+// Display-only relabeling -- the stored account_type value stays "singer" (API contract,
+// database), only what an admin sees changes.
+const ACCOUNT_TYPE_LABEL: Record<"singer" | "coach", string> = {
+  singer: "Vrotégé",
+  coach: "Coach",
+};
 
 function TriStateSelect({
   label,
@@ -116,7 +122,7 @@ function ReportQuery() {
               className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-500"
             >
               <option value="">Any</option>
-              <option value="singer">Singer</option>
+              <option value="singer">Vrotégé</option>
               <option value="coach">Coach</option>
             </select>
           </label>
@@ -191,7 +197,7 @@ function ReportQuery() {
                           {u.email}
                         </Link>
                       </td>
-                      <td className="py-2 pr-4">{u.account_type}</td>
+                      <td className="py-2 pr-4">{ACCOUNT_TYPE_LABEL[u.account_type]}</td>
                       <td className="py-2 pr-4">
                         {u.is_active ? "active" : <span className="text-red-400">deactivated</span>}
                       </td>
@@ -234,7 +240,7 @@ function ReportsContent() {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <Stat label="Total users" value={summary.total_users} />
-      <Stat label="Singers" value={summary.singer_count} />
+      <Stat label="Vrotégés" value={summary.singer_count} />
       <Stat label="Coaches" value={summary.coach_count} />
       <Stat label="Active" value={summary.active_count} />
       <Stat label="Deactivated" value={summary.deactivated_count} />

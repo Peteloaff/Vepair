@@ -10,6 +10,12 @@ import type { AdminUserDetail } from "@/lib/types";
 import { ApiError } from "@/lib/apiClient";
 
 const CONFIRM_PHRASE = "DELETE";
+// Display-only relabeling -- the stored account_type value stays "singer" (API contract,
+// database), only what an admin sees changes.
+const ACCOUNT_TYPE_LABEL: Record<"singer" | "coach", string> = {
+  singer: "Vrotégé",
+  coach: "Coach",
+};
 
 function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleString() : "—";
@@ -74,7 +80,7 @@ function UserDetailContent() {
       <section className="rounded-2xl border border-neutral-800 p-5">
         <h1 className="mb-1 text-xl font-semibold">{detail.email}</h1>
         <p className="mb-4 text-sm text-neutral-400">
-          {detail.account_type} · {detail.is_active ? "active" : "deactivated"}
+          {ACCOUNT_TYPE_LABEL[detail.account_type]} · {detail.is_active ? "active" : "deactivated"}
           {detail.is_admin ? " · admin" : ""}
         </p>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -131,7 +137,7 @@ function UserDetailContent() {
                 onClick={() => {
                   if (
                     !window.confirm(
-                      "Remove coach status? This deletes any exercises this account authored — including from every other singer's routine that included one. This cannot be undone."
+                      "Remove coach status? This deletes any exercises this account authored — including from every other Vrotégé's routine that included one. This cannot be undone."
                     )
                   ) {
                     return;
@@ -180,7 +186,7 @@ function UserDetailContent() {
           </div>
         </div>
         <p className="mt-3 text-xs text-neutral-500">
-          Making a singer account a coach doesn&apos;t remove their singer data — the account
+          Making a Vrotégé account a coach doesn&apos;t remove their Vrotégé data — the account
           keeps both.
         </p>
       </section>

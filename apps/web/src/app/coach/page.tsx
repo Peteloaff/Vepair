@@ -74,7 +74,7 @@ function CoachDashboardContent() {
             href="/coach/invite"
             className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
           >
-            Invite a singer
+            Invite a Vrotégé
           </Link>
           <button
             type="button"
@@ -87,10 +87,10 @@ function CoachDashboardContent() {
       </div>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-neutral-200">Your singers</h2>
+        <h2 className="mb-3 text-sm font-medium text-neutral-200">Your Vrotégés</h2>
         {singers.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            No singers yet — invite one to get started.
+            No Vrotégés yet — invite one to get started.
           </p>
         ) : (
           <div className="space-y-2">

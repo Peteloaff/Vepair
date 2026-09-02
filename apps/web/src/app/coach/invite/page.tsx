@@ -30,7 +30,7 @@ function InviteFormContent() {
       if (err instanceof ApiError && err.code === "singer_not_found") {
         setError("No VepAIr account exists for this email yet — ask them to sign up first.");
       } else if (err instanceof ApiError && err.code === "invite_already_pending") {
-        setError("An invite to this singer is already pending.");
+        setError("An invite to this Vrotégé is already pending.");
       } else {
         setError("Could not send this invite. Please try again.");
       }
@@ -41,7 +41,7 @@ function InviteFormContent() {
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">Invite a singer</h1>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight">Invite a Vrotégé</h1>
       <p className="mb-8 text-sm text-neutral-400">
         They must already have a VepAIr account, and must explicitly accept before you see
         anything of theirs.
@@ -50,7 +50,7 @@ function InviteFormContent() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="email" className="mb-1 block text-xs text-neutral-400">
-            Singer&apos;s email
+            Vrotégé&apos;s email
           </label>
           <input
             id="email"

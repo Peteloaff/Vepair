@@ -141,7 +141,7 @@ def create_invite(
             status_code=409,
             detail={
                 "code": "invite_already_pending",
-                "message": "An invite to this singer is already pending.",
+                "message": "An invite to this Vrotégé is already pending.",
             },
         )
 

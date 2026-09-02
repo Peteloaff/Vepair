@@ -338,20 +338,20 @@ export default function HelpPage() {
             <FeatureCard title="Your home page, not a redirect">
               <p>
                 Signing in as a coach used to jump you straight to the Coach Portal. Now you land
-                on the same home page every singer sees, with the singer-only sections replaced
+                on the same home page every Vrotégé sees, with the Vrotégé-only sections replaced
                 by a compact panel and a link into your Coach Portal.
               </p>
             </FeatureCard>
 
             <FeatureCard title="Build your own exercises" where="Assign training">
               <p>
-                If the exercise library is missing something a singer needs, add it yourself — no
+                If the exercise library is missing something a Vrotégé needs, add it yourself — no
                 waiting on VepAIr to build it in.
               </p>
               <Steps
                 items={[
                   <>
-                    From a singer&apos;s <strong className="text-neutral-200">Assign training</strong>{" "}
+                    From a Vrotégé&apos;s <strong className="text-neutral-200">Assign training</strong>{" "}
                     page, select <strong className="text-neutral-200">+ Add custom exercise</strong>.
                   </>,
                   <>
@@ -374,7 +374,7 @@ export default function HelpPage() {
             <FeatureCard title="A target tone for one exercise" where="Assign training">
               <p>
                 When assigning exercises, attach an optional target note to any exercise
-                you&apos;ve selected — useful for a specific pitch you want a singer focused on
+                you&apos;ve selected — useful for a specific pitch you want a Vrotégé focused on
                 during that one exercise. It&apos;s informational only and never changes what&apos;s
                 safe for them that day.
               </p>
@@ -393,7 +393,7 @@ export default function HelpPage() {
             <FeatureCard title="Can I still exercise on a recommended rest day?">
               <p>Yes. It&apos;s guidance, never a block.</p>
             </FeatureCard>
-            <FeatureCard title="Does a coach's custom exercise only show up for their own singers?">
+            <FeatureCard title="Does a coach's custom exercise only show up for their own Vrotégés?">
               <p>No — once saved, it&apos;s a normal library exercise available to anyone&apos;s daily routine.</p>
             </FeatureCard>
           </div>
@@ -404,7 +404,7 @@ export default function HelpPage() {
             Full documentation
           </h2>
           <div className="space-y-3">
-            <FeatureCard title="User Guide" where="Singers, coaches & admins">
+            <FeatureCard title="User Guide" where="Vrotégés, coaches & admins">
               <p>
                 A complete, plain-English walkthrough of everything VepAIr does, organized by
                 role — jump to whichever is yours.

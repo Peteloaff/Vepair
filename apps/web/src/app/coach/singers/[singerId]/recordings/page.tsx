@@ -72,7 +72,7 @@ function RecordingsContent() {
       .then(setSessions)
       .catch(() =>
         setError(
-          "Could not load this singer's recordings — check they've shared the recordings category with you."
+          "Could not load this Vrotégé's recordings — check they've shared the recordings category with you."
         )
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps

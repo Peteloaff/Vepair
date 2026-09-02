@@ -133,7 +133,7 @@ export default function CoachSignupPage() {
         <div className="mt-6 text-xs text-neutral-500">
           Not a coach?{" "}
           <Link href="/signup" className="text-neutral-300 hover:text-neutral-100">
-            Sign up as a singer
+            Sign up as a Vrotégé
           </Link>
         </div>
       </div>

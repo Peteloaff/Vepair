@@ -29,7 +29,7 @@ export default function TermsPage() {
           <p>
             You&apos;re responsible for keeping your password secure and for anything that
             happens under your account. Create separate accounts if you use VepAIr both as a
-            singer and, separately, as a coach — the two are not the same account by design.
+            Vrotégé and, separately, as a coach — the two are not the same account by design.
           </p>
         </section>
 

@@ -69,7 +69,7 @@ export function UsernameEditor() {
             setValue(e.target.value);
             setSaved(false);
           }}
-          placeholder="e.g. singer_pete"
+          placeholder="e.g. vrotege_pete"
           minLength={3}
           maxLength={30}
           className="w-full max-w-xs rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
