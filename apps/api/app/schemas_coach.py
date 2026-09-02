@@ -80,6 +80,10 @@ class CoachConnectionOut(BaseModel):
     granted_categories: list[str]
     granted_at: datetime
     revoked_at: datetime | None
+    # Count of coach-sent CoachMessage rows with read_at still null on this connection --
+    # powers the badge on the singer's "Coach Access" nav link. 0 for a connection with no
+    # messages, never None.
+    unread_message_count: int = 0
 
 
 class CoachSingerSummaryOut(BaseModel):
@@ -140,6 +144,9 @@ class CoachSingerListItemOut(BaseModel):
     coach_access_id: uuid.UUID
     granted_categories: list[str]
     granted_at: datetime
+    # Count of singer-sent CoachMessage rows with read_at still null on this connection --
+    # powers the badge on the coach's roster. 0 for a connection with no messages, never None.
+    unread_message_count: int = 0
 
 
 class CoachAssignmentCreate(BaseModel):
@@ -227,6 +234,26 @@ class CoachNoteOut(BaseModel):
     id: uuid.UUID
     body: str
     flagged_terms: list[str] | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CoachMessageCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CoachMessageOut(BaseModel):
+    """Two-way chat, deliberately separate from CoachNoteOut — see app/models.py's
+    CoachMessage. `flagged_terms` is non-empty when app.coach_notes's blocklist matched; the
+    message is saved regardless, same non-blocking posture as notes (MEDICAL_SAFETY.md §12).
+    Not a clinical record — see the disclaimer shown alongside every thread in the app."""
+
+    id: uuid.UUID
+    sender: str
+    body: str
+    flagged_terms: list[str] | None
+    read_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -98,12 +98,19 @@ function CoachDashboardContent() {
               <Link
                 key={singer.coach_access_id}
                 href={`/coach/singers/${singer.singer_user_id}`}
-                className="block rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 hover:bg-neutral-900"
+                className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 hover:bg-neutral-900"
               >
-                <p className="text-sm font-medium text-neutral-100">{singer.singer_email}</p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  Shared: {singer.granted_categories.join(", ") || "nothing yet"}
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-neutral-100">{singer.singer_email}</p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Shared: {singer.granted_categories.join(", ") || "nothing yet"}
+                  </p>
+                </div>
+                {singer.unread_message_count > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+                    {singer.unread_message_count}
+                  </span>
+                )}
               </Link>
             ))}
           </div>

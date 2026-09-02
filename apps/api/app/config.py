@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     # API_CORS_ORIGINS, since that's a list and this needs to be the one canonical frontend URL.
     frontend_base_url: str = "http://localhost:3000"
 
+    # Shared-secret auth for POST /api/v1/system/send-reminders -- an unattended daily job
+    # (Cloud Scheduler) triggers this, and a human admin's 15-minute JWT is the wrong credential
+    # for that. Empty by default so local dev/tests never accidentally leave it unset in a way
+    # that's exploitable -- app/routers/system.py rejects every call when this is "".
+    internal_job_secret: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]

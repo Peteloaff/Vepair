@@ -70,6 +70,7 @@ function Dashboard({
   const [restCheck, setRestCheck] = useState<RestCheck | null>(null);
   const [pendingInviteCount, setPendingInviteCount] = useState(0);
   const [hasCoachConnection, setHasCoachConnection] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [profileMissing, setProfileMissing] = useState(false);
   const [rangeDays, setRangeDays] = useState<number>(30);
   const [editingToday, setEditingToday] = useState(false);
@@ -141,7 +142,12 @@ function Dashboard({
     // there's actually something there (a pending invite, from the fetch above, or a
     // connection, active or revoked, checked here).
     apiFetch<CoachConnection[]>("/api/v1/coach-connections")
-      .then((connections) => setHasCoachConnection(connections.length > 0))
+      .then((connections) => {
+        setHasCoachConnection(connections.length > 0);
+        setUnreadMessageCount(
+          connections.reduce((sum, c) => sum + c.unread_message_count, 0)
+        );
+      })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -263,9 +269,9 @@ function Dashboard({
               className="relative rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
             >
               Coach Access
-              {pendingInviteCount > 0 && (
+              {pendingInviteCount + unreadMessageCount > 0 && (
                 <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
-                  {pendingInviteCount}
+                  {pendingInviteCount + unreadMessageCount}
                 </span>
               )}
             </Link>
