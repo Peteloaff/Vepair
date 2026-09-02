@@ -58,8 +58,14 @@ export function buildReferenceRange(startOctave = 3, octaveCount = 2): Reference
   return notes;
 }
 
-/** Plays a short pure tone via the Web Audio API with a brief fade in/out to avoid clicks. */
-export async function playTone(frequencyHz: number, durationMs = 2000): Promise<void> {
+/** Plays a short pure tone via the Web Audio API with a brief fade in/out to avoid clicks.
+ * `peakGain` defaults to 0.9 (matches every existing caller's prior volume); Tone Match's own
+ * calls pass 1.0 explicitly for full volume, since that's the one place it's been raised. */
+export async function playTone(
+  frequencyHz: number,
+  durationMs = 2000,
+  peakGain = 0.9
+): Promise<void> {
   const AudioContextCtor =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -82,7 +88,6 @@ export async function playTone(frequencyHz: number, durationMs = 2000): Promise<
   const now = ctx.currentTime;
   const fadeSeconds = 0.03;
   const durationSeconds = durationMs / 1000;
-  const peakGain = 0.9;
   gain.gain.setValueAtTime(0, now);
   gain.gain.linearRampToValueAtTime(peakGain, now + fadeSeconds);
   gain.gain.setValueAtTime(peakGain, now + Math.max(fadeSeconds, durationSeconds - fadeSeconds));
