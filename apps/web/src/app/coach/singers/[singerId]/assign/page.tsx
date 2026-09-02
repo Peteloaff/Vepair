@@ -39,6 +39,7 @@ function AssignContent() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [newName, setNewName] = useState("");
   const [newInstructions, setNewInstructions] = useState("");
   const [newCategory, setNewCategory] = useState<string>(EXERCISE_CATEGORIES[0]);
@@ -46,6 +47,10 @@ function AssignContent() {
   const [newDifficulty, setNewDifficulty] = useState<"easy" | "moderate" | "hard">("easy");
   const [addError, setAddError] = useState<string | null>(null);
   const [addSubmitting, setAddSubmitting] = useState(false);
+  // Exercises created in this sitting -- lets a coach add several in a row and see what
+  // they've queued up so far, without the form closing (and losing category/difficulty/
+  // duration) after every single one.
+  const [addedThisSession, setAddedThisSession] = useState<Exercise[]>([]);
 
   async function load() {
     try {
@@ -112,7 +117,7 @@ function AssignContent() {
 
   async function submitNewExercise() {
     if (!newName.trim() || !newInstructions.trim()) {
-      setAddError("Title and description are both required.");
+      setAddError("Name and description are both required.");
       return;
     }
     setAddSubmitting(true);
@@ -128,10 +133,12 @@ function AssignContent() {
           difficulty: newDifficulty,
         },
       });
+      // Deliberately does NOT close the form or reset category/difficulty/duration -- a coach
+      // adding several exercises in one sitting (often the same rough category) can keep going
+      // without re-opening it or re-picking those each time. Only name/description clear.
       setNewName("");
       setNewInstructions("");
-      setNewDuration(60);
-      setShowAddForm(false);
+      setAddedThisSession((prev) => [...prev, created]);
       await load();
       // Pre-select it so the coach doesn't have to hunt for the exercise they just typed in.
       setSelected((prev) => new Set(prev).add(created.id));
@@ -188,18 +195,22 @@ function AssignContent() {
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="text-xs text-emerald-400 hover:text-emerald-300"
+            className="flex items-center gap-2 rounded-lg border border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
           >
-            + Add custom exercise
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold leading-none text-neutral-950">
+              +
+            </span>
+            Create your own exercise
           </button>
         ) : (
           <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
             <p className="mb-2 text-xs text-neutral-400">
-              Adds a new exercise to the library — selectable below once saved.
+              Adds a new exercise to the library — selectable below once saved. Add as many as
+              you like; the form stays open after each save.
             </p>
             <input
               type="text"
-              placeholder="Title"
+              placeholder="Name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
@@ -211,44 +222,75 @@ function AssignContent() {
               rows={3}
               className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
             />
-            <div className="mb-2 grid grid-cols-3 gap-2">
-              <select
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
-              >
-                {EXERCISE_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={newDifficulty}
-                onChange={(e) =>
-                  setNewDifficulty(e.target.value as "easy" | "moderate" | "hard")
-                }
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
-              >
-                <option value="easy">Easy</option>
-                <option value="moderate">Moderate</option>
-                <option value="hard">Hard</option>
-              </select>
-              <input
-                type="number"
-                min={5}
-                max={1800}
-                value={newDuration}
-                onChange={(e) => setNewDuration(Number(e.target.value))}
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
-                aria-label="Duration in seconds"
-              />
-            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((s) => !s)}
+              className="mb-2 text-xs text-neutral-500 hover:text-neutral-300"
+            >
+              {showAdvanced ? "Hide" : "Show"} category, difficulty & duration
+              {!showAdvanced && (
+                <span className="text-neutral-600">
+                  {" "}
+                  (currently {newCategory} &middot; {newDifficulty} &middot; {newDuration}s)
+                </span>
+              )}
+            </button>
+            {showAdvanced && (
+              <div className="mb-2 grid grid-cols-3 gap-2">
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
+                >
+                  {EXERCISE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={newDifficulty}
+                  onChange={(e) =>
+                    setNewDifficulty(e.target.value as "easy" | "moderate" | "hard")
+                  }
+                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="hard">Hard</option>
+                </select>
+                <input
+                  type="number"
+                  min={5}
+                  max={1800}
+                  value={newDuration}
+                  onChange={(e) => setNewDuration(Number(e.target.value))}
+                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
+                  aria-label="Duration in seconds"
+                />
+              </div>
+            )}
+
             {addError && (
               <p className="mb-2 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">
                 {addError}
               </p>
             )}
+
+            {addedThisSession.length > 0 && (
+              <div className="mb-2 rounded-lg border border-emerald-900 bg-emerald-950/20 p-2">
+                <p className="mb-1 text-xs text-emerald-300">
+                  Added just now ({addedThisSession.length}):
+                </p>
+                <ul className="text-xs text-neutral-300">
+                  {addedThisSession.map((e) => (
+                    <li key={e.id}>{e.name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 type="button"
@@ -260,11 +302,15 @@ function AssignContent() {
               </button>
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={() => {
+                  setShowAddForm(false);
+                  setAddedThisSession([]);
+                  setAddError(null);
+                }}
                 disabled={addSubmitting}
                 className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
               >
-                Cancel
+                Done
               </button>
             </div>
           </div>
