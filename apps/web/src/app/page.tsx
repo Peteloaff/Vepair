@@ -255,6 +255,12 @@ function Dashboard({
           >
             Tone Match
           </Link>
+          <Link
+            href="/recordings"
+            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+          >
+            Recordings
+          </Link>
           {showCoachPortalLink && (
             <Link
               href="/coach"

@@ -3,9 +3,60 @@
 import { useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
-import { ApiError } from "@/lib/apiClient";
+import { ApiError, API_BASE } from "@/lib/apiClient";
 
 const CONFIRM_PHRASE = "DELETE";
+
+function DownloadDataSection() {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setDownloading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("vepair_access_token");
+      const res = await fetch(`${API_BASE}/api/v1/profile/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vepair-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not download your data. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+      <h2 className="mb-1 text-sm font-medium text-neutral-200">Download my data</h2>
+      <p className="mb-4 text-xs text-neutral-400">
+        Get a copy of everything VepAIr has on your account — check-ins, measurements, vocal
+        range history, exercise history, coach notes and messages, and more — as a single JSON
+        file. Raw audio isn&apos;t included in the file; each recording links to where you can
+        download it separately.
+      </p>
+      <button
+        type="button"
+        onClick={download}
+        disabled={downloading}
+        className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+      >
+        {downloading ? "Preparing..." : "Download my data"}
+      </button>
+      {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
+    </section>
+  );
+}
 
 function DeleteAccountSection() {
   const { deleteAccount } = useAuth();
@@ -124,6 +175,7 @@ export default function SettingsPage() {
           .
         </p>
 
+        <DownloadDataSection />
         <DeleteAccountSection />
       </main>
     </RequireAuth>

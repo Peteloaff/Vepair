@@ -200,6 +200,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <li><a href="#sharing">Progress & sharing</a></li>
           <li><a href="#coach">Coach Portal</a></li>
           <li><a href="#reminders">Notifications & reminders</a></li>
+          <li><a href="#retention">Data minimization</a></li>
           <li><a href="#billing">Coach Pro billing (SaaS)</a></li>
           <li><a href="#tonegame">Tone Match Challenge</a></li>
           <li><a href="#admin">Backend Admin</a></li>
@@ -563,8 +564,45 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
         </div>
       </section>
 
+      <section class="block" id="retention">
+        <div class="block-head"><span class="block-num">13</span><h2>Data minimization</h2></div>
+        <div class="card">
+          <p><b>Self-serve account deletion</b> (<code class="path">DELETE /api/v1/auth/me</code>)
+          requires the current password, same bar as changing one. Shares
+          <code class="path">app/account_deletion.py</code>'s <code>delete_user_and_storage</code>
+          with the admin hard-delete path — every stored recording's actual audio file is
+          deleted from object storage before the cascading DB delete removes everything else
+          (profile, check-ins, recordings, measurements, coach connections, notes, messages,
+          consent records). No admin involvement needed.</p>
+          <p><b>Per-recording deletion</b> (<code class="path">DELETE /api/v1/recordings/{"{"}id{"}"}</code>)
+          is a full, user-initiated removal — the row and its <code>AcousticMeasurement</code>
+          both go (via <code>ondelete="CASCADE"</code>, with <code>passive_deletes=True</code>
+          on the relationship so SQLAlchemy trusts the DB's cascade rather than trying to null
+          a NOT NULL FK itself). Deliberately different from the retention job below: this is
+          the user saying "remove this," not a passive policy.</p>
+          <p><b>Retention purge job</b> (<code class="path">POST /api/v1/system/purge-stale-data</code>,
+          same shared-secret auth and Cloud Scheduler pattern as <code class="path">send-reminders</code>
+          — see §12) runs two independent policies from <code class="path">app/data_retention.py</code>,
+          both configurable via <code>SiteSettings</code> (admin-editable, no redeploy):</p>
+          <table class="ref">
+            <tr><th>Policy</th><th>Default</th><th>What it touches</th></tr>
+            <tr><td class="code-cell">recording_retention_days</td><td>90 days</td><td>Deletes the object-storage file and nulls <code>Recording.file_path</code>; the row, <code>AcousticMeasurement</code>, and <code>quality_flags</code> survive.</td></tr>
+            <tr><td class="code-cell">checkin_notes_retention_days</td><td>30 days</td><td>Nulls just <code>illness_symptoms</code>/<code>reflux_symptoms</code>/<code>notes</code> on <code>DailyCheckIn</code>; every quantitative field is untouched.</td></tr>
+          </table>
+          <p><b>Data export</b> (<code class="path">GET /api/v1/profile/export</code>,
+          <code class="path">app/data_export.py</code>) returns a JSON file via
+          <code>Content-Disposition: attachment</code> covering every table keyed to the
+          caller's own id — profile, consent history, check-ins, recordings (metadata +
+          measurements, not raw audio bytes — each links back to the existing audio endpoint
+          instead), baselines, scores, vocal range/goals/plans, exercise and Tone Match
+          history, and coach connections/notes/messages (both directions, plus what a
+          coach account has authored). Synchronous, single request — no async job at this
+          data scale.</p>
+        </div>
+      </section>
+
       <section class="block" id="billing">
-        <div class="block-head"><span class="block-num">13</span><h2>Coach Pro billing (SaaS)</h2></div>
+        <div class="block-head"><span class="block-num">14</span><h2>Coach Pro billing (SaaS)</h2></div>
         <p class="block-note">Live in production. No Stripe on the coach side — see <code class="path">TECHNICAL_GUIDE.md</code> §10 for the operator walkthrough.</p>
         <div class="card">
           <p>Every coach belongs to exactly one <code>Organization</code>, created automatically at
@@ -588,7 +626,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="tonegame">
-        <div class="block-head"><span class="block-num">14</span><h2>Tone Match Challenge</h2></div>
+        <div class="block-head"><span class="block-num">15</span><h2>Tone Match Challenge</h2></div>
         <div class="card">
           <p>Five target notes are drawn from the singer's own measured vocal range (not the
           generic reference range the free-practice mode uses), one every 6 seconds (1s tone +
@@ -603,7 +641,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="admin">
-        <div class="block-head"><span class="block-num">15</span><h2>Backend Admin</h2></div>
+        <div class="block-head"><span class="block-num">16</span><h2>Backend Admin</h2></div>
         <div class="card">
           <p>An internal operator surface, not user-facing. <code class="path">app/admin_auth.py</code>'s
           <code>get_current_admin</code> mirrors the coach gate exactly, keyed on
@@ -621,7 +659,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="deploy">
-        <div class="block-head"><span class="block-num">16</span><h2>Deployment topology</h2></div>
+        <div class="block-head"><span class="block-num">17</span><h2>Deployment topology</h2></div>
         <div class="card">
           <table class="ref">
             <tr><th>Account</th><th>Owns</th><th>Trigger</th></tr>
@@ -640,7 +678,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="gotchas">
-        <div class="block-head"><span class="block-num">17</span><h2>Known gotchas</h2></div>
+        <div class="block-head"><span class="block-num">18</span><h2>Known gotchas</h2></div>
         <div class="card">
           <ul>
             <li><b>Application logs land under <code>jsonPayload</code>, not <code>textPayload</code></b> in Cloud Logging — filter on <code>jsonPayload.logger</code>.</li>
@@ -655,20 +693,20 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="privacy">
-        <div class="block-head"><span class="block-num">18</span><h2>Privacy principles</h2></div>
+        <div class="block-head"><span class="block-num">19</span><h2>Privacy principles</h2></div>
         <div class="card">
           <ul>
             <li><b>Minimal collection</b> — collect only what a shipped feature needs. Exercise-attempt audio is analyzed in-memory and never written to storage at all; only the derived numbers persist.</li>
             <li><b>No public-by-guessable-URL storage</b> — every recording read goes through an authenticated, ownership-checked endpoint.</li>
             <li><b>Consent is granular, never one checkbox</b> — product analytics, model training, coach sharing, and notifications are four independent grants; accepting one never implies another.</li>
-            <li><b>User rights at the data-model level</b> — account deletion cascades and cleans up storage; per-recording deletion and data export remain open gaps.</li>
+            <li><b>User rights at the data-model level</b> — self-serve account deletion, per-recording deletion, and a full data export are all live (§13); an automatic retention window on raw audio and the most sensitive check-in free-text fields means even undeleted data doesn't sit forever.</li>
             <li><b>Admin access is itself access to user data</b> — not gated by user consent (it's operational, not a sharing relationship), but every state-changing action is audited the same way.</li>
           </ul>
         </div>
       </section>
 
       <section class="block" id="medsafety">
-        <div class="block-head"><span class="block-num">19</span><h2>Medical safety rules</h2></div>
+        <div class="block-head"><span class="block-num">20</span><h2>Medical safety rules</h2></div>
         <div class="card">
           <p>Binding on all product copy, UI strings, and AI-generated text, at every stage.</p>
           <ul>
@@ -682,7 +720,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="status" style="margin-bottom: 0;">
-        <div class="block-head"><span class="block-num">20</span><h2>What's live vs. planned</h2></div>
+        <div class="block-head"><span class="block-num">21</span><h2>What's live vs. planned</h2></div>
         <div class="card">
           <div class="cols2">
             <div>
@@ -694,6 +732,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Backend Admin (users, orgs, reports, audit log)</li>
                 <li>Tone Match Challenge (5-tone game + trend)</li>
                 <li>Practice reminders (Cloud Scheduler-triggered daily email)</li>
+                <li>Data minimization (self-serve delete, per-recording delete, export, retention purge — §13)</li>
               </ul>
             </div>
             <div>
@@ -701,8 +740,9 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
               <ul>
                 <li>QuickBooks Online monthly invoicing sync</li>
                 <li>Singer-side Stripe/User Pro billing</li>
-                <li>Per-recording deletion & data export</li>
+                <li>Admin role tiers, bulk operations, impersonation</li>
                 <li>Real login-event table (last-login is currently a proxy)</li>
+                <li>Contact-list / outreach export</li>
                 <li>Cross-user Tone Match leaderboard</li>
               </ul>
             </div>

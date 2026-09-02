@@ -350,6 +350,11 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           <h3>Forgot your password?</h3>
           <p><b>Forgot password?</b> on the login page → enter your email → follow the reset link. For privacy, VepAIr always shows the same "a reset link is on its way" message whether or not that email has an account.</p>
         </div>
+        <div class="card">
+          <h3>Your account (Settings)</h3>
+          <p><b>Download my data</b> gets you a single file with everything VepAIr has on your account — check-ins, measurements, vocal range history, exercise history, coach notes and messages, and more. Raw audio isn't bundled into it; each recording links to where you can get it separately (see <a href="#recording">Recording a voice sample</a>).</p>
+          <p><b>Delete my account</b> is fully self-serve — no need to contact anyone. It requires your password and typing <code class="mono">DELETE</code> to confirm, and it's permanent: every recording's actual audio file, every check-in, and everything derived from them is gone, not just hidden.</p>
+        </div>
       </section>
 
       <section class="block" id="dashboard">
@@ -387,6 +392,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <li><b>Optional, skippable</b>: sing a short phrase you know well.</li>
           </ol>
           <p>Each step offers <b>Retake</b> or <b>Use this take</b>. Clipped/too quiet/too short takes show a warning but you can still use them. At the end: a quality label (excellent/good/fair/poor) and the raw numbers behind it — always labeled as raw acoustic measurements, never a diagnosis.</p>
+          <p><b>Recordings</b> (nav bar) lists every past recording session. Play any recording back, or <b>Delete</b> it — permanent, removes the audio and its measurements immediately, and it stops counting toward your trends. Raw audio is also automatically removed after a retention period even if you never delete it yourself; your measurements and trend history are unaffected either way, only the playable audio goes.</p>
         </div>
       </section>
 
@@ -501,6 +507,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
         <div class="block-head"><span class="block-num">01</span><h2>Your coach account</h2></div>
         <div class="card">
           <p>A coach account is separate from a Vrotégé account — created via the public <b>coach signup</b> page, or by an admin. It has its own portal at <code class="path">/coach</code>, not the Vrotégé dashboard. (An admin can also add coach access to an existing Vrotégé account — see <a href="#roles">Roles</a> — in which case you get both.)</p>
+          <p>Like any account, <b>Settings</b> lets you download everything VepAIr has on your coach account, or permanently delete it yourself (password + typed confirmation) — no need to contact an admin.</p>
         </div>
       </section>
 
@@ -705,10 +712,11 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
       <section class="block admin-section" id="site-settings">
         <div class="block-head"><span class="block-num">09</span><h2>Site settings</h2></div>
         <div class="card">
-          <p>Two toggles at the top of <code class="path">/admin</code>:</p>
+          <p>At the top of <code class="path">/admin</code>:</p>
           <ul>
             <li><b>Signup lockdown</b> — turns off the public <code class="path">/signup</code> and <code class="path">/coach-signup</code> forms (both return "signups disabled"). Admin-created accounts still work — this gates the public forms only, not you deliberately creating an account.</li>
             <li><b>Beta NDA gate</b> — whether every user must accept the beta confidentiality notice before using the app. Turn off once the beta period ends.</li>
+            <li><b>Data retention</b> — how many days raw recording audio and the most sensitive check-in free-text fields (illness/reflux/notes) are kept before the daily purge job removes them (90 and 30 by default). Editing either takes effect on the job's next run, no redeploy needed.</li>
           </ul>
         </div>
       </section>

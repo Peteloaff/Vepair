@@ -13,10 +13,12 @@ function PlayableRecording({
   singerId,
   recordingId,
   sampleType,
+  audioAvailable,
 }: {
   singerId: string;
   recordingId: string;
   sampleType: string;
+  audioAvailable: boolean;
 }) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -45,7 +47,9 @@ function PlayableRecording({
   return (
     <li className="flex items-center justify-between text-sm">
       <span className="text-neutral-300">{sampleType}</span>
-      {audioUrl ? (
+      {!audioAvailable ? (
+        <span className="text-xs text-neutral-600">Audio no longer available</span>
+      ) : audioUrl ? (
         <audio controls autoPlay src={audioUrl} className="h-8" />
       ) : (
         <button
@@ -109,6 +113,7 @@ function RecordingsContent() {
                     singerId={params.singerId}
                     recordingId={recording.id}
                     sampleType={recording.sample_type}
+                    audioAvailable={recording.audio_available}
                   />
                 ))}
               </ul>

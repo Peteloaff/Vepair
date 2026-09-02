@@ -1,9 +1,13 @@
 import array
 import io
 import math
+import uuid
 import wave
 
 import pytest
+from sqlalchemy import select
+
+from app.models import Recording
 
 SAMPLE_RATE = 16000
 
@@ -294,3 +298,93 @@ def test_session_detail_includes_nested_measurements(client, signed_up_user) -> 
     recordings = resp.json()["recordings"]
     assert len(recordings) == 1
     assert recordings[0]["measurement"]["f0_mean_hz"] == pytest.approx(220.0, abs=1.0)
+
+
+# --- Data minimization: per-recording deletion + audio_available (A2/A3) ---
+
+
+def test_uploaded_recording_reports_audio_available(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    session_id = client.post("/api/v1/voice-sessions", headers=headers, json={}).json()["id"]
+
+    resp = upload_file(client, headers, session_id)
+    assert resp.json()["audio_available"] is True
+    assert resp.json()["audio_purged_at"] is None
+    # The raw storage key is never exposed to the client.
+    assert "file_path" not in resp.json()
+
+
+def test_list_voice_sessions_includes_nested_recordings(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    session_id = client.post("/api/v1/voice-sessions", headers=headers, json={}).json()["id"]
+    upload_file(client, headers, session_id, sample_type="hum")
+
+    resp = client.get("/api/v1/voice-sessions", headers=headers)
+    assert resp.status_code == 200
+    session = next(s for s in resp.json() if s["id"] == session_id)
+    assert len(session["recordings"]) == 1
+    assert session["recordings"][0]["sample_type"] == "hum"
+
+
+def test_user_can_delete_own_recording(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    session_id = client.post("/api/v1/voice-sessions", headers=headers, json={}).json()["id"]
+    recording_id = upload_file(client, headers, session_id).json()["id"]
+
+    resp = client.delete(f"/api/v1/recordings/{recording_id}", headers=headers)
+    assert resp.status_code == 204
+
+    # Gone from the audio endpoint and from the session's recording list.
+    audio = client.get(f"/api/v1/recordings/{recording_id}/audio", headers=headers)
+    assert audio.status_code == 404
+
+    session_detail = client.get(f"/api/v1/voice-sessions/{session_id}", headers=headers)
+    assert session_detail.json()["recordings"] == []
+
+
+def test_deleting_nonexistent_recording_404s(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    resp = client.delete(f"/api/v1/recordings/{uuid.uuid4()}", headers=headers)
+    assert resp.status_code == 404
+
+
+def test_user_cannot_delete_another_users_recording(client, signed_up_user) -> None:
+    _user_a, headers_a = signed_up_user
+    session_id = client.post("/api/v1/voice-sessions", headers=headers_a, json={}).json()["id"]
+    recording_id = upload_file(client, headers_a, session_id).json()["id"]
+
+    signup_b = client.post(
+        "/api/v1/auth/signup",
+        json={"email": "recordings-delete-user-b@example.com", "password": "correcthorse123"},
+    )
+    headers_b = {"Authorization": f"Bearer {signup_b.json()['access_token']}"}
+
+    resp = client.delete(f"/api/v1/recordings/{recording_id}", headers=headers_b)
+    assert resp.status_code == 404
+
+    # Still there for its actual owner.
+    still_there = client.get(f"/api/v1/recordings/{recording_id}/audio", headers=headers_a)
+    assert still_there.status_code == 200
+
+
+def test_purged_recording_audio_endpoint_returns_audio_purged(
+    client, db_session, signed_up_user
+) -> None:
+    _user, headers = signed_up_user
+    session_id = client.post("/api/v1/voice-sessions", headers=headers, json={}).json()["id"]
+    recording_id = upload_file(client, headers, session_id).json()["id"]
+
+    # Simulate the retention job having already purged this recording's audio.
+    recording = db_session.scalar(select(Recording).where(Recording.id == recording_id))
+    recording.file_path = None
+    db_session.commit()
+
+    resp = client.get(f"/api/v1/recordings/{recording_id}/audio", headers=headers)
+    assert resp.status_code == 404
+    assert resp.json()["error"]["code"] == "audio_purged"
+
+    # Still listed, still has its measurement, just no playable audio.
+    listed = client.get("/api/v1/voice-sessions", headers=headers)
+    voice_session = next(s for s in listed.json() if s["id"] == session_id)
+    assert voice_session["recordings"][0]["audio_available"] is False
+    assert voice_session["recordings"][0]["measurement"] is not None

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, computed_field
 
 from app.schemas_baseline import AnomalyOut
 
@@ -84,11 +84,25 @@ class RecordingOut(BaseModel):
     quality_flags: dict | None
     measurement: AcousticMeasurementOut | None = None
     created_at: datetime
+    audio_purged_at: datetime | None = None
     # Populated only in the response to the upload that triggered it — a one-time "was this
     # notably different from your recent baseline" signal, not stored/re-served on GET.
     anomalies: list[AnomalyOut] = []
+    # Read from the ORM object's file_path during validation but never itself serialized --
+    # the raw storage key is an implementation detail, not something a client needs. Only
+    # `audio_available` (derived below) is meant to be read.
+    file_path: str | None = Field(default=None, exclude=True, repr=False)
 
     model_config = {"from_attributes": True}
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def audio_available(self) -> bool:
+        """False once app/data_retention.py's purge_stale_recordings has removed the audio
+        (see Recording's docstring) -- `audio_purged_at` says when. Never means the recording
+        itself was deleted; a user's own DELETE /api/v1/recordings/{id} removes the row
+        entirely instead, so it simply wouldn't appear in a response at all."""
+        return bool(self.file_path)
 
 
 class VoiceSessionWithRecordingsOut(VoiceSessionOut):

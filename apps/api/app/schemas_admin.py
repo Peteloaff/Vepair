@@ -35,11 +35,15 @@ class AdminCreateUserIn(BaseModel):
 class AdminSiteSettingsOut(BaseModel):
     signups_enabled: bool
     nda_required: bool
+    recording_retention_days: int
+    checkin_notes_retention_days: int
 
 
 class AdminSiteSettingsIn(BaseModel):
     signups_enabled: bool
     nda_required: bool
+    recording_retention_days: int = Field(gt=0)
+    checkin_notes_retention_days: int = Field(gt=0)
 
 
 class AdminSetCoachIn(BaseModel):
