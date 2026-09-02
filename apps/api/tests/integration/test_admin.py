@@ -36,9 +36,7 @@ def test_search_users_by_email_substring(client, signed_up_user, db_session) -> 
     admin_user, admin_headers = signed_up_user
     _make_admin(db_session, admin_headers, admin_user["email"])
 
-    resp = client.get(
-        f"/api/v1/admin/users?query={admin_user['email'][:8]}", headers=admin_headers
-    )
+    resp = client.get(f"/api/v1/admin/users?query={admin_user['email'][:8]}", headers=admin_headers)
     assert resp.status_code == 200
     emails = [row["email"] for row in resp.json()]
     assert admin_user["email"] in emails
@@ -56,9 +54,30 @@ def test_get_user_detail_includes_activity_proxies(
     assert resp.status_code == 200
     body = resp.json()
     assert body["account_type"] == "coach"
-    assert body["last_session_at"] is not None
+    # last_session_at comes from LoginEvent, written only by POST /auth/login (see that
+    # model's docstring) -- signup deliberately doesn't count as a login, so it's still null
+    # right after signup.
+    assert body["last_session_at"] is None
     assert body["last_checkin_date"] is None
     assert body["last_recording_at"] is None
+
+
+def test_get_user_detail_last_session_at_reflects_a_real_login(
+    client, signed_up_user, signed_up_coach, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_headers, admin_user["email"])
+    coach_user, _coach_headers = signed_up_coach
+    coach_row = db_session.query(User).filter_by(email=coach_user["email"]).one()
+
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"email": coach_user["email"], "password": coach_user["password"]},
+    )
+    assert login.status_code == 200
+
+    resp = client.get(f"/api/v1/admin/users/{coach_row.id}", headers=admin_headers)
+    assert resp.json()["last_session_at"] is not None
 
 
 def test_get_user_detail_404_for_unknown_id(client, signed_up_user, db_session) -> None:
@@ -107,9 +126,9 @@ def test_deactivate_locks_out_the_account_and_revokes_sessions(
         .filter_by(target_user_id=target_row.id, action="deactivate_user")
         .one()
     )
-    assert audit.admin_user_id == db_session.query(User).filter_by(
-        email=admin_user["email"]
-    ).one().id
+    assert (
+        audit.admin_user_id == db_session.query(User).filter_by(email=admin_user["email"]).one().id
+    )
 
 
 def test_reactivate_restores_access(client, signed_up_user, signed_up_coach, db_session) -> None:
@@ -384,9 +403,7 @@ def test_set_coach_revoke_cascades_coach_authored_exercises(
     assert db_session.query(Exercise).filter_by(id=exercise_id).first() is None
 
 
-def test_reports_query_filters_combine(
-    client, signed_up_user, signed_up_coach, db_session
-) -> None:
+def test_reports_query_filters_combine(client, signed_up_user, signed_up_coach, db_session) -> None:
     admin_user, admin_headers = signed_up_user
     _make_admin(db_session, admin_headers, admin_user["email"])
     coach_user, _coach_headers = signed_up_coach
@@ -446,17 +463,13 @@ def test_create_user_makes_a_singer_account_that_can_log_in(
     assert body["account_type"] == "singer"
     assert body["is_admin"] is False
 
-    login = client.post(
-        "/api/v1/auth/login", json={"email": new_email, "password": "hunter22!"}
-    )
+    login = client.post("/api/v1/auth/login", json={"email": new_email, "password": "hunter22!"})
     assert login.status_code == 200
 
     row = db_session.query(User).filter_by(email=new_email).one()
     assert db_session.query(AuthCredential).filter_by(user_id=row.id).first() is not None
     action = (
-        db_session.query(AdminAuditLog)
-        .filter_by(action="create_user", target_user_id=row.id)
-        .one()
+        db_session.query(AdminAuditLog).filter_by(action="create_user", target_user_id=row.id).one()
     )
     assert action.details["account_type"] == "singer"
 
@@ -487,9 +500,7 @@ def test_create_user_can_make_a_coach_and_an_admin(client, signed_up_user, db_se
     assert profile.display_name == "Admin-Made Coach"
 
 
-def test_create_user_requires_display_name_for_coach(
-    client, signed_up_user, db_session
-) -> None:
+def test_create_user_requires_display_name_for_coach(client, signed_up_user, db_session) -> None:
     admin_user, admin_headers = signed_up_user
     _make_admin(db_session, admin_headers, admin_user["email"])
 
@@ -538,6 +549,7 @@ def test_site_settings_default_to_signups_enabled(client, signed_up_user, db_ses
     assert resp.json()["nda_required"] is True
     assert resp.json()["recording_retention_days"] == 90
     assert resp.json()["checkin_notes_retention_days"] == 30
+    assert resp.json()["login_event_retention_days"] == 365
 
 
 def test_disabling_signups_blocks_public_signup_but_not_admin_create(
@@ -554,6 +566,7 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
             "nda_required": True,
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
+            "login_event_retention_days": 365,
         },
     )
     assert toggle.status_code == 200
@@ -612,6 +625,7 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
             "nda_required": True,
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
+            "login_event_retention_days": 365,
         },
     )
     assert reenable.status_code == 200
@@ -636,6 +650,7 @@ def test_site_settings_requires_admin(client, signed_up_user) -> None:
             "nda_required": True,
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
+            "login_event_retention_days": 365,
         },
     )
     assert resp.status_code == 403
@@ -685,9 +700,7 @@ def test_set_password_lets_the_user_log_in_with_the_new_password(
     assert "brand-new-pw-1" not in str(action.details)
 
 
-def test_set_password_requires_admin(
-    client, signed_up_user, signed_up_coach, db_session
-) -> None:
+def test_set_password_requires_admin(client, signed_up_user, signed_up_coach, db_session) -> None:
     _user, headers = signed_up_user
     target_user, _target_headers = signed_up_coach
     target_row = db_session.query(User).filter_by(email=target_user["email"]).one()
@@ -730,6 +743,7 @@ def test_admin_can_turn_off_nda_requirement(client, signed_up_user, db_session) 
             "nda_required": False,
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
+            "login_event_retention_days": 365,
         },
     )
     assert toggle.status_code == 200
@@ -765,9 +779,7 @@ def test_new_coach_organization_starts_inactive(
         },
     )
     assert signup.status_code == 201, signup.text
-    coach_row = (
-        db_session.query(CoachProfile).filter_by(user_id=signup.json()["user"]["id"]).one()
-    )
+    coach_row = db_session.query(CoachProfile).filter_by(user_id=signup.json()["user"]["id"]).one()
 
     orgs = client.get(
         "/api/v1/admin/organizations", headers=admin_headers, params={"query": "Fresh"}
@@ -797,9 +809,7 @@ def test_admin_can_activate_and_deactivate_coach_pro(
         },
     )
     coach_headers = {"Authorization": f"Bearer {signup.json()['access_token']}"}
-    coach_row = (
-        db_session.query(CoachProfile).filter_by(user_id=signup.json()["user"]["id"]).one()
-    )
+    coach_row = db_session.query(CoachProfile).filter_by(user_id=signup.json()["user"]["id"]).one()
     org_id = coach_row.organization_id
 
     blocked = client.get("/api/v1/coach/profile", headers=coach_headers)

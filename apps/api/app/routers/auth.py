@@ -13,6 +13,7 @@ from app.email import send_password_reset_email
 from app.models import (
     AuthCredential,
     CoachProfile,
+    LoginEvent,
     Organization,
     PasswordResetToken,
     RefreshToken,
@@ -152,6 +153,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
             status_code=401,
             detail={"code": "account_deactivated", "message": "This account has been deactivated."},
         )
+
+    # Real login history (app/models.LoginEvent) -- only a password-based login writes one;
+    # signup and token refresh deliberately don't count (see that model's docstring). Feeds
+    # AdminUserDetailOut.last_session_at, replacing the old RefreshToken-issued-at proxy.
+    db.add(LoginEvent(user_id=user.id))
+    db.commit()
 
     return _issue_tokens(db, user)
 

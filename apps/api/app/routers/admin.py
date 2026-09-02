@@ -6,14 +6,15 @@ app/admin_auth.py and app/models.AdminAuditLog for the mechanism this router rel
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.account_deletion import delete_user_and_storage
 from app.admin_audit import log_admin_action
-from app.admin_auth import get_current_admin
+from app.admin_auth import get_current_admin, require_full_admin
+from app.auth import create_access_token
 from app.config import get_settings
 from app.database import get_db
 from app.email import send_password_reset_email
@@ -21,6 +22,7 @@ from app.models import (
     AuthCredential,
     CoachProfile,
     DailyCheckIn,
+    LoginEvent,
     Organization,
     PasswordResetToken,
     Recording,
@@ -31,7 +33,10 @@ from app.models import (
 )
 from app.organizations import invites_used_this_period
 from app.schemas_admin import (
+    AdminBulkResultOut,
+    AdminBulkUserIdsIn,
     AdminCreateUserIn,
+    AdminImpersonateOut,
     AdminOrganizationOut,
     AdminReportsSummaryOut,
     AdminSetAdminIn,
@@ -97,6 +102,7 @@ def _to_list_item(db: Session, user: User) -> AdminUserListItemOut:
         created_at=user.created_at,
         is_active=user.is_active,
         is_admin=user.is_admin,
+        admin_role=user.admin_role,
         onboarding_complete=_onboarding_complete(db, user.id),
     )
 
@@ -126,13 +132,14 @@ def search_users(
 def create_user(
     payload: AdminCreateUserIn,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(require_full_admin),
 ) -> AdminUserListItemOut:
     """Admin-authorized account creation, mirroring POST /api/v1/auth/signup and
     /coach-signup but authorized by an admin instead of self-serve -- for support/testing
     accounts, and deliberately exempt from the site-wide signups_enabled lockdown (see
     /site-settings below), since locking down the *public* forms is the whole point of that
-    toggle, not locking out the admin who set it."""
+    toggle, not locking out the admin who set it. Full-admin-only: this can create a new
+    account with is_admin=True, so it's gated the same as granting admin directly."""
     user = User(email=payload.email.lower(), is_admin=payload.is_admin)
     db.add(user)
     try:
@@ -168,6 +175,73 @@ def create_user(
     return _to_list_item(db, user)
 
 
+@router.get("/users/export")
+def export_contact_list(
+    email: str | None = Query(default=None),
+    account_type: str | None = Query(default=None, pattern="^(singer|coach)$"),
+    is_active: bool | None = Query(default=None),
+    is_admin: bool | None = Query(default=None),
+    onboarding_complete: bool | None = Query(default=None),
+    created_after: date | None = Query(default=None),
+    created_before: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> Response:
+    """Contact-list / outreach export -- full-admin-only, and the one action in this entire
+    admin surface that hands raw PII out of the system as a downloadable file, so it gets
+    hard-delete-level gating. Deliberately minimal fields: email address only -- this app
+    keeps no other contact PII (see PRIVACY.md), so there's nothing else to export. Reuses
+    query_report's exact filter set (same helper, same semantics) but uncapped rather than
+    200-row-limited, since an actual outreach export needs to be complete, not a dashboard
+    preview. Logs the filters used, never the resulting rows -- the audit trail records that
+    an export happened and under what criteria, not a second copy of the exported emails.
+
+    Registered here (before /users/{user_id} below) deliberately -- FastAPI matches routes in
+    registration order, and "/users/export" would otherwise be captured by "/users/{user_id}"
+    with "export" failing UUID validation (422) before ever reaching this handler."""
+    stmt = _build_user_filter_stmt(
+        email=email,
+        account_type=account_type,
+        is_active=is_active,
+        is_admin=is_admin,
+        onboarding_complete=onboarding_complete,
+        created_after=created_after,
+        created_before=created_before,
+        limit=100_000,
+    )
+    emails = db.scalars(stmt.with_only_columns(User.email)).all()
+
+    csv_lines = ["email"] + list(emails)
+    csv_body = "\n".join(csv_lines) + "\n"
+
+    log_admin_action(
+        db,
+        admin.id,
+        "export_contact_list",
+        None,
+        {
+            "filters": {
+                "email": email,
+                "account_type": account_type,
+                "is_active": is_active,
+                "is_admin": is_admin,
+                "onboarding_complete": onboarding_complete,
+                "created_after": created_after.isoformat() if created_after else None,
+                "created_before": created_before.isoformat() if created_before else None,
+            },
+            "row_count": len(emails),
+        },
+    )
+    db.commit()
+
+    filename = f"vepair-contacts-{date.today().isoformat()}.csv"
+    return Response(
+        content=csv_body,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/users/{user_id}", response_model=AdminUserDetailOut)
 def get_user_detail(
     user_id: uuid.UUID,
@@ -177,9 +251,9 @@ def get_user_detail(
     user = _get_target(db, user_id)
 
     last_session_at = db.scalar(
-        select(RefreshToken.created_at)
-        .where(RefreshToken.user_id == user.id)
-        .order_by(RefreshToken.created_at.desc())
+        select(LoginEvent.occurred_at)
+        .where(LoginEvent.user_id == user.id)
+        .order_by(LoginEvent.occurred_at.desc())
         .limit(1)
     )
     last_checkin_date = db.scalar(
@@ -249,7 +323,7 @@ def reactivate_user(
 def hard_delete_user(
     user_id: uuid.UUID,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(require_full_admin),
 ) -> None:
     if user_id == admin.id:
         raise CANNOT_TARGET_SELF
@@ -268,29 +342,78 @@ def hard_delete_user(
     delete_user_and_storage(db, user)
 
 
+@router.post("/users/{user_id}/impersonate", response_model=AdminImpersonateOut)
+def impersonate_user(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> AdminImpersonateOut:
+    """Issues a short-lived (same expiry as a normal access token -- see
+    app/auth.py's create_access_token) read-only token that authenticates as the target user.
+    Read-only is enforced centrally in app/auth.py's get_current_user, not here -- every
+    non-GET request made with this token 403s regardless of which endpoint it hits. Full-admin
+    only, and its own distinctly-named audit action (impersonate_start) rather than folded into
+    a generic "admin logged in" -- see impersonate_end below for the matching close-out event."""
+    if user_id == admin.id:
+        raise CANNOT_TARGET_SELF
+    user = _get_target(db, user_id)
+
+    token = create_access_token(user.id, impersonated_by=admin.id)
+    log_admin_action(db, admin.id, "impersonate_start", user.id, {"email": user.email})
+    db.commit()
+    return AdminImpersonateOut(
+        access_token=token,
+        expires_in=settings.access_token_expire_minutes * 60,
+        user_email=user.email,
+    )
+
+
+@router.post("/users/{user_id}/impersonate/end", status_code=204)
+def end_impersonation(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> None:
+    """Called with the *admin's own* token (not the impersonation token) right as the frontend
+    switches back from "Viewing as..." to the admin's own session -- an impersonation token
+    could never call this itself, since it's a POST and impersonation is read-only. Best-effort
+    close-out: the impersonation token expires on its own regardless of whether this is ever
+    called (e.g. the browser tab just closes), so a missing impersonate_end is a known,
+    acceptable gap, not a security hole -- the read-only enforcement and the short expiry are
+    what actually bound the risk, this just keeps the audit trail's start/end pairing clean for
+    the common case."""
+    user = _get_target(db, user_id)
+    log_admin_action(db, admin.id, "impersonate_end", user.id, {"email": user.email})
+    db.commit()
+
+
 @router.post("/users/{user_id}/set-admin", response_model=AdminUserListItemOut)
 def set_admin(
     user_id: uuid.UUID,
     payload: AdminSetAdminIn,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(require_full_admin),
 ) -> AdminUserListItemOut:
     """No self-serve signup path ever sets is_admin -- but once at least one admin exists,
     granting or revoking it for *other* accounts through this UI is fine; a manual psql
     UPDATE is only required for the very first admin (see TECHNICAL_GUIDE.md). Blocking
     self-targeting isn't about the grant path being untrusted, it's to stop an admin from
-    accidentally revoking their own access with no one left to undo it."""
+    accidentally revoking their own access with no one left to undo it. Full-admin-only, same
+    reasoning as create_user: this can mint another full admin. Setting the tier (full/support)
+    is folded into this same endpoint rather than a separate one -- granting admin without a
+    tier defaults to "full", matching what is_admin=True has always meant."""
     if user_id == admin.id:
         raise CANNOT_CHANGE_OWN_ADMIN_STATUS
     user = _get_target(db, user_id)
 
     user.is_admin = payload.is_admin
+    user.admin_role = (payload.admin_role or "full") if payload.is_admin else None
     log_admin_action(
         db,
         admin.id,
         "grant_admin" if payload.is_admin else "revoke_admin",
         user.id,
-        {"email": user.email},
+        {"email": user.email, "admin_role": user.admin_role},
     )
     db.commit()
     db.refresh(user)
@@ -302,7 +425,7 @@ def set_coach(
     user_id: uuid.UUID,
     payload: AdminSetCoachIn,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(require_full_admin),
 ) -> AdminUserListItemOut:
     """Lets a singer account also become a coach (or a coach-only account also be a singer --
     same mechanism, just starting from the other side) by attaching/detaching a CoachProfile
@@ -418,7 +541,7 @@ def set_coach_pro(
     organization_id: uuid.UUID,
     payload: AdminSetCoachProIn,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(require_full_admin),
 ) -> AdminOrganizationOut:
     """The manual entitlement-activation action every coach account needs, since coach billing
     goes entirely through QuickBooks (see ROADMAP.md's "QuickBooks Online monthly invoicing
@@ -487,14 +610,16 @@ def set_password(
     user_id: uuid.UUID,
     payload: AdminSetPasswordIn,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(require_full_admin),
 ) -> None:
     """Sets a user's password directly, for when an admin needs the account usable right away
     rather than waiting on the user to receive and act on a reset email (see
-    send_password_reset above, which stays available for the normal case). Same effect as a
-    self-serve password reset otherwise: revokes every active session so a stale token from
-    before the change can't keep working. The new password itself is never logged -- only the
-    fact that it was changed, and by whom."""
+    send_password_reset above, which stays available for the normal case, including for a
+    support admin). Same effect as a self-serve password reset otherwise: revokes every active
+    session so a stale token from before the change can't keep working. The new password itself
+    is never logged -- only the fact that it was changed, and by whom. Full-admin-only: a
+    support admin can trigger a reset email, but never sets a password an admin themself now
+    knows."""
     user = _get_target(db, user_id)
     credential = db.scalar(select(AuthCredential).where(AuthCredential.user_id == user.id))
     if credential is None:
@@ -582,6 +707,7 @@ def get_site_settings_endpoint(
         nda_required=settings_row.nda_required,
         recording_retention_days=settings_row.recording_retention_days,
         checkin_notes_retention_days=settings_row.checkin_notes_retention_days,
+        login_event_retention_days=settings_row.login_event_retention_days,
     )
 
 
@@ -589,28 +715,30 @@ def get_site_settings_endpoint(
 def set_site_settings(
     payload: AdminSiteSettingsIn,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(require_full_admin),
 ) -> AdminSiteSettingsOut:
-    """Four independent settings sharing one row: signups_enabled is the kill switch for
+    """Five independent settings sharing one row: signups_enabled is the kill switch for
     the public signup/coach-signup forms (see app/routers/auth.py) -- for locking down new
     accounts during load testing without touching the database by hand, and doesn't affect
     admin-created accounts (POST /users above) or logins for existing accounts. nda_required
     controls whether NdaGate.tsx blocks the authenticated app behind the beta NDA click-through
-    -- turn it off once the beta phase ends, no redeploy required. recording_retention_days and
-    checkin_notes_retention_days feed app/data_retention.py's daily purge job -- see that
-    module's docstring. All values are sent on every call (full replace, not a partial patch),
-    same as the rest of this admin surface."""
+    -- turn it off once the beta phase ends, no redeploy required. recording_retention_days,
+    checkin_notes_retention_days, and login_event_retention_days feed
+    app/data_retention.py's daily purge job -- see that module's docstring. All values are sent
+    on every call (full replace, not a partial patch), same as the rest of this admin surface."""
     settings_row = get_site_settings(db)
     previous = {
         "signups_enabled": settings_row.signups_enabled,
         "nda_required": settings_row.nda_required,
         "recording_retention_days": settings_row.recording_retention_days,
         "checkin_notes_retention_days": settings_row.checkin_notes_retention_days,
+        "login_event_retention_days": settings_row.login_event_retention_days,
     }
     settings_row.signups_enabled = payload.signups_enabled
     settings_row.nda_required = payload.nda_required
     settings_row.recording_retention_days = payload.recording_retention_days
     settings_row.checkin_notes_retention_days = payload.checkin_notes_retention_days
+    settings_row.login_event_retention_days = payload.login_event_retention_days
     log_admin_action(
         db,
         admin.id,
@@ -628,26 +756,24 @@ def set_site_settings(
         nda_required=settings_row.nda_required,
         recording_retention_days=settings_row.recording_retention_days,
         checkin_notes_retention_days=settings_row.checkin_notes_retention_days,
+        login_event_retention_days=settings_row.login_event_retention_days,
     )
 
 
-@router.get("/reports/query", response_model=list[AdminUserListItemOut])
-def query_report(
-    email: str | None = Query(default=None),
-    account_type: str | None = Query(default=None, pattern="^(singer|coach)$"),
-    is_active: bool | None = Query(default=None),
-    is_admin: bool | None = Query(default=None),
-    onboarding_complete: bool | None = Query(default=None),
-    created_after: date | None = Query(default=None),
-    created_before: date | None = Query(default=None),
-    db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
-) -> list[AdminUserListItemOut]:
-    """A filter-built report over the same fields the rest of /admin already exposes per
-    account -- every filter is optional and they combine with AND. Capped at 200 rows, same
-    reasoning as search_users's 100-row cap: this is an operator tool for a founder-scale
-    user base, not a paginated export."""
-    stmt = select(User).order_by(User.created_at.desc()).limit(200)
+def _build_user_filter_stmt(
+    *,
+    email: str | None,
+    account_type: str | None,
+    is_active: bool | None,
+    is_admin: bool | None,
+    onboarding_complete: bool | None,
+    created_after: date | None,
+    created_before: date | None,
+    limit: int,
+):
+    """Shared filter-building for query_report and export_contact_list -- every filter is
+    optional and they combine with AND."""
+    stmt = select(User).order_by(User.created_at.desc()).limit(limit)
 
     if email:
         stmt = stmt.where(User.email.ilike(f"%{email}%"))
@@ -667,6 +793,93 @@ def query_report(
         stmt = stmt.where(User.id.in_(select(UserProfile.user_id)))
     elif onboarding_complete is False:
         stmt = stmt.where(User.id.not_in(select(UserProfile.user_id)))
+    return stmt
 
+
+@router.get("/reports/query", response_model=list[AdminUserListItemOut])
+def query_report(
+    email: str | None = Query(default=None),
+    account_type: str | None = Query(default=None, pattern="^(singer|coach)$"),
+    is_active: bool | None = Query(default=None),
+    is_admin: bool | None = Query(default=None),
+    onboarding_complete: bool | None = Query(default=None),
+    created_after: date | None = Query(default=None),
+    created_before: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> list[AdminUserListItemOut]:
+    """A filter-built report over the same fields the rest of /admin already exposes per
+    account -- every filter is optional and they combine with AND. Capped at 200 rows, same
+    reasoning as search_users's 100-row cap: this is an operator tool for a founder-scale
+    user base, not a paginated export."""
+    stmt = _build_user_filter_stmt(
+        email=email,
+        account_type=account_type,
+        is_active=is_active,
+        is_admin=is_admin,
+        onboarding_complete=onboarding_complete,
+        created_after=created_after,
+        created_before=created_before,
+        limit=200,
+    )
     users = db.scalars(stmt).all()
     return [_to_list_item(db, u) for u in users]
+
+
+@router.post("/users/bulk-deactivate", response_model=AdminBulkResultOut)
+def bulk_deactivate_users(
+    payload: AdminBulkUserIdsIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminBulkResultOut:
+    """Bulk scope is deliberately narrow -- deactivate and reactivate only (this endpoint and
+    bulk_reactivate_users below), both already fully reversible single-account actions. Bulk
+    hard-delete and bulk admin-grant stay single-account and high-friction on purpose; a
+    misclick on a multi-select shouldn't be able to do either. Available to a support admin,
+    same as the single-account deactivate endpoint. One log_admin_action row per affected user
+    -- not one row for the whole batch -- so the audit trail's shape never depends on how many
+    accounts were selected at once. Silently skips the caller's own id and any id that doesn't
+    resolve to a real user, reporting both back rather than 404ing the whole batch."""
+    updated: list[uuid.UUID] = []
+    not_found: list[uuid.UUID] = []
+    for user_id in payload.user_ids:
+        if user_id == admin.id:
+            continue
+        user = db.get(User, user_id)
+        if user is None:
+            not_found.append(user_id)
+            continue
+        user.is_active = False
+        active_tokens = db.scalars(
+            select(RefreshToken).where(
+                RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None)
+            )
+        ).all()
+        for t in active_tokens:
+            t.revoked_at = datetime.now(UTC)
+        log_admin_action(db, admin.id, "deactivate_user", user.id, {"email": user.email})
+        updated.append(user.id)
+    db.commit()
+    return AdminBulkResultOut(updated=updated, not_found=not_found)
+
+
+@router.post("/users/bulk-reactivate", response_model=AdminBulkResultOut)
+def bulk_reactivate_users(
+    payload: AdminBulkUserIdsIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> AdminBulkResultOut:
+    updated: list[uuid.UUID] = []
+    not_found: list[uuid.UUID] = []
+    for user_id in payload.user_ids:
+        user = db.get(User, user_id)
+        if user is None:
+            not_found.append(user_id)
+            continue
+        user.is_active = True
+        log_admin_action(db, admin.id, "reactivate_user", user.id, {"email": user.email})
+        updated.append(user.id)
+    db.commit()
+    return AdminBulkResultOut(updated=updated, not_found=not_found)
+
+

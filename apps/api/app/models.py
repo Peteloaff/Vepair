@@ -57,6 +57,13 @@ class User(Base, TimestampMixin):
     # correctly with no backfill needed. No self-serve path ever sets is_admin=True — see
     # app/admin_auth.py's docstring and TECHNICAL_GUIDE.md for the one-time manual bootstrap.
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Admin permission tier -- only meaningful when is_admin=True; null on a non-admin. Two
+    # tiers: "full" (everything is_admin has always meant) and "support" (view/report/reversible
+    # actions only -- see app/admin_auth.py's require_full_admin for exactly what's gated).
+    # Nullable rather than defaulting to "full" so a null reads as "full" in code wherever it's
+    # checked (belt-and-suspenders alongside the migration's backfill) -- an admin from before
+    # this column existed is never accidentally downgraded.
+    admin_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     # A self-chosen display handle, distinct from email -- optional (most existing accounts have
     # none, which is fine), lowercase-normalized the same way email already is (see
@@ -731,6 +738,27 @@ class AdminAuditLog(Base, TimestampMixin):
     details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
+class LoginEvent(Base, TimestampMixin):
+    """Real login history, replacing the RefreshToken-issued-at proxy AdminUserDetailOut's
+    last_session_at and reports_summary's dau/wau used before this existed. Written only on a
+    successful password-based POST /api/v1/auth/login (app/routers/auth.py) -- signup and
+    token refresh deliberately don't count as a new "login" here. Deliberately does NOT capture
+    IP address or user-agent, consistent with this app's minimize-what's-kept posture (see
+    app/data_retention.py) -- add that only as a separate, explicit decision if it's ever
+    actually needed, never as a default. Its own retention rule lives in
+    app/data_retention.py's purge_stale_login_events."""
+
+    __tablename__ = "login_events"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class SiteSettings(Base, TimestampMixin):
     """Singleton row (id is always 1, seeded by its migration) holding site-wide operational
     toggles -- signups_enabled (the admin's kill switch for the public self-serve signup forms)
@@ -757,6 +785,11 @@ class SiteSettings(Base, TimestampMixin):
     recording_retention_days: Mapped[int] = mapped_column(Integer, default=90, server_default="90")
     checkin_notes_retention_days: Mapped[int] = mapped_column(
         Integer, default=30, server_default="30"
+    )
+    # LoginEvent rows past this window get purged by the same daily job -- indefinite login
+    # history is exactly the kind of data this app's retention policy exists to avoid.
+    login_event_retention_days: Mapped[int] = mapped_column(
+        Integer, default=365, server_default="365"
     )
 
 

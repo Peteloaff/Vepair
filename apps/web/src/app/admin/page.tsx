@@ -5,8 +5,8 @@ import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
 import { useAuth } from "@/lib/auth-context";
-import type { AdminSiteSettings, AdminUserListItem } from "@/lib/types";
-import { ApiError } from "@/lib/apiClient";
+import type { AdminBulkResult, AdminSiteSettings, AdminUserListItem } from "@/lib/types";
+import { ApiError, API_BASE } from "@/lib/apiClient";
 
 function RetentionInput({
   label,
@@ -313,12 +313,58 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
   );
 }
 
+function ExportContactsButton() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("vepair_access_token");
+      const res = await fetch(`${API_BASE}/api/v1/admin/users/export`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vepair-contacts-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not export the contact list — full admin access is required.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={download}
+        disabled={busy}
+        className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
+      >
+        {busy ? "Exporting..." : "Export contact list (CSV)"}
+      </button>
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
 function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
   const { apiFetch } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AdminUserListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   async function runSearch(q: string) {
     setLoading(true);
@@ -328,6 +374,7 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
         searchParams: q ? { query: q } : undefined,
       });
       setResults(rows);
+      setSelected(new Set());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -341,32 +388,93 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken]);
 
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function runBulk(action: "bulk-deactivate" | "bulk-reactivate") {
+    if (selected.size === 0) return;
+    const emails = (results ?? [])
+      .filter((u) => selected.has(u.id))
+      .map((u) => u.email)
+      .join(", ");
+    const verb = action === "bulk-deactivate" ? "deactivate" : "reactivate";
+    if (!window.confirm(`${verb === "deactivate" ? "Deactivate" : "Reactivate"} ${selected.size} account(s)? ${emails}`)) {
+      return;
+    }
+    setBulkBusy(true);
+    setError(null);
+    try {
+      await apiFetch<AdminBulkResult>(`/api/v1/admin/users/${action}`, {
+        method: "POST",
+        body: { user_ids: Array.from(selected) },
+      });
+      await runSearch(query);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <section>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          runSearch(query);
-        }}
-        className="mb-6 flex gap-2"
-      >
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by email..."
-          className="w-full max-w-sm rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+      <div className="mb-4 flex items-center justify-between">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            runSearch(query);
+          }}
+          className="flex gap-2"
         >
-          {loading ? "Searching..." : "Search"}
-        </button>
-      </form>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by email..."
+            className="w-full max-w-sm rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {loading ? "Searching..." : "Search"}
+          </button>
+        </form>
+        <ExportContactsButton />
+      </div>
 
       {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+
+      {selected.size > 0 && (
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-900/60 px-3 py-2">
+          <p className="text-xs text-neutral-300">{selected.size} selected</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => runBulk("bulk-deactivate")}
+              className="rounded-lg border border-red-800 px-3 py-1 text-xs text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+            >
+              Deactivate selected
+            </button>
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => runBulk("bulk-reactivate")}
+              className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:bg-neutral-800 disabled:opacity-50"
+            >
+              Reactivate selected
+            </button>
+          </div>
+        </div>
+      )}
 
       {results === null ? (
         <p className="text-sm text-neutral-500">
@@ -379,6 +487,7 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-neutral-800 text-left text-neutral-400">
+              <th className="w-8 py-2 pr-2"></th>
               <th className="py-2 pr-4">Email</th>
               <th className="py-2 pr-4">Type</th>
               <th className="py-2 pr-4">Status</th>
@@ -389,11 +498,23 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
           <tbody>
             {results.map((u) => (
               <tr key={u.id} className="border-b border-neutral-900">
+                <td className="py-2 pr-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(u.id)}
+                    onChange={() => toggle(u.id)}
+                    className="rounded border-neutral-700 bg-neutral-900"
+                  />
+                </td>
                 <td className="py-2 pr-4">
                   <Link href={`/admin/users/${u.id}`} className="underline hover:text-neutral-200">
                     {u.email}
                   </Link>
-                  {u.is_admin && <span className="ml-2 text-xs text-amber-400">(admin)</span>}
+                  {u.is_admin && (
+                    <span className="ml-2 text-xs text-amber-400">
+                      (admin{u.admin_role === "support" ? " · support" : ""})
+                    </span>
+                  )}
                 </td>
                 <td className="py-2 pr-4">{ACCOUNT_TYPE_LABEL[u.account_type]}</td>
                 <td className="py-2 pr-4">

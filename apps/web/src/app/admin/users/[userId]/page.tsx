@@ -81,7 +81,7 @@ function UserDetailContent() {
         <h1 className="mb-1 text-xl font-semibold">{detail.email}</h1>
         <p className="mb-4 text-sm text-neutral-400">
           {ACCOUNT_TYPE_LABEL[detail.account_type]} · {detail.is_active ? "active" : "deactivated"}
-          {detail.is_admin ? " · admin" : ""}
+          {detail.is_admin ? ` · admin (${detail.admin_role ?? "full"})` : ""}
         </p>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <dt className="text-neutral-500">Signed up</dt>
@@ -109,23 +109,49 @@ function UserDetailContent() {
         <div className="flex flex-wrap items-start gap-4">
           <div>
             <p className="mb-1.5 text-xs text-neutral-500">Admin</p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() =>
-                runAction(
-                  () =>
-                    apiFetch(`/api/v1/admin/users/${detail.id}/set-admin`, {
-                      method: "POST",
-                      body: { is_admin: !detail.is_admin },
-                    }),
-                  detail.is_admin ? "Admin access revoked." : "Admin access granted."
-                )
-              }
-              className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
-            >
-              {detail.is_admin ? "Revoke admin" : "Grant admin"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  runAction(
+                    () =>
+                      apiFetch(`/api/v1/admin/users/${detail.id}/set-admin`, {
+                        method: "POST",
+                        body: { is_admin: !detail.is_admin },
+                      }),
+                    detail.is_admin ? "Admin access revoked." : "Admin access granted."
+                  )
+                }
+                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+              >
+                {detail.is_admin ? "Revoke admin" : "Grant admin"}
+              </button>
+              {detail.is_admin && (
+                <select
+                  value={detail.admin_role ?? "full"}
+                  disabled={busy}
+                  onChange={(e) =>
+                    runAction(
+                      () =>
+                        apiFetch(`/api/v1/admin/users/${detail.id}/set-admin`, {
+                          method: "POST",
+                          body: { is_admin: true, admin_role: e.target.value },
+                        }),
+                      `Tier set to ${e.target.value}.`
+                    )
+                  }
+                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500 disabled:opacity-50"
+                >
+                  <option value="full">Full</option>
+                  <option value="support">Support</option>
+                </select>
+              )}
+            </div>
+            <p className="mt-1.5 text-xs text-neutral-600">
+              Support can view accounts, deactivate/reactivate, and send password resets —
+              never hard-delete, grant admin, set-coach, or site settings.
+            </p>
           </div>
 
           <div>
@@ -242,6 +268,13 @@ function UserDetailContent() {
           >
             Send password reset
           </button>
+
+          <Link
+            href={`/admin/users/${detail.id}/view-as`}
+            className="rounded-lg border border-amber-800 px-3 py-1.5 text-sm text-amber-300 hover:bg-amber-950/40"
+          >
+            View as this user
+          </Link>
         </div>
 
         <div className="mt-4 border-t border-neutral-800 pt-4">

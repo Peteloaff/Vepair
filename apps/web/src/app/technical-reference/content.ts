@@ -393,7 +393,8 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
             <tr><th>Entity</th><th>Purpose</th></tr>
             <tr><td class="code-cell">ToneGameSession / ToneGameAttempt</td><td>5-Tone Challenge results — client-graded, server-persisted.</td></tr>
             <tr><td class="code-cell">AdminAuditLog</td><td>Append-only trail of every state-changing admin action.</td></tr>
-            <tr><td class="code-cell">SiteSettings</td><td>Singleton row — signup lockdown, beta-NDA gate toggles.</td></tr>
+            <tr><td class="code-cell">LoginEvent</td><td>Real login history — password-based logins only, no IP/user-agent.</td></tr>
+            <tr><td class="code-cell">SiteSettings</td><td>Singleton row — signup lockdown, beta-NDA gate, and three retention windows.</td></tr>
           </table></div>
         </div>
       </section>
@@ -408,10 +409,14 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           so replacing that one function with Supabase JWT/JWKS verification is the entire migration.</p>
           <table class="ref">
             <tr><th>Token</th><th>Shape</th><th>Expiry</th></tr>
-            <tr><td>Access</td><td class="code-cell">JWT, HS256, sub = user id</td><td>15 min</td></tr>
+            <tr><td>Access</td><td class="code-cell">JWT, HS256, sub = user id, type: "access"</td><td>15 min</td></tr>
+            <tr><td>Impersonation</td><td class="code-cell">Same JWT, type: "impersonation" + impersonated_by claim, no refresh token issued</td><td>15 min, no renewal</td></tr>
             <tr><td>Refresh</td><td class="code-cell">opaque random, SHA-256 hash stored</td><td>30 days, rotated every use</td></tr>
             <tr><td>Password reset</td><td class="code-cell">opaque, hashed, single-use</td><td>60 min</td></tr>
           </table>
+          <p>An impersonation token authenticates as the target user but is read-only, enforced
+          once in <code>get_current_user</code> — see §16 (Backend Admin) for the full mechanism
+          and why the frontend deliberately never wires it into the shared auth context.</p>
           <p><b>Three account shapes</b>, all on the same <code>User</code> table: a <b>singer</b>
           (has a <code>UserProfile</code>), a <b>coach</b> (has a <code>CoachProfile</code>, created
           via <code class="path">POST /api/v1/auth/coach-signup</code> or by an admin), and a
@@ -648,13 +653,58 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <code>User.is_admin</code>. No self-serve or API path ever grants the first admin — a
           one-time manual SQL <code>UPDATE</code> against production, documented in
           <code class="path">TECHNICAL_GUIDE.md</code> §9. Every subsequent grant/revoke, and
-          every deactivate/reactivate/delete/reset, goes through the UI and is written to
-          <code>AdminAuditLog</code> before it takes effect — read-only actions (search, detail,
-          reports) are not logged.</p>
+          every deactivate/reactivate/delete/reset/bulk-action/impersonation/export, goes through
+          the UI and is written to <code>AdminAuditLog</code> before it takes effect —
+          read-only actions (search, detail, reports) are not logged.</p>
           <p>Hard delete requires the account to already be deactivated
           (<code>409 must_deactivate_first</code> otherwise) and reuses the exact same deletion
           routine self-serve account deletion uses, so there is exactly one deletion code path in
           the app. See the User Guide's Admin section for the operational walkthrough.</p>
+          <p><b>Two admin tiers</b> (<code>User.admin_role</code>, nullable — null reads as
+          <code>"full"</code>): <code>app/admin_auth.py</code>'s <code>require_full_admin</code>
+          gates create-user, hard-delete, grant/revoke-admin, set-coach, set-password,
+          impersonate, and the contact-list export; <code>get_current_admin</code> alone (any
+          tier) covers search, detail, reports, deactivate/reactivate (including bulk), and
+          triggering a password-reset email.</p>
+          <p><b>Bulk operations</b> (<code class="path">POST /api/v1/admin/users/bulk-deactivate</code>
+          / <code>bulk-reactivate</code>) are deliberately the only two — both already
+          fully-reversible single-account actions before this. One <code>AdminAuditLog</code> row
+          per affected account, not one for the whole batch.</p>
+          <p><b>Impersonation</b> (<code class="path">POST /api/v1/admin/users/{"{"}id{"}"}/impersonate</code>,
+          full-admin-only) issues a JWT with <code>type: "impersonation"</code> and an
+          <code>impersonated_by</code> claim instead of <code>type: "access"</code> — same expiry
+          as a normal access token, no refresh token at all. Read-only enforcement lives in one
+          place, <code class="path">app/auth.py</code>'s <code>get_current_user</code>: any
+          non-GET request carrying an impersonation-typed token 403s
+          (<code>impersonation_read_only</code>) before the route handler ever runs, since every
+          authenticated endpoint resolves the caller through that function already. The frontend
+          (<code class="path">/admin/users/{"{"}id{"}"}/view-as</code>) deliberately never wires
+          the impersonation token into the shared auth context — it does its own raw
+          <code>fetch</code> calls and never touches the admin's own access/refresh tokens, so an
+          expired impersonation token can't fall into the normal refresh flow and silently
+          re-mint a real admin token while the "Viewing as..." banner is still showing. Shows
+          account/engagement facts only (practice frequency, musical style, a 7-day check-in
+          count) — deliberately nothing about voice health or recovery status, even in summary
+          form.</p>
+          <p><b>Login events</b> (<code>LoginEvent</code>, written only by a password-based
+          <code class="path">POST /api/v1/auth/login</code> — not signup, not a token refresh)
+          replaced the old RefreshToken-issued-at proxy for <code>last_session_at</code>. DAU/WAU
+          deliberately keep their existing check-in-or-recording-based definition rather than
+          switching to raw login counts — a real product-engagement signal, not a worse one now
+          that login data exists. <code>SiteSettings.login_event_retention_days</code> (default
+          365) purges old rows via the same daily job as §13's other retention policies.</p>
+          <p><b>Contact-list export</b> (<code class="path">GET /api/v1/admin/users/export</code>,
+          CSV, full-admin-only) reuses <code>query_report</code>'s exact filter-building helper,
+          uncapped instead of 200-row-limited. Deliberately email-address-only — this app keeps
+          no other contact PII — and the one action in the whole admin surface that hands raw
+          data out as a file, so it gets hard-delete-level audit rigor: the filters used are
+          logged, never the resulting rows.</p>
+          <div class="callout warn"><b>Route-ordering gotcha</b>:
+          <code class="path">GET /users/export</code> is registered <i>before</i>
+          <code class="path">GET /users/{"{"}user_id{"}"}</code> in <code class="path">admin.py</code>
+          — FastAPI matches routes in registration order, so the reverse order would have
+          "export" captured as a UUID path param and 422 before ever reaching the export
+          handler.</div>
         </div>
       </section>
 
@@ -729,10 +779,11 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Full singer product through Progress Dashboard</li>
                 <li>Coach Portal (roster, invites, assign, notes, messaging, custom exercises)</li>
                 <li>Coach Pro billing/gating (manual activation)</li>
-                <li>Backend Admin (users, orgs, reports, audit log)</li>
+                <li>Backend Admin (users, orgs, reports, audit log, role tiers, bulk ops, impersonation, contact export — §16)</li>
                 <li>Tone Match Challenge (5-tone game + trend)</li>
                 <li>Practice reminders (Cloud Scheduler-triggered daily email)</li>
                 <li>Data minimization (self-serve delete, per-recording delete, export, retention purge — §13)</li>
+                <li>Real login-event table, replacing the old last-login proxy</li>
               </ul>
             </div>
             <div>
@@ -740,9 +791,6 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
               <ul>
                 <li>QuickBooks Online monthly invoicing sync</li>
                 <li>Singer-side Stripe/User Pro billing</li>
-                <li>Admin role tiers, bulk operations, impersonation</li>
-                <li>Real login-event table (last-login is currently a proxy)</li>
-                <li>Contact-list / outreach export</li>
                 <li>Cross-user Tone Match leaderboard</li>
               </ul>
             </div>
