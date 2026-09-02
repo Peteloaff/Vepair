@@ -354,7 +354,15 @@ export default function AdminPage() {
                 rel="noopener noreferrer"
                 className="text-sm underline hover:text-neutral-200"
               >
-                Admin guide
+                User guide
+              </a>
+              <a
+                href="https://claude.ai/code/artifact/00c4933b-b892-4d8f-947b-8d012c0e01ca"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm underline hover:text-neutral-200"
+              >
+                Technical reference
               </a>
               <Link
                 href="/admin/organizations"
