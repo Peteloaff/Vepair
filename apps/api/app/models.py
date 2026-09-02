@@ -58,6 +58,12 @@ class User(Base, TimestampMixin):
     # app/admin_auth.py's docstring and TECHNICAL_GUIDE.md for the one-time manual bootstrap.
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # A self-chosen display handle, distinct from email -- optional (most existing accounts have
+    # none, which is fine), lowercase-normalized the same way email already is (see
+    # app/routers/auth.py's signup()), unique when set. Plain `unique=True` on a nullable column
+    # is safe in Postgres: NULL is never considered equal to NULL, so any number of accounts can
+    # have no username at once.
+    username: Mapped[str | None] = mapped_column(String(30), unique=True, nullable=True)
     # Beta NDA click-through (see app/models.SiteSettings.nda_required and NdaGate.tsx). Null
     # means never accepted -- nothing backfills this, so every pre-existing account is correctly
     # treated as not yet having seen the current beta notice the first time NdaGate checks.

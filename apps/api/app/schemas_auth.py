@@ -1,7 +1,10 @@
+import re
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_]+$")
 
 
 class SignupRequest(BaseModel):
@@ -57,8 +60,26 @@ class UserOut(BaseModel):
     # to decide whether to show a link to /admin, never trusted as the actual authorization
     # check (every /api/v1/admin/* route re-verifies server-side via get_current_admin).
     is_admin: bool
+    username: str | None
 
     model_config = {"from_attributes": True}
+
+
+class UsernameUpdateIn(BaseModel):
+    """None clears the username. A non-null value is validated the same way it'll be stored --
+    lowercase-normalized, matching how email is already normalized at signup -- so the
+    uniqueness check and what the user sees back never disagree."""
+
+    username: str | None = Field(default=None, min_length=3, max_length=30)
+
+    @field_validator("username")
+    @classmethod
+    def _normalize_and_validate(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        if not USERNAME_PATTERN.match(v):
+            raise ValueError("Usernames can only contain letters, numbers, and underscores.")
+        return v.lower()
 
 
 class TokenResponse(BaseModel):

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { NotificationsConsent } from "@/components/NotificationsConsent";
 import { RequireAuth } from "@/components/RequireAuth";
 import { TrackSelector } from "@/components/TrackSelector";
+import { UsernameEditor } from "@/components/UsernameEditor";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/apiClient";
 import type { Profile, ProfileInput } from "@/lib/types";
@@ -273,6 +274,14 @@ export default function OnboardingPage() {
           Every question here is optional — skip anything you&apos;d rather not answer. This
           helps VepAIr personalize your baseline, not diagnose anything.
         </p>
+
+        <section className="mb-10">
+          <h2 className="mb-1 text-sm font-medium text-neutral-200">Username</h2>
+          <p className="mb-4 text-xs text-neutral-500">
+            A display handle, separate from your email — set one if you&apos;d like.
+          </p>
+          <UsernameEditor />
+        </section>
 
         <section className="mb-10">
           <h2 className="mb-1 text-sm font-medium text-neutral-200">

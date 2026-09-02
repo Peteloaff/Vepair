@@ -17,6 +17,7 @@ export interface AuthUser {
   email: string;
   created_at: string;
   is_admin: boolean;
+  username: string | null;
 }
 
 export interface TokenResponse {

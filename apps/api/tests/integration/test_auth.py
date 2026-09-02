@@ -278,3 +278,64 @@ def test_accept_nda_persists_and_is_reflected_in_status(client, signed_up_user) 
 def test_nda_status_requires_auth(client) -> None:
     assert client.get("/api/v1/auth/nda-status").status_code == 401
     assert client.post("/api/v1/auth/accept-nda").status_code == 401
+
+
+def test_new_account_has_no_username_by_default(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    resp = client.get("/api/v1/auth/me", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["username"] is None
+
+
+def test_username_can_be_set_and_is_lowercase_normalized(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    resp = client.patch(
+        "/api/v1/auth/username", headers=headers, json={"username": "SingerPete"}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["username"] == "singerpete"
+
+    me = client.get("/api/v1/auth/me", headers=headers)
+    assert me.json()["username"] == "singerpete"
+
+
+def test_username_can_be_cleared(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    client.patch("/api/v1/auth/username", headers=headers, json={"username": "temporary"})
+    resp = client.patch("/api/v1/auth/username", headers=headers, json={"username": None})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["username"] is None
+
+
+def test_username_must_be_unique_case_insensitively(client, signed_up_user) -> None:
+    _userA, headersA = signed_up_user
+    signupB = client.post(
+        "/api/v1/auth/signup",
+        json={"email": "username-taken-test@example.com", "password": "correcthorse123"},
+    )
+    headersB = {"Authorization": f"Bearer {signupB.json()['access_token']}"}
+
+    first = client.patch("/api/v1/auth/username", headers=headersA, json={"username": "Overlap"})
+    assert first.status_code == 200, first.text
+
+    clash = client.patch(
+        "/api/v1/auth/username", headers=headersB, json={"username": "overlap"}
+    )
+    assert clash.status_code == 409
+    assert clash.json()["error"]["code"] == "username_taken"
+
+
+def test_username_rejects_invalid_characters_and_bad_length(client, signed_up_user) -> None:
+    _user, headers = signed_up_user
+    too_short = client.patch("/api/v1/auth/username", headers=headers, json={"username": "ab"})
+    assert too_short.status_code == 422
+
+    has_symbol = client.patch(
+        "/api/v1/auth/username", headers=headers, json={"username": "not valid!"}
+    )
+    assert has_symbol.status_code == 422
+
+
+def test_update_username_requires_auth(client) -> None:
+    resp = client.patch("/api/v1/auth/username", json={"username": "whoever"})
+    assert resp.status_code == 401

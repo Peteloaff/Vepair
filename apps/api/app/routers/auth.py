@@ -29,6 +29,7 @@ from app.schemas_auth import (
     RefreshRequest,
     SignupRequest,
     TokenResponse,
+    UsernameUpdateIn,
     UserOut,
 )
 from app.security import (
@@ -253,6 +254,29 @@ def confirm_password_reset(
 
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.patch("/username", response_model=UserOut)
+def update_username(
+    payload: UsernameUpdateIn,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Sets or clears the caller's own username. Same uniqueness-via-IntegrityError pattern as
+    email at signup — a plain unique constraint on a nullable column, not a pre-check-then-write
+    race."""
+    current_user.username = payload.username
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "username_taken", "message": "That username is already taken."},
+        ) from None
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 
