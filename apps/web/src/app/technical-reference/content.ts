@@ -199,6 +199,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <li><a href="#range">Vocal range & 90-day plan</a></li>
           <li><a href="#sharing">Progress & sharing</a></li>
           <li><a href="#coach">Coach Portal</a></li>
+          <li><a href="#reminders">Notifications & reminders</a></li>
           <li><a href="#billing">Coach Pro billing (SaaS)</a></li>
           <li><a href="#tonegame">Tone Match Challenge</a></li>
           <li><a href="#admin">Backend Admin</a></li>
@@ -369,6 +370,13 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
             <tr><td class="code-cell">CoachAccessCategoryGrant</td><td>Per-category share toggle: recovery_trends / vocal_range / exercise_history / recordings.</td></tr>
             <tr><td class="code-cell">CoachAssignment</td><td>A coach's exercise assignment, with optional per-exercise tone targets.</td></tr>
             <tr><td class="code-cell">CoachNote</td><td>Coach-authored, singer-readable, immutable (soft-delete only).</td></tr>
+            <tr><td class="code-cell">CoachMessage</td><td>Two-way coach&lt;-&gt;singer chat — separate from CoachNote. <code>sender</code>, <code>flagged_terms</code>, <code>read_at</code>.</td></tr>
+          </table></div>
+
+          <h4>Notifications</h4>
+          <div class="ref-wrap"><table class="ref">
+            <tr><th>Entity</th><th>Purpose</th></tr>
+            <tr><td class="code-cell">NotificationLog</td><td>Idempotency ledger for the daily reminder job — unique on (user, type, date).</td></tr>
           </table></div>
 
           <h4>Coach Pro billing (SaaS)</h4>
@@ -520,11 +528,43 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <p><b>Recording playback</b> for a coach streams the singer's single existing audio
           file via an authenticated, ownership-checked endpoint — VepAIr never creates a second
           copy of a singer's voice for coach access.</p>
+          <p><b>Messaging</b> (<code class="path">CoachMessage</code>) is a separate model from
+          Notes — a two-way, ephemeral thread rather than a structured one-way record, and
+          deliberately not gated by any of the four sharing categories, same reasoning as Notes:
+          it's a channel the singer already fully controls. Sending requires
+          <code>CoachAccess.status == "active"</code>; reading a singer's own history does not,
+          so it survives a revoke the same way Notes does. Reuses Notes' clinical-language
+          blocklist (flag, never block) on both senders' messages.</p>
+        </div>
+      </section>
+
+      <section class="block" id="reminders">
+        <div class="block-head"><span class="block-num">12</span><h2>Notifications & reminders</h2></div>
+        <div class="card">
+          <p><b>No in-process scheduler</b> — Cloud Run scales to zero and runs multiple
+          instances, so a daily reminder can't be an in-process timer. Instead,
+          <code>POST /api/v1/system/send-reminders</code> is called once a day by an external
+          <b>Cloud Scheduler</b> job (see <code class="path">TECHNICAL_GUIDE.md</code> §11 for
+          the setup), authenticated by a shared secret header
+          (<code>X-Internal-Job-Secret</code> vs. <code>INTERNAL_JOB_SECRET</code>) rather than a
+          human admin's 15-minute JWT — the right credential for an unattended job, not the
+          wrong one.</p>
+          <p><b>Idempotent by construction:</b> <code>NotificationLog</code> carries a unique
+          constraint on <code>(user_id, notification_type, sent_for_date)</code>, so calling the
+          endpoint twice in a day (a retry, a manual test run) never double-emails anyone — the
+          second call simply sends to whoever's left. The job also commits once per user sent,
+          not once at the end, so a mid-batch crash never causes a retry to double-send to
+          already-processed users.</p>
+          <p>The only v1 reminder type: a "How's your voice today?" email to every singer who
+          hasn't submitted a <code>DailyCheckIn</code> for the day and has explicit
+          <code>notifications</code> consent granted — never for null/undecided or an explicit
+          decline. New-message notifications (from Messaging, above) are a separate, synchronous
+          send at message-creation time, not part of this batch.</p>
         </div>
       </section>
 
       <section class="block" id="billing">
-        <div class="block-head"><span class="block-num">12</span><h2>Coach Pro billing (SaaS)</h2></div>
+        <div class="block-head"><span class="block-num">13</span><h2>Coach Pro billing (SaaS)</h2></div>
         <p class="block-note">Live in production. No Stripe on the coach side — see <code class="path">TECHNICAL_GUIDE.md</code> §10 for the operator walkthrough.</p>
         <div class="card">
           <p>Every coach belongs to exactly one <code>Organization</code>, created automatically at
@@ -548,7 +588,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="tonegame">
-        <div class="block-head"><span class="block-num">13</span><h2>Tone Match Challenge</h2></div>
+        <div class="block-head"><span class="block-num">14</span><h2>Tone Match Challenge</h2></div>
         <div class="card">
           <p>Five target notes are drawn from the singer's own measured vocal range (not the
           generic reference range the free-practice mode uses), one every 6 seconds (1s tone +
@@ -563,7 +603,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="admin">
-        <div class="block-head"><span class="block-num">14</span><h2>Backend Admin</h2></div>
+        <div class="block-head"><span class="block-num">15</span><h2>Backend Admin</h2></div>
         <div class="card">
           <p>An internal operator surface, not user-facing. <code class="path">app/admin_auth.py</code>'s
           <code>get_current_admin</code> mirrors the coach gate exactly, keyed on
@@ -581,7 +621,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="deploy">
-        <div class="block-head"><span class="block-num">15</span><h2>Deployment topology</h2></div>
+        <div class="block-head"><span class="block-num">16</span><h2>Deployment topology</h2></div>
         <div class="card">
           <table class="ref">
             <tr><th>Account</th><th>Owns</th><th>Trigger</th></tr>
@@ -600,7 +640,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="gotchas">
-        <div class="block-head"><span class="block-num">16</span><h2>Known gotchas</h2></div>
+        <div class="block-head"><span class="block-num">17</span><h2>Known gotchas</h2></div>
         <div class="card">
           <ul>
             <li><b>Application logs land under <code>jsonPayload</code>, not <code>textPayload</code></b> in Cloud Logging — filter on <code>jsonPayload.logger</code>.</li>
@@ -615,7 +655,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="privacy">
-        <div class="block-head"><span class="block-num">17</span><h2>Privacy principles</h2></div>
+        <div class="block-head"><span class="block-num">18</span><h2>Privacy principles</h2></div>
         <div class="card">
           <ul>
             <li><b>Minimal collection</b> — collect only what a shipped feature needs. Exercise-attempt audio is analyzed in-memory and never written to storage at all; only the derived numbers persist.</li>
@@ -628,7 +668,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="medsafety">
-        <div class="block-head"><span class="block-num">18</span><h2>Medical safety rules</h2></div>
+        <div class="block-head"><span class="block-num">19</span><h2>Medical safety rules</h2></div>
         <div class="card">
           <p>Binding on all product copy, UI strings, and AI-generated text, at every stage.</p>
           <ul>
@@ -642,17 +682,18 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="status" style="margin-bottom: 0;">
-        <div class="block-head"><span class="block-num">19</span><h2>What's live vs. planned</h2></div>
+        <div class="block-head"><span class="block-num">20</span><h2>What's live vs. planned</h2></div>
         <div class="card">
           <div class="cols2">
             <div>
               <h4>Live in production</h4>
               <ul>
                 <li>Full singer product through Progress Dashboard</li>
-                <li>Coach Portal (roster, invites, assign, notes, custom exercises)</li>
+                <li>Coach Portal (roster, invites, assign, notes, messaging, custom exercises)</li>
                 <li>Coach Pro billing/gating (manual activation)</li>
                 <li>Backend Admin (users, orgs, reports, audit log)</li>
                 <li>Tone Match Challenge (5-tone game + trend)</li>
+                <li>Practice reminders (Cloud Scheduler-triggered daily email)</li>
               </ul>
             </div>
             <div>

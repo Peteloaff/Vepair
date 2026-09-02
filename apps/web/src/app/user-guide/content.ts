@@ -272,6 +272,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           <li><a href="#share">Share My Progress</a></li>
           <li><a href="#progress">Progress dashboard</a></li>
           <li><a href="#coach-access">Sharing with a coach</a></li>
+          <li><a href="#reminders">Practice reminders</a></li>
           <li><a href="#singer-troubleshooting">Troubleshooting</a></li>
         </ul>
       </div>
@@ -285,6 +286,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           <li><a href="#coach-singer-view">A Vrotégé's dashboard</a></li>
           <li><a href="#coach-assign">Assign training</a></li>
           <li><a href="#coach-notes">Notes</a></li>
+          <li><a href="#coach-messages">Messages</a></li>
           <li><a href="#coach-privacy">What you can never see</a></li>
         </ul>
       </div>
@@ -465,12 +467,19 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <tr><td>Recordings</td><td>Your voice recordings, for side-by-side comparison</td></tr>
           </table>
           <p>Toggle any category on or off any time from <b>Coach Access</b> — never a full revoke required. <b>Revoke access</b> cuts off everything immediately for anything new (already-viewed data isn't retroactively unshown). Illness/reflux/notes fields and any private journal free-text are <b>never</b> shared, regardless of what you check.</p>
-          <p>Your coach may leave you <b>notes</b> — always readable to you, even after you revoke access.</p>
+          <p>Your coach may leave you <b>notes</b> — always readable to you, even after you revoke access. You can also <b>message</b> your coach directly, a two-way conversation open to both of you at any time while the connection is active; your own message history stays readable even after a revoke, same as notes.</p>
+        </div>
+      </section>
+
+      <section class="block" id="reminders">
+        <div class="block-head"><span class="block-num">11</span><h2>Practice reminders</h2></div>
+        <div class="card">
+          <p>Opt in from <b>Settings</b> and VepAIr will email you once a day if you haven't logged a check-in yet — a nudge, not a nag: it never sends twice in one day, and never sends at all once you've checked in. Off by default; turn it on or off any time.</p>
         </div>
       </section>
 
       <section class="block" id="singer-troubleshooting">
-        <div class="block-head"><span class="block-num">11</span><h2>Troubleshooting</h2></div>
+        <div class="block-head"><span class="block-num">12</span><h2>Troubleshooting</h2></div>
         <div class="card">
           <ul>
             <li><b>"I can't sign in"</b> — Login only works with an existing account. A failed login always shows a generic "incorrect email or password" and never confirms whether an account exists, for privacy.</li>
@@ -529,7 +538,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <tr><td>Vocal range & target tones</td><td>Vocal range</td></tr>
             <tr><td>Exercise trends, training consistency, today's routine</td><td>Exercise history</td></tr>
           </table>
-          <p>From here: <b>Progress</b> (full trend charts over any range), <b>Recordings</b> (play a shared recording — streamed live, VepAIr never keeps a second copy of a Vrotégé's audio), <b>Assign training</b>, and <b>Notes</b>.</p>
+          <p>From here: <b>Progress</b> (full trend charts over any range), <b>Recordings</b> (play a shared recording — streamed live, VepAIr never keeps a second copy of a Vrotégé's audio), <b>Assign training</b>, <b>Notes</b>, and <b>Messages</b>.</p>
         </div>
       </section>
 
@@ -549,8 +558,16 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
         </div>
       </section>
 
+      <section class="block coach-section" id="coach-messages">
+        <div class="block-head"><span class="block-num">08</span><h2>Messages</h2></div>
+        <div class="card">
+          <p>A real back-and-forth with your Vrotégé, separate from Notes — up to 2000 characters per message, both of you can send and read. Sending requires an active connection (a revoked Vrotégé can't be messaged), but a Vrotégé's own read access to the history you already exchanged never goes away, same as Notes.</p>
+          <div class="callout warn"><b>Not a medical or clinical record.</b> Same non-blocking clinical-language flag as Notes — a flagged message still sends, just marked "flagged for review" on both sides.</div>
+        </div>
+      </section>
+
       <section class="block coach-section" id="coach-privacy">
-        <div class="block-head"><span class="block-num">08</span><h2>What you can never see</h2></div>
+        <div class="block-head"><span class="block-num">09</span><h2>What you can never see</h2></div>
         <div class="card">
           <p>Regardless of what a Vrotégé shares, these are never visible to any coach, ever: illness symptoms, reflux symptoms, and any private free-text notes from a Vrotégé's own check-ins or recording sessions. This is a code-level omission, not a togglable setting.</p>
         </div>
