@@ -8,6 +8,51 @@ import { useAuth } from "@/lib/auth-context";
 import type { AdminSiteSettings, AdminUserListItem } from "@/lib/types";
 import { ApiError } from "@/lib/apiClient";
 
+function RetentionInput({
+  label,
+  value,
+  disabled,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  disabled: boolean;
+  onCommit: (days: number) => void;
+}) {
+  // Local draft state, committed on blur rather than every keystroke -- typing "90" over an
+  // onChange-triggers-save input would fire a save on "9" and another on "90".
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    // Resyncs the draft when the saved value changes from outside this input (e.g. the
+    // initial fetch, or committing the *other* retention field re-fetches the whole
+    // settings row) -- not a response to this input's own edits, which stay local until blur.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraft(String(value));
+  }, [value]);
+
+  function commit() {
+    const parsed = Math.max(1, Number(draft) || value);
+    setDraft(String(parsed));
+    if (parsed !== value) onCommit(parsed);
+  }
+
+  return (
+    <label className="flex items-center gap-2 text-xs text-neutral-300">
+      {label}
+      <input
+        type="number"
+        min={1}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        disabled={disabled}
+        className="w-20 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm outline-none focus:border-neutral-500 disabled:opacity-50"
+      />
+    </label>
+  );
+}
+
 function SiteSettingsPanel() {
   const { apiFetch } = useAuth();
   const [settings, setSettings] = useState<AdminSiteSettings | null>(null);
@@ -101,6 +146,30 @@ function SiteSettingsPanel() {
         >
           {busy ? "..." : settings.nda_required ? "Turn off NDA gate" : "Turn on NDA gate"}
         </button>
+      </section>
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm">
+        <p className="mb-1 font-medium">Data retention</p>
+        <p className="mb-3 text-xs text-neutral-400">
+          Days to keep raw recording audio (measurements are never purged) and the most
+          sensitive check-in free-text fields (illness/reflux/notes), before the daily purge
+          job removes them. Changes apply on the job&apos;s next run — see TECHNICAL_GUIDE.md
+          §12.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <RetentionInput
+            label="Recording audio (days)"
+            value={settings.recording_retention_days}
+            disabled={busy}
+            onCommit={(days) => update({ recording_retention_days: days })}
+          />
+          <RetentionInput
+            label="Check-in notes (days)"
+            value={settings.checkin_notes_retention_days}
+            disabled={busy}
+            onCommit={(days) => update({ checkin_notes_retention_days: days })}
+          />
+        </div>
       </section>
 
       {error && <p className="text-xs text-red-400">{error}</p>}

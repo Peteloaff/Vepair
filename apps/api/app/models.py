@@ -191,7 +191,13 @@ class VoiceSession(Base, TimestampMixin):
 
 
 class Recording(Base, TimestampMixin):
-    """One raw audio asset within a session. Originals are never destructively overwritten."""
+    """One raw audio asset within a session. Originals are never destructively overwritten by
+    us -- but `file_path` can go to null two ways: the retention job (app/data_retention.py's
+    purge_stale_recordings, past SiteSettings.recording_retention_days) or a user's own
+    DELETE /api/v1/recordings/{id}, which removes this row entirely instead (see that
+    endpoint's docstring) -- so a null file_path here only ever means "purged by policy," with
+    `audio_purged_at` set. AcousticMeasurement/quality_flags survive a policy purge; the row
+    itself doesn't survive a user-initiated delete."""
 
     __tablename__ = "recordings"
 
@@ -201,15 +207,23 @@ class Recording(Base, TimestampMixin):
     )
     # sustained_ah|ee|oo, hum, glide, sentence, singing
     sample_type: Mapped[str] = mapped_column(String(50))
-    file_path: Mapped[str] = mapped_column(String(500))
+    file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     channels: Mapped[int | None] = mapped_column(Integer, nullable=True)
     quality_flags: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    audio_purged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     voice_session: Mapped[VoiceSession] = relationship(back_populates="recordings")
+    # passive_deletes=True: without it, SQLAlchemy's default relationship-aware delete tries
+    # to load and null out AcousticMeasurement.recording_id before deleting this row -- which
+    # fails, since that column is NOT NULL. With it, SQLAlchemy leaves the child alone and
+    # trusts the DB's own ON DELETE CASCADE (see AcousticMeasurement.recording_id's FK) to
+    # remove it. Discovered by DELETE /api/v1/recordings/{id} (app/routers/recordings.py).
     measurement: Mapped["AcousticMeasurement | None"] = relationship(
-        back_populates="recording", uselist=False
+        back_populates="recording", uselist=False, passive_deletes=True
     )
 
 
@@ -735,6 +749,15 @@ class SiteSettings(Base, TimestampMixin):
     # ships, not opt-in -- an admin turns it off (via POST /api/v1/admin/site-settings) once the
     # beta phase ends, no redeploy required.
     nda_required: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # Data-minimization retention windows -- both consumed by app/data_retention.py's daily
+    # purge job (POST /api/v1/system/purge-stale-data). recording_retention_days governs raw
+    # audio only (AcousticMeasurement/quality_flags survive); checkin_notes_retention_days
+    # governs just the three most sensitive DailyCheckIn free-text fields (illness_symptoms,
+    # reflux_symptoms, notes) -- every quantitative check-in field is untouched by either.
+    recording_retention_days: Mapped[int] = mapped_column(Integer, default=90, server_default="90")
+    checkin_notes_retention_days: Mapped[int] = mapped_column(
+        Integer, default=30, server_default="30"
+    )
 
 
 class UserSubscription(Base, TimestampMixin):

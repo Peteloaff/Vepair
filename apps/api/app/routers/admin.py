@@ -578,7 +578,10 @@ def get_site_settings_endpoint(
 ) -> AdminSiteSettingsOut:
     settings_row = get_site_settings(db)
     return AdminSiteSettingsOut(
-        signups_enabled=settings_row.signups_enabled, nda_required=settings_row.nda_required
+        signups_enabled=settings_row.signups_enabled,
+        nda_required=settings_row.nda_required,
+        recording_retention_days=settings_row.recording_retention_days,
+        checkin_notes_retention_days=settings_row.checkin_notes_retention_days,
     )
 
 
@@ -588,20 +591,26 @@ def set_site_settings(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ) -> AdminSiteSettingsOut:
-    """Two independent toggles sharing one settings row: signups_enabled is the kill switch for
+    """Four independent settings sharing one row: signups_enabled is the kill switch for
     the public signup/coach-signup forms (see app/routers/auth.py) -- for locking down new
     accounts during load testing without touching the database by hand, and doesn't affect
     admin-created accounts (POST /users above) or logins for existing accounts. nda_required
     controls whether NdaGate.tsx blocks the authenticated app behind the beta NDA click-through
-    -- turn it off once the beta phase ends, no redeploy required. Both values are sent on every
-    call (full replace, not a partial patch), same as the rest of this admin surface."""
+    -- turn it off once the beta phase ends, no redeploy required. recording_retention_days and
+    checkin_notes_retention_days feed app/data_retention.py's daily purge job -- see that
+    module's docstring. All values are sent on every call (full replace, not a partial patch),
+    same as the rest of this admin surface."""
     settings_row = get_site_settings(db)
     previous = {
         "signups_enabled": settings_row.signups_enabled,
         "nda_required": settings_row.nda_required,
+        "recording_retention_days": settings_row.recording_retention_days,
+        "checkin_notes_retention_days": settings_row.checkin_notes_retention_days,
     }
     settings_row.signups_enabled = payload.signups_enabled
     settings_row.nda_required = payload.nda_required
+    settings_row.recording_retention_days = payload.recording_retention_days
+    settings_row.checkin_notes_retention_days = payload.checkin_notes_retention_days
     log_admin_action(
         db,
         admin.id,
@@ -609,16 +618,16 @@ def set_site_settings(
         None,
         {
             "from": previous,
-            "to": {
-                "signups_enabled": payload.signups_enabled,
-                "nda_required": payload.nda_required,
-            },
+            "to": payload.model_dump(),
         },
     )
     db.commit()
     db.refresh(settings_row)
     return AdminSiteSettingsOut(
-        signups_enabled=settings_row.signups_enabled, nda_required=settings_row.nda_required
+        signups_enabled=settings_row.signups_enabled,
+        nda_required=settings_row.nda_required,
+        recording_retention_days=settings_row.recording_retention_days,
+        checkin_notes_retention_days=settings_row.checkin_notes_retention_days,
     )
 
 

@@ -90,16 +90,31 @@ def create_voice_session(
     return session
 
 
-@router.get("/voice-sessions", response_model=list[VoiceSessionOut])
+@router.get("/voice-sessions", response_model=list[VoiceSessionWithRecordingsOut])
 def list_voice_sessions(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> list[VoiceSession]:
+) -> list[VoiceSessionWithRecordingsOut]:
+    """Now includes each session's recordings (previously recording-less VoiceSessionOut) --
+    added for the /recordings page (data-minimization round: per-recording deletion needs
+    somewhere to list what exists). VoiceSessionOut fields are a strict subset, so this is a
+    backward-compatible response-shape change, not a breaking one."""
     stmt = (
         select(VoiceSession)
         .where(VoiceSession.user_id == current_user.id)
         .order_by(VoiceSession.started_at.desc())
     )
-    return list(db.scalars(stmt).all())
+    sessions = db.scalars(stmt).all()
+    return [
+        VoiceSessionWithRecordingsOut(
+            id=s.id,
+            started_at=s.started_at,
+            completed_at=s.completed_at,
+            notes=s.notes,
+            device_metadata_id=s.device_metadata_id,
+            recordings=[RecordingOut.model_validate(r) for r in s.recordings],
+        )
+        for s in sessions
+    ]
 
 
 @router.get("/voice-sessions/{session_id}", response_model=VoiceSessionWithRecordingsOut)
@@ -232,6 +247,54 @@ def get_recording_audio(
             status_code=404,
             detail={"code": "recording_not_found", "message": "Recording not found."},
         )
+    if recording.file_path is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "audio_purged",
+                "message": (
+                    "This recording's audio was automatically removed under VepAIr's data "
+                    "retention policy. Its measurements are still available."
+                ),
+            },
+        )
 
     audio_bytes = get_storage().read(recording.file_path)
     return Response(content=audio_bytes, media_type="audio/wav")
+
+
+@router.delete("/recordings/{recording_id}", status_code=204)
+def delete_recording(
+    recording_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """User-initiated, full removal -- deliberately not the retention job's "keep the
+    measurement" posture (see app/data_retention.py's module docstring): this is the user
+    explicitly saying "get rid of this," not a passive policy default, so the whole row goes,
+    AcousticMeasurement included (cascades via its ondelete="CASCADE"). Removing this recording
+    doesn't retroactively recompute an already-stored Baseline/RecoveryScore row -- it only
+    affects computations going forward."""
+    recording = db.scalar(
+        select(Recording)
+        .join(VoiceSession)
+        .where(Recording.id == recording_id, VoiceSession.user_id == current_user.id)
+    )
+    if recording is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "recording_not_found", "message": "Recording not found."},
+        )
+    if recording.file_path is not None:
+        try:
+            get_storage().delete(recording.file_path)
+        except Exception:
+            logger.error(
+                "Failed to delete recording file on user-initiated delete: recording_id=%s "
+                "file_path=%s",
+                recording.id,
+                recording.file_path,
+                exc_info=True,
+            )
+    db.delete(recording)
+    db.commit()

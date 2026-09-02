@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.data_retention import purge_stale_checkin_notes, purge_stale_recordings
 from app.database import get_db
 from app.reminders import send_daily_checkin_reminders
 
@@ -32,3 +33,20 @@ def send_reminders(
     NotificationLog dedup means a second call the same day sends nothing further."""
     sent = send_daily_checkin_reminders(db)
     return {"sent": sent}
+
+
+@router.post("/purge-stale-data")
+def purge_stale_data(
+    _auth: None = Depends(_require_internal_job_secret),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Meant to be called once daily by an external scheduler -- see TECHNICAL_GUIDE.md for
+    the Cloud Scheduler setup. Two independent policies (retention windows configurable via
+    the admin site-settings page) -- see app/data_retention.py's module docstring for what
+    each one does and does not touch. Idempotent by construction: each policy only ever
+    selects rows that still have something left to purge, so calling this twice in a day is
+    harmless -- the second call just finds nothing left to do for whatever the first already
+    handled."""
+    recordings_purged = purge_stale_recordings(db)
+    checkins_purged = purge_stale_checkin_notes(db)
+    return {"recordings_purged": recordings_purged, "checkin_notes_purged": checkins_purged}

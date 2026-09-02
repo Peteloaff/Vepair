@@ -121,7 +121,7 @@ function ToneMatchFlow() {
     setResult(null);
     setShareError(null);
     setPhase("tone-playing");
-    await playTone(note.frequencyHz, TONE_DURATION_MS);
+    await playTone(note.frequencyHz, TONE_DURATION_MS, 1.0);
     beginListening(note);
   }
 
@@ -200,7 +200,7 @@ function ToneMatchFlow() {
 
   async function playGameNote(targets: ReferenceNote[], index: number) {
     setPhase("game-tone-playing");
-    await playTone(targets[index].frequencyHz, GAME_TONE_DURATION_MS);
+    await playTone(targets[index].frequencyHz, GAME_TONE_DURATION_MS, 1.0);
     beginGameListening(targets, index);
   }
 

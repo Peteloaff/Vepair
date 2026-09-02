@@ -129,6 +129,10 @@ export interface Recording {
   measurement: AcousticMeasurement | null;
   created_at: string;
   anomalies: Anomaly[];
+  // false once the data-retention job has auto-removed the audio (audio_purged_at says
+  // when) — the recording row and its measurements still exist either way.
+  audio_available: boolean;
+  audio_purged_at: string | null;
 }
 
 export interface VoiceSessionWithRecordings extends VoiceSession {
@@ -569,6 +573,8 @@ export interface AdminReportsSummary {
 export interface AdminSiteSettings {
   signups_enabled: boolean;
   nda_required: boolean;
+  recording_retention_days: number;
+  checkin_notes_retention_days: number;
 }
 
 export interface NdaStatus {

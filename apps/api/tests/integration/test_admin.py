@@ -536,6 +536,8 @@ def test_site_settings_default_to_signups_enabled(client, signed_up_user, db_ses
     assert resp.status_code == 200
     assert resp.json()["signups_enabled"] is True
     assert resp.json()["nda_required"] is True
+    assert resp.json()["recording_retention_days"] == 90
+    assert resp.json()["checkin_notes_retention_days"] == 30
 
 
 def test_disabling_signups_blocks_public_signup_but_not_admin_create(
@@ -547,7 +549,12 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
     toggle = client.post(
         "/api/v1/admin/site-settings",
         headers=admin_headers,
-        json={"signups_enabled": False, "nda_required": True},
+        json={
+            "signups_enabled": False,
+            "nda_required": True,
+            "recording_retention_days": 90,
+            "checkin_notes_retention_days": 30,
+        },
     )
     assert toggle.status_code == 200
     assert toggle.json()["signups_enabled"] is False
@@ -600,7 +607,12 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
     reenable = client.post(
         "/api/v1/admin/site-settings",
         headers=admin_headers,
-        json={"signups_enabled": True, "nda_required": True},
+        json={
+            "signups_enabled": True,
+            "nda_required": True,
+            "recording_retention_days": 90,
+            "checkin_notes_retention_days": 30,
+        },
     )
     assert reenable.status_code == 200
     unblocked = client.post(
@@ -619,7 +631,12 @@ def test_site_settings_requires_admin(client, signed_up_user) -> None:
     resp = client.post(
         "/api/v1/admin/site-settings",
         headers=headers,
-        json={"signups_enabled": False, "nda_required": True},
+        json={
+            "signups_enabled": False,
+            "nda_required": True,
+            "recording_retention_days": 90,
+            "checkin_notes_retention_days": 30,
+        },
     )
     assert resp.status_code == 403
 
@@ -708,7 +725,12 @@ def test_admin_can_turn_off_nda_requirement(client, signed_up_user, db_session) 
     toggle = client.post(
         "/api/v1/admin/site-settings",
         headers=admin_headers,
-        json={"signups_enabled": True, "nda_required": False},
+        json={
+            "signups_enabled": True,
+            "nda_required": False,
+            "recording_retention_days": 90,
+            "checkin_notes_retention_days": 30,
+        },
     )
     assert toggle.status_code == 200
     assert toggle.json()["nda_required"] is False

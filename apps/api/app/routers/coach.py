@@ -574,6 +574,15 @@ def get_singer_recording_audio(
             status_code=404,
             detail={"code": "recording_not_found", "message": "Recording not found."},
         )
+    if recording.file_path is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "audio_purged",
+                "message": "This recording's audio was automatically removed under VepAIr's "
+                "data retention policy.",
+            },
+        )
 
     # Audit trail (PRIVACY.md section 4's "auditable access" requirement) — a structured log
     # line is the right amount of tooling for pilot scale; a queryable audit table is
