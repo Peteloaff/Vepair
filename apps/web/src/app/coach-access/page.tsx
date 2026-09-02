@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { MessageThread } from "@/components/MessageThread";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
 import {
   COACH_SHARE_CATEGORIES,
   COACH_SHARE_CATEGORY_LABEL,
   type CoachConnection,
+  type CoachMessage,
   type CoachShareCategory,
   type SingerCoachNote,
   type SingerInvite,
@@ -139,6 +141,7 @@ function ConnectionCard({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<SingerCoachNote[] | null>(null);
+  const [messages, setMessages] = useState<CoachMessage[] | null>(null);
   const isActive = connection.status === "active";
   const granted = new Set(connection.granted_categories);
 
@@ -155,6 +158,39 @@ function ConnectionCard({
     } catch {
       setError("Could not load notes.");
     }
+  }
+
+  async function loadMessages() {
+    try {
+      const data = await apiFetch<CoachMessage[]>(
+        `/api/v1/coach-connections/${connection.id}/messages`
+      );
+      setMessages(data);
+    } catch {
+      setError("Could not load messages.");
+    }
+  }
+
+  async function toggleMessages() {
+    if (messages !== null) {
+      setMessages(null);
+      return;
+    }
+    await loadMessages();
+    // Opening the thread just marked every coach-sent message read server-side (see
+    // list_messages_from_coach) -- refresh the connection list so this card's own unread
+    // badge (and the home page's nav badge, one level up) clears immediately.
+    onChange();
+  }
+
+  async function sendMessage(body: string): Promise<CoachMessage> {
+    const created = await apiFetch<CoachMessage>(
+      `/api/v1/coach-connections/${connection.id}/messages`,
+      { method: "POST", body: { body } }
+    );
+    await loadMessages();
+    onChange();
+    return created;
   }
 
   async function toggleCategory(category: CoachShareCategory) {
@@ -252,7 +288,32 @@ function ConnectionCard({
         >
           {notes === null ? "View notes" : "Hide notes"}
         </button>
+        <button
+          type="button"
+          onClick={toggleMessages}
+          className="relative rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+        >
+          {messages === null ? "Messages" : "Hide messages"}
+          {connection.unread_message_count > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+              {connection.unread_message_count}
+            </span>
+          )}
+        </button>
       </div>
+
+      {messages !== null && (
+        <div className="mt-3">
+          <MessageThread
+            messages={messages}
+            currentSender="singer"
+            onSend={sendMessage}
+            disabledReason={
+              isActive ? null : "This connection is revoked — you can't send new messages."
+            }
+          />
+        </div>
+      )}
 
       {notes !== null && (
         <div className="mt-3 space-y-2">

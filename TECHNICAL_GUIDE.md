@@ -331,3 +331,44 @@ curl -X POST "$API_URL/api/v1/admin/organizations/<org_id>/set-coach-pro" \
   -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
   -d '{"is_coach_pro_active": true}'
 ```
+
+## 11. Practice reminders — Cloud Scheduler setup
+
+`POST /api/v1/system/send-reminders` sends the "How's your voice today?" email to every singer
+who hasn't checked in yet today and has notifications consent granted (see
+`apps/api/app/reminders.py`). Nothing calls this automatically — it's meant to be triggered once
+daily by **Google Cloud Scheduler**, which doesn't exist yet as of this writing and needs to be
+created once, in the same GCP project as Cloud Run (§3).
+
+This endpoint is **not** protected by a user JWT — a 15-minute admin access token is the wrong
+credential for something an unattended job calls once a day with no one signed in. Instead it
+checks a shared secret header (`X-Internal-Job-Secret`) against the `INTERNAL_JOB_SECRET` env
+var, which defaults to empty and rejects every call until set — so this must be added to
+`~/env.yaml` (§3) before the scheduler job is created:
+
+```bash
+INTERNAL_JOB_SECRET: "<a long random string, e.g. `openssl rand -hex 32`>"
+```
+
+Then, from Cloud Shell (same place Cloud Run deploys run from), create the scheduler job once:
+
+```bash
+gcloud scheduler jobs create http vepair-send-reminders \
+  --location us-west1 \
+  --schedule "0 18 * * *" \
+  --time-zone "America/Chicago" \
+  --uri "https://vepair-api-302841837670.us-west1.run.app/api/v1/system/send-reminders" \
+  --http-method POST \
+  --headers "X-Internal-Job-Secret=<same value as INTERNAL_JOB_SECRET above>"
+```
+
+- `--schedule "0 18 * * *"` is 6pm daily — adjust the cron expression or `--time-zone` as
+  desired; nothing about the endpoint assumes this exact time.
+- Safe to trigger more than once in a day — `app/reminders.py`'s `NotificationLog` unique
+  constraint means a second call the same day sends nothing further (see its module docstring).
+- To change the schedule or secret later: `gcloud scheduler jobs update http
+  vepair-send-reminders --location us-west1 ...` with the flags you want to change.
+- To test the job immediately without waiting for its schedule:
+  `gcloud scheduler jobs run vepair-send-reminders --location us-west1`.
+- To check what it actually sent: `gcloud logging read` (§3) filtered to `vepair-api`, or query
+  `notification_logs` directly (§8) for today's rows.

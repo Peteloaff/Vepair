@@ -6,20 +6,26 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
+from app.coach_notes import find_flagged_terms
 from app.database import get_db
+from app.email import send_new_message_email
 from app.models import (
     CoachAccess,
     CoachAccessCategoryGrant,
     CoachInvite,
+    CoachMessage,
     CoachNote,
     CoachProfile,
     ConsentRecord,
     User,
 )
+from app.notifications import has_notifications_consent
 from app.schemas_coach import (
     COACH_SHARE_CATEGORIES,
     CategoryToggleIn,
     CoachConnectionOut,
+    CoachMessageCreate,
+    CoachMessageOut,
     CoachNoteOut,
     InviteAcceptIn,
     SingerInviteOut,
@@ -193,9 +199,22 @@ def list_my_coach_connections(
                 granted_categories=[g.category for g in grants],
                 granted_at=access.granted_at,
                 revoked_at=access.revoked_at,
+                unread_message_count=_unread_message_count(db, access.id, from_sender="coach"),
             )
         )
     return result
+
+
+def _unread_message_count(db: Session, coach_access_id: uuid.UUID, *, from_sender: str) -> int:
+    return db.scalar(
+        select(func.count())
+        .select_from(CoachMessage)
+        .where(
+            CoachMessage.coach_access_id == coach_access_id,
+            CoachMessage.sender == from_sender,
+            CoachMessage.read_at.is_(None),
+        )
+    )
 
 
 def _owned_access(
@@ -272,6 +291,7 @@ def toggle_category(
         granted_categories=[g.category for g in grants],
         granted_at=access.granted_at,
         revoked_at=access.revoked_at,
+        unread_message_count=_unread_message_count(db, access.id, from_sender="coach"),
     )
 
 
@@ -329,3 +349,76 @@ def list_notes_about_me(
             .order_by(CoachNote.created_at.desc())
         ).all()
     )
+
+
+@router.post(
+    "/coach-connections/{coach_access_id}/messages",
+    response_model=CoachMessageOut,
+    status_code=201,
+)
+def send_message_to_coach(
+    coach_access_id: uuid.UUID,
+    payload: CoachMessageCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CoachMessage:
+    """Unlike list_notes_about_me/list_messages_from_coach below, sending requires an active
+    connection -- a revoked connection can't be messaged, mirroring require_coach_access()'s
+    same rule on the coach's own send endpoint. Saved regardless of a flagged_terms match, same
+    non-blocking posture as every other coach-note/message check in this app."""
+    access = _owned_access(db, coach_access_id, current_user.id)
+    if access.status != "active":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "connection_not_active",
+                "message": "This coach connection is no longer active.",
+            },
+        )
+    message = CoachMessage(
+        coach_access_id=access.id,
+        sender="singer",
+        body=payload.body,
+        flagged_terms=find_flagged_terms(payload.body) or None,
+    )
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+
+    coach_profile = db.get(CoachProfile, access.coach_id)
+    if coach_profile is not None:
+        coach_user = db.get(User, coach_profile.user_id)
+        if coach_user is not None and has_notifications_consent(db, coach_user.id):
+            send_new_message_email(coach_user.email, current_user.email)
+
+    return message
+
+
+@router.get(
+    "/coach-connections/{coach_access_id}/messages", response_model=list[CoachMessageOut]
+)
+def list_messages_from_coach(
+    coach_access_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CoachMessage]:
+    """Deliberately not gated on CoachAccess.status -- same reasoning as list_notes_about_me:
+    a singer's own message history is their own record and survives a revoke. Viewing the
+    thread marks every coach-sent message read, clearing this connection's unread badge."""
+    access = _owned_access(db, coach_access_id, current_user.id)
+    messages = list(
+        db.scalars(
+            select(CoachMessage)
+            .where(CoachMessage.coach_access_id == access.id)
+            .order_by(CoachMessage.created_at.asc())
+        ).all()
+    )
+    now = datetime.now(UTC)
+    changed = False
+    for message in messages:
+        if message.sender == "coach" and message.read_at is None:
+            message.read_at = now
+            changed = True
+    if changed:
+        db.commit()
+    return messages

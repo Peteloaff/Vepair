@@ -109,3 +109,48 @@ def send_password_reset_email(to_email: str, reset_token: str) -> None:
         f"If you didn't request this, you can safely ignore this email.</p>"
     )
     _send(to_email, subject, html_body, text_body)
+
+
+def send_checkin_reminder_email(to_email: str) -> None:
+    """The only reminder type in v1 -- see app/reminders.py's send_daily_checkin_reminders,
+    the sole caller. Only ever sent to a user with explicit notifications consent granted."""
+    checkin_url = f"{settings.frontend_base_url}/"
+    subject = "How's your voice today?"
+    text_body = (
+        "You haven't logged a check-in yet today. A quick check-in helps VepAIr keep your "
+        "recovery score and daily routine tuned to how you're actually doing.\n\n"
+        f"Check in here: {checkin_url}\n\n"
+        "You're getting this because you opted into practice reminders -- turn them off any "
+        "time from your Profile page."
+    )
+    html_body = (
+        "<p>You haven't logged a check-in yet today. A quick check-in helps VepAIr keep your "
+        "recovery score and daily routine tuned to how you're actually doing.</p>"
+        f'<p><a href="{checkin_url}">Check in now</a></p>'
+        "<p>You're getting this because you opted into practice reminders — turn them off any "
+        "time from your Profile page.</p>"
+    )
+    _send(to_email, subject, html_body, text_body)
+
+
+def send_new_message_email(to_email: str, from_label: str) -> None:
+    """Sent synchronously at message-creation time (app/routers/coach.py's send_message,
+    app/routers/coach_access.py's send_message_to_coach) -- a discrete event, not a daily
+    batch, so it doesn't go through app/reminders.py. Only ever sent to a recipient with
+    explicit notifications consent granted; a failure here must never fail the message send
+    itself (see _send's own try/except)."""
+    inbox_url = f"{settings.frontend_base_url}/"
+    subject = f"New message from {from_label}"
+    text_body = (
+        f"{from_label} sent you a new message on VepAIr.\n\n"
+        f"Read it here: {inbox_url}\n\n"
+        "You're getting this because you opted into notifications -- turn them off any time "
+        "from your Profile page."
+    )
+    html_body = (
+        f"<p>{from_label} sent you a new message on VepAIr.</p>"
+        f'<p><a href="{inbox_url}">Read it now</a></p>'
+        "<p>You're getting this because you opted into notifications — turn them off any time "
+        "from your Profile page.</p>"
+    )
+    _send(to_email, subject, html_body, text_body)

@@ -440,12 +440,22 @@ export interface CoachConnection {
   granted_categories: CoachShareCategory[];
   granted_at: string;
   revoked_at: string | null;
+  unread_message_count: number;
 }
 
 export interface SingerCoachNote {
   id: string;
   body: string;
   flagged_terms: string[] | null;
+  created_at: string;
+}
+
+export interface CoachMessage {
+  id: string;
+  sender: "coach" | "singer";
+  body: string;
+  flagged_terms: string[] | null;
+  read_at: string | null;
   created_at: string;
 }
 
@@ -462,6 +472,7 @@ export interface CoachSingerListItem {
   coach_access_id: string;
   granted_categories: CoachShareCategory[];
   granted_at: string;
+  unread_message_count: number;
 }
 
 export interface CoachSentInvite {

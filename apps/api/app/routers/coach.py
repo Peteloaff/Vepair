@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.coach_auth import get_current_coach, require_coach_access
 from app.coach_notes import find_flagged_terms
 from app.database import get_db
+from app.email import send_new_message_email
 from app.exercise_routine import VALID_ROUTINE_LENGTHS_MINUTES, build_routine_for_user
 from app.exercise_trends import compute_exercise_trends
 from app.models import (
@@ -17,6 +18,7 @@ from app.models import (
     CoachAccessCategoryGrant,
     CoachAssignment,
     CoachInvite,
+    CoachMessage,
     CoachNote,
     CoachProfile,
     ConsentRecord,
@@ -27,6 +29,7 @@ from app.models import (
     UserProfile,
     VoiceSession,
 )
+from app.notifications import has_notifications_consent
 from app.recovery_score import compute_and_store_recovery_score, fetch_score_history
 from app.routers.recovery_score import _to_out as _recovery_score_to_out
 from app.schemas_checkin import CheckInOut
@@ -36,6 +39,8 @@ from app.schemas_coach import (
     CoachExerciseCreate,
     CoachInviteCreate,
     CoachInviteOut,
+    CoachMessageCreate,
+    CoachMessageOut,
     CoachNoteCreate,
     CoachNoteOut,
     CoachProfileOut,
@@ -226,9 +231,22 @@ def list_my_singers(
             coach_access_id=access.id,
             granted_categories=sorted(_granted_categories(db, access)),
             granted_at=access.granted_at,
+            unread_message_count=_unread_message_count(db, access.id, from_sender="singer"),
         )
         for access, email in rows
     ]
+
+
+def _unread_message_count(db: Session, coach_access_id: uuid.UUID, *, from_sender: str) -> int:
+    return db.scalar(
+        select(func.count())
+        .select_from(CoachMessage)
+        .where(
+            CoachMessage.coach_access_id == coach_access_id,
+            CoachMessage.sender == from_sender,
+            CoachMessage.read_at.is_(None),
+        )
+    )
 
 
 def _granted_categories(db: Session, access: CoachAccess) -> set[str]:
@@ -711,3 +729,65 @@ def delete_note(
     if note.deleted_at is None:
         note.deleted_at = datetime.now(UTC)
         db.commit()
+
+
+@router.post(
+    "/singers/{singer_user_id}/messages", response_model=CoachMessageOut, status_code=201
+)
+def send_message_to_singer(
+    singer_user_id: uuid.UUID,
+    payload: CoachMessageCreate,
+    access: CoachAccess = Depends(require_coach_access()),
+    db: Session = Depends(get_db),
+) -> CoachMessage:
+    """Two-way chat -- deliberately a separate model from CoachNote (see app/models.py's
+    CoachMessage docstring). Not category-gated, same reasoning as notes: this is a
+    communication channel the singer already fully controls, not a passive data category.
+    require_coach_access() (no category) already requires CoachAccess.status == "active", so a
+    revoked connection can't send. Saved regardless of a flagged_terms match -- a review signal,
+    never a block, matching create_note's exact posture."""
+    message = CoachMessage(
+        coach_access_id=access.id,
+        sender="coach",
+        body=payload.body,
+        flagged_terms=find_flagged_terms(payload.body) or None,
+    )
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+
+    singer = db.get(User, singer_user_id)
+    if singer is not None and has_notifications_consent(db, singer.id):
+        coach_profile = db.get(CoachProfile, access.coach_id)
+        send_new_message_email(
+            singer.email, coach_profile.display_name if coach_profile else "Your coach"
+        )
+
+    return message
+
+
+@router.get("/singers/{singer_user_id}/messages", response_model=list[CoachMessageOut])
+def list_messages_with_singer(
+    singer_user_id: uuid.UUID,
+    access: CoachAccess = Depends(require_coach_access()),
+    db: Session = Depends(get_db),
+) -> list[CoachMessage]:
+    """Viewing the thread marks every singer-sent message read -- the same "opening the
+    conversation is reading it" convention every chat app uses, and what clears the unread
+    badge on this singer's roster row."""
+    messages = list(
+        db.scalars(
+            select(CoachMessage)
+            .where(CoachMessage.coach_access_id == access.id)
+            .order_by(CoachMessage.created_at.asc())
+        ).all()
+    )
+    now = datetime.now(UTC)
+    changed = False
+    for message in messages:
+        if message.sender == "singer" and message.read_at is None:
+            message.read_at = now
+            changed = True
+    if changed:
+        db.commit()
+    return messages

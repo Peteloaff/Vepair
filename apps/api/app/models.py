@@ -828,3 +828,48 @@ class ToneGameAttempt(Base, TimestampMixin):
     score: Mapped[int] = mapped_column(Integer)
 
     session: Mapped[ToneGameSession] = relationship(back_populates="attempts")
+
+
+class NotificationLog(Base, TimestampMixin):
+    """Idempotency record for automated notifications (practice reminders, and any future
+    scheduled-job-sent type) -- one row per (user, notification_type, day) already sent, so
+    the daily reminder job (see app/reminders.py, triggered by Cloud Scheduler hitting
+    POST /api/v1/system/send-reminders) never double-emails if it's ever called twice in a
+    day. Mirrors OrganizationInvoiceLog's role for the (separate) QuickBooks job -- same
+    idempotency-via-unique-constraint pattern, scoped to what this job actually needs."""
+
+    __tablename__ = "notification_logs"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "notification_type", "sent_for_date", name="uq_notification_per_day"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    notification_type: Mapped[str] = mapped_column(String(50))  # e.g. "checkin_reminder"
+    sent_for_date: Mapped[date] = mapped_column(Date)
+
+
+class CoachMessage(Base, TimestampMixin):
+    """Two-way coach<->singer chat, deliberately separate from CoachNote -- different
+    semantics (ephemeral back-and-forth vs. a structured, soft-deletable record) and never
+    itself soft-deletable for v1. Not gated by any of the four sharing categories, same
+    reasoning as CoachNote: a communication channel the singer already fully controls (reply
+    or don't, revoke to cut it off), not a passive data category. Subject to the same
+    non-blocking clinical-language flag as CoachNote -- see app/coach_notes.py's
+    find_flagged_terms, MEDICAL_SAFETY.md section 12 -- since freeform text either party
+    reads carries the same risk regardless of which side wrote it."""
+
+    __tablename__ = "coach_messages"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_access_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_access.id", ondelete="CASCADE")
+    )
+    sender: Mapped[str] = mapped_column(String(10))  # "coach"|"singer"
+    body: Mapped[str] = mapped_column(Text)
+    flagged_terms: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

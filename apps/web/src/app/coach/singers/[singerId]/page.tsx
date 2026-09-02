@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/apiClient";
 import { daysAgoLocalDate, lastNDates, todayLocalDate } from "@/lib/date";
 import { ALL_TIME_FROM_DATE, RANGE_OPTIONS } from "@/lib/progressCharts";
-import type { CoachSingerHistory, CoachSingerSummary } from "@/lib/types";
+import type { CoachSingerHistory, CoachSingerListItem, CoachSingerSummary } from "@/lib/types";
 
 const HISTORY_WINDOW_DAYS = 30;
 
@@ -84,23 +84,32 @@ function ActionButton({
   label,
   onClick,
   href,
+  badgeCount,
 }: {
   label: string;
   onClick?: () => void;
   href?: string;
+  badgeCount?: number;
 }) {
   const className =
-    "flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-center text-sm font-medium text-neutral-200 hover:bg-neutral-800";
+    "relative flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-center text-sm font-medium text-neutral-200 hover:bg-neutral-800";
+  const badge = badgeCount != null && badgeCount > 0 && (
+    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+      {badgeCount}
+    </span>
+  );
   if (href) {
     return (
       <Link href={href} className={className}>
         {label}
+        {badge}
       </Link>
     );
   }
   return (
     <button type="button" onClick={onClick} className={className}>
       {label}
+      {badge}
     </button>
   );
 }
@@ -113,6 +122,7 @@ function SingerDashboardContent() {
   const [history, setHistory] = useState<CoachSingerHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
 
   const [showAssigned, setShowAssigned] = useState(false);
   const [showReassessment, setShowReassessment] = useState(false);
@@ -152,6 +162,15 @@ function SingerDashboardContent() {
 
   useEffect(() => {
     load();
+    // Best-effort, same pattern as the home page's pendingInviteCount badge -- silently
+    // ignored if it fails, since the roster call already covers this singer's full-page load
+    // and this is only feeding the "Messages" action button's unread badge.
+    apiFetch<CoachSingerListItem[]>("/api/v1/coach/singers")
+      .then((rows) => {
+        const row = rows.find((r) => r.singer_user_id === params.singerId);
+        setUnreadMessageCount(row?.unread_message_count ?? 0);
+      })
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.singerId]);
 
@@ -356,11 +375,16 @@ function SingerDashboardContent() {
         />
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         <ActionButton label="Assigned exercises" onClick={() => setShowAssigned((s) => !s)} />
         <ActionButton label="Modify program" href={`/coach/singers/${params.singerId}/assign`} />
         <ActionButton label="Review recordings" href={`/coach/singers/${params.singerId}/recordings`} />
         <ActionButton label="Add note" href={`/coach/singers/${params.singerId}/notes`} />
+        <ActionButton
+          label="Messages"
+          href={`/coach/singers/${params.singerId}/messages`}
+          badgeCount={unreadMessageCount}
+        />
       </div>
 
       {showAssigned && (
