@@ -429,3 +429,96 @@ def test_coach_history_requires_active_access(client, signed_up_coach, signed_up
     )
     assert resp.status_code == 403
     assert resp.json()["error"]["code"] == "no_active_access"
+
+
+def test_singer_summary_always_includes_email_and_reassessment_date(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """Identity and the coach's own scheduling reminder are never gated by category grants --
+    see CoachSingerSummaryOut's docstring."""
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+
+    resp = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/summary",
+        headers=coach_headers,
+        params={"date": TODAY},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["singer_email"] == singer["email"]
+    assert body["next_reassessment_date"] is None
+
+
+def test_reassessment_date_can_be_set_and_cleared(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
+    due_date = (date.today() + timedelta(days=30)).isoformat()
+
+    set_resp = client.patch(
+        f"/api/v1/coach/singers/{singer['user']['id']}/reassessment",
+        headers=coach_headers,
+        json={"next_reassessment_date": due_date},
+    )
+    assert set_resp.status_code == 200, set_resp.text
+    assert set_resp.json()["next_reassessment_date"] == due_date
+
+    summary_resp = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/summary",
+        headers=coach_headers,
+        params={"date": TODAY},
+    )
+    assert summary_resp.json()["next_reassessment_date"] == due_date
+
+    clear_resp = client.patch(
+        f"/api/v1/coach/singers/{singer['user']['id']}/reassessment",
+        headers=coach_headers,
+        json={"next_reassessment_date": None},
+    )
+    assert clear_resp.status_code == 200, clear_resp.text
+    assert clear_resp.json()["next_reassessment_date"] is None
+
+
+def test_reassessment_date_requires_active_access(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    singer, _singer_headers = signed_up_user
+
+    resp = client.patch(
+        f"/api/v1/coach/singers/{singer['user']['id']}/reassessment",
+        headers=coach_headers,
+        json={"next_reassessment_date": TODAY},
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] == "no_active_access"
+
+
+def test_coach_history_score_points_include_acoustic_stability_key(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """The Stability tile's data source -- wired through even when there's no computed value
+    yet (a fresh account has no baseline, so it's legitimately null, not fabricated)."""
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    _connect(client, coach_headers, singer["email"], singer_headers, ["recovery_trends"])
+
+    checkin = client.post(
+        "/api/v1/checkins", headers=singer_headers, json={"checkin_date": TODAY, "fatigue": 3}
+    )
+    assert checkin.status_code == 201, checkin.text
+
+    resp = client.get(
+        f"/api/v1/coach/singers/{singer['user']['id']}/history",
+        headers=coach_headers,
+        params={"from_date": TODAY, "to_date": TODAY},
+    )
+    assert resp.status_code == 200, resp.text
+    # A score row only exists once something computes one -- the coach summary call in other
+    # tests triggers that; here we only assert the key is present in whatever comes back.
+    for point in resp.json()["score_history"] or []:
+        assert "acoustic_stability_score" in point

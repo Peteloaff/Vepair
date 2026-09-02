@@ -75,6 +75,7 @@ def get_recovery_score_history(
             score_value=p.score_value,
             confidence_label=p.confidence_label,
             status=p.status,
+            acoustic_stability_score=p.acoustic_stability_score,
         )
         for p in history
     ]

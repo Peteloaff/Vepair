@@ -362,6 +362,7 @@ export interface ScoreHistoryPoint {
   score_value: number | null;
   confidence_label: string | null;
   status: RecoveryStatus | null;
+  acoustic_stability_score: number | null;
 }
 
 export interface ConsistencyDay {
@@ -474,6 +475,7 @@ export interface CoachSentInvite {
 
 export interface CoachSingerSummary {
   singer_id: string;
+  singer_email: string;
   granted_categories: CoachShareCategory[];
   recovery_score: RecoveryScore | null;
   vocal_range: VocalRangeSummary | null;
@@ -481,6 +483,7 @@ export interface CoachSingerSummary {
   exercise_trends: ExerciseTrend[] | null;
   training_consistency: TrainingConsistency | null;
   todays_routine: Routine | null;
+  next_reassessment_date: string | null;
 }
 
 export interface CoachSingerHistory {

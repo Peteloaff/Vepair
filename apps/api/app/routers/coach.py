@@ -39,6 +39,8 @@ from app.schemas_coach import (
     CoachNoteCreate,
     CoachNoteOut,
     CoachProfileOut,
+    CoachReassessmentIn,
+    CoachReassessmentOut,
     CoachSingerHistoryOut,
     CoachSingerListItemOut,
     CoachSingerSummaryOut,
@@ -275,6 +277,22 @@ def remove_singer(
     db.commit()
 
 
+@router.patch(
+    "/singers/{singer_user_id}/reassessment", response_model=CoachReassessmentOut
+)
+def set_reassessment_date(
+    payload: CoachReassessmentIn,
+    access: CoachAccess = Depends(require_coach_access()),
+    db: Session = Depends(get_db),
+) -> CoachReassessmentOut:
+    """A plain reminder date the coach sets for themself -- not a notification or calendar
+    system, and not gated by any singer consent category (it never reveals anything about the
+    singer's own data). Passing null clears it."""
+    access.next_reassessment_date = payload.next_reassessment_date
+    db.commit()
+    return CoachReassessmentOut(next_reassessment_date=access.next_reassessment_date)
+
+
 @router.get("/singers/{singer_user_id}/summary", response_model=CoachSingerSummaryOut)
 def get_singer_summary(
     singer_user_id: uuid.UUID,
@@ -394,8 +412,11 @@ def get_singer_summary(
     else:
         training_consistency_out = None
 
+    singer_email = db.scalar(select(User.email).where(User.id == singer_user_id))
+
     return CoachSingerSummaryOut(
         singer_id=singer_user_id,
+        singer_email=singer_email or "",
         granted_categories=sorted(granted),
         recovery_score=recovery_score_out,
         vocal_range=vocal_range_out,
@@ -403,6 +424,7 @@ def get_singer_summary(
         exercise_trends=exercise_trends_out,
         training_consistency=training_consistency_out,
         todays_routine=todays_routine_out,
+        next_reassessment_date=access.next_reassessment_date,
     )
 
 
@@ -435,6 +457,7 @@ def get_singer_history(
                 score_value=p.score_value,
                 confidence_label=p.confidence_label,
                 status=p.status,
+                acoustic_stability_score=p.acoustic_stability_score,
             )
             for p in history
         ]

@@ -466,6 +466,12 @@ class ScoreHistoryPoint:
     score_value: int | None
     confidence_label: str | None
     status: str | None
+    # The "acoustic_stability" component's own score (0-100, "how typical vs. your baseline"),
+    # pulled back out of the stored components breakdown -- see compute_and_store_recovery_score's
+    # `existing.components = result.as_dict()`. Exposed separately (rather than only as part of
+    # the blended total) for the coach dashboard's Stability tile, which needs this one component
+    # trended on its own, not folded into the six-component weighted score.
+    acoustic_stability_score: float | None
 
 
 def fetch_score_history(
@@ -488,12 +494,24 @@ def fetch_score_history(
         )
         .order_by(RecoveryScore.score_date)
     ).all()
-    return [
-        ScoreHistoryPoint(
-            score_date=row.score_date,
-            score_value=row.score_value,
-            confidence_label=row.confidence_label,
-            status=(row.components or {}).get("status"),
+    result = []
+    for row in rows:
+        stored = row.components or {}
+        stability = next(
+            (
+                c.get("score")
+                for c in stored.get("components", [])
+                if c.get("key") == "acoustic_stability"
+            ),
+            None,
         )
-        for row in rows
-    ]
+        result.append(
+            ScoreHistoryPoint(
+                score_date=row.score_date,
+                score_value=row.score_value,
+                confidence_label=row.confidence_label,
+                status=stored.get("status"),
+                acoustic_stability_score=stability,
+            )
+        )
+    return result

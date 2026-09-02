@@ -609,6 +609,11 @@ class CoachAccess(Base, TimestampMixin):
     granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_by: Mapped[str | None] = mapped_column(String(10), nullable=True)  # "singer"|"coach"
+    # Coach dashboard's "Schedule reassessment" action -- a plain reminder date the coach sets
+    # for themself, not a notification/calendar system. Scoped to the relationship (not a
+    # specific CoachAssignment) since a reassessment is about the singer overall, not one
+    # assignment. Null means nothing scheduled.
+    next_reassessment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
 class CoachAccessCategoryGrant(Base, TimestampMixin):

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
@@ -91,6 +91,9 @@ class CoachSingerSummaryOut(BaseModel):
     not just in ROADMAP.md prose."""
 
     singer_id: uuid.UUID
+    # Never gated -- identifying who this dashboard is even about isn't a shareable "category"
+    # of voice data, the same way the roster list (CoachSingerListItemOut) always includes it.
+    singer_email: str
     granted_categories: list[str]
     recovery_score: RecoveryScoreOut | None
     vocal_range: VocalRangeSummaryOut | None
@@ -101,6 +104,17 @@ class CoachSingerSummaryOut(BaseModel):
     exercise_trends: list[ExerciseTrendOut] | None
     training_consistency: TrainingConsistencyOut | None
     todays_routine: RoutineOut | None
+    # A coach's own reminder for themself -- not gated by singer consent, since it never reveals
+    # anything about the singer's voice data, only the coach's own scheduling note.
+    next_reassessment_date: date | None = None
+
+
+class CoachReassessmentIn(BaseModel):
+    next_reassessment_date: date | None = None
+
+
+class CoachReassessmentOut(BaseModel):
+    next_reassessment_date: date | None
 
 
 class CoachSingerHistoryOut(BaseModel):

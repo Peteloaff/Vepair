@@ -32,3 +32,4 @@ class ScoreHistoryPointOut(BaseModel):
     score_value: int | None
     confidence_label: str | None
     status: str | None
+    acoustic_stability_score: float | None = None

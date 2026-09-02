@@ -1,18 +1,106 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ExerciseInfoButton } from "@/components/ExerciseInfoButton";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireCoach } from "@/components/RequireCoach";
-import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
 import { useAuth } from "@/lib/auth-context";
-import { todayLocalDate } from "@/lib/date";
-import type { CoachSingerSummary } from "@/lib/types";
+import { ApiError } from "@/lib/apiClient";
+import { daysAgoLocalDate, lastNDates, todayLocalDate } from "@/lib/date";
+import type { CoachSingerHistory, CoachSingerSummary } from "@/lib/types";
 
-function NotShared({ label }: { label: string }) {
-  return <p className="text-sm text-neutral-500">Not shared: {label}.</p>;
+const HISTORY_WINDOW_DAYS = 30;
+
+/** Formats a plain yyyy-mm-dd date string (no time component, e.g. next_reassessment_date) for
+ * display. Deliberately does NOT go through `new Date(iso)` -- that parses a bare date as UTC
+ * midnight, which `toLocaleDateString` then renders in the browser's local timezone, silently
+ * shifting the displayed day backward for anyone west of UTC (the same off-by-one class of bug
+ * `lib/date.ts`'s todayLocalDate/daysAgoLocalDate exist to avoid). Parsing the components
+ * directly and constructing a local Date sidesteps that entirely. */
+function formatLocalDate(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+type Direction = "up" | "down" | "flat";
+
+interface TileDisplay {
+  headline: string;
+  direction?: Direction;
+  sub?: string;
+}
+
+function average(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+function directionOf(delta: number): Direction {
+  if (delta > 0) return "up";
+  if (delta < 0) return "down";
+  return "flat";
+}
+
+const ARROW: Record<Direction, string> = { up: "↑", down: "↓", flat: "→" };
+
+function StatTile({
+  label,
+  granted,
+  display,
+}: {
+  label: string;
+  granted: boolean;
+  display: TileDisplay | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+      <p className="text-xs text-neutral-500">{label}</p>
+      {!granted ? (
+        <p className="mt-2 text-sm text-neutral-600">Not shared</p>
+      ) : display === null ? (
+        <p className="mt-2 text-sm text-neutral-600">Not enough data yet</p>
+      ) : (
+        <>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-neutral-100">
+            {display.direction && <span className="mr-1 text-neutral-500">{ARROW[display.direction]}</span>}
+            {display.headline}
+          </p>
+          {display.sub && <p className="mt-0.5 text-xs text-neutral-500">{display.sub}</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function ActionButton({
+  label,
+  onClick,
+  href,
+}: {
+  label: string;
+  onClick?: () => void;
+  href?: string;
+}) {
+  const className =
+    "flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-center text-sm font-medium text-neutral-200 hover:bg-neutral-800";
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {label}
+      </Link>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {label}
+    </button>
+  );
 }
 
 function SingerDashboardContent() {
@@ -20,15 +108,41 @@ function SingerDashboardContent() {
   const router = useRouter();
   const params = useParams<{ singerId: string }>();
   const [summary, setSummary] = useState<CoachSingerSummary | null>(null);
+  const [history, setHistory] = useState<CoachSingerHistory | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  useEffect(() => {
-    apiFetch<CoachSingerSummary>(`/api/v1/coach/singers/${params.singerId}/summary`, {
-      searchParams: { date: todayLocalDate(), length_minutes: "10" },
-    })
-      .then(setSummary)
+  const [showAssigned, setShowAssigned] = useState(false);
+  const [showReassessment, setShowReassessment] = useState(false);
+  const [reassessmentInput, setReassessmentInput] = useState("");
+  const [savingReassessment, setSavingReassessment] = useState(false);
+  const [reassessmentError, setReassessmentError] = useState<string | null>(null);
+
+  const today = todayLocalDate();
+
+  function load() {
+    Promise.all([
+      apiFetch<CoachSingerSummary>(`/api/v1/coach/singers/${params.singerId}/summary`, {
+        searchParams: { date: today, length_minutes: "10" },
+      }),
+      apiFetch<CoachSingerHistory>(`/api/v1/coach/singers/${params.singerId}/history`, {
+        searchParams: {
+          from_date: daysAgoLocalDate(HISTORY_WINDOW_DAYS - 1),
+          to_date: today,
+        },
+      }),
+    ])
+      .then(([summaryData, historyData]) => {
+        setSummary(summaryData);
+        setHistory(historyData);
+        setReassessmentInput(summaryData.next_reassessment_date ?? "");
+        setError(null);
+      })
       .catch(() => setError("Could not load this singer's dashboard."));
+  }
+
+  useEffect(() => {
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.singerId]);
 
@@ -50,194 +164,257 @@ function SingerDashboardContent() {
     }
   }
 
+  async function saveReassessment(nextDate: string | null) {
+    setSavingReassessment(true);
+    setReassessmentError(null);
+    try {
+      const result = await apiFetch<{ next_reassessment_date: string | null }>(
+        `/api/v1/coach/singers/${params.singerId}/reassessment`,
+        { method: "PATCH", body: { next_reassessment_date: nextDate } }
+      );
+      setSummary((prev) => (prev ? { ...prev, next_reassessment_date: result.next_reassessment_date } : prev));
+      setReassessmentInput(result.next_reassessment_date ?? "");
+    } catch (err) {
+      setReassessmentError(
+        err instanceof ApiError ? err.message : "Could not save this date. Please try again."
+      );
+    } finally {
+      setSavingReassessment(false);
+    }
+  }
+
+  const granted = useMemo(() => new Set(summary?.granted_categories ?? []), [summary]);
+
+  const tiles = useMemo(() => {
+    const last7 = lastNDates(7);
+    const prior7 = Array.from({ length: 7 }, (_, i) => daysAgoLocalDate(13 - i));
+    const last30 = lastNDates(HISTORY_WINDOW_DAYS);
+
+    const scoreByDate = new Map((history?.score_history ?? []).map((p) => [p.score_date, p]));
+    const checkinByDate = new Map((history?.checkins ?? []).map((c) => [c.checkin_date, c]));
+    const consistencyByDate = new Map(
+      (history?.training_consistency?.days ?? []).map((d) => [d.for_date, d])
+    );
+
+    const stabilityWindow = (dates: string[]) =>
+      average(
+        dates
+          .map((d) => scoreByDate.get(d)?.acoustic_stability_score)
+          .filter((v): v is number => typeof v === "number")
+      );
+    const fatigueWindow = (dates: string[]) =>
+      average(
+        dates
+          .map((d) => checkinByDate.get(d)?.fatigue)
+          .filter((v): v is number => typeof v === "number")
+      );
+
+    // Range: 30-day change in the singer's comfortable high note, already computed server-side.
+    let range: TileDisplay | null = null;
+    const rangeSemitones = summary?.vocal_range?.change_30d_high?.semitones ?? null;
+    if (rangeSemitones !== null) {
+      const rounded = Math.round(rangeSemitones * 10) / 10;
+      range = {
+        // A signed delta ("+4"/"−2") is the idiomatic way to express a semitone shift -- unlike
+        // a percentage, it doesn't read as a double negative alongside the arrow.
+        headline: `${rounded > 0 ? "+" : rounded < 0 ? "−" : ""}${Math.abs(rounded)} semitones`,
+        direction: directionOf(rounded),
+        sub: "vs. 30 days ago",
+      };
+    }
+
+    // Stability: this week's average "how typical vs. your baseline" score vs. the week before.
+    let stability: TileDisplay | null = null;
+    const stabilityNow = stabilityWindow(last7);
+    const stabilityPrior = stabilityWindow(prior7);
+    if (stabilityNow !== null && stabilityPrior !== null) {
+      const delta = Math.round(stabilityNow - stabilityPrior);
+      stability = { headline: `${Math.abs(delta)}%`, direction: directionOf(delta), sub: "vs. last week" };
+    }
+
+    // Fatigue: self-reported average, this week vs. last week, as a relative % change.
+    let fatigue: TileDisplay | null = null;
+    const fatigueNow = fatigueWindow(last7);
+    const fatiguePrior = fatigueWindow(prior7);
+    if (fatigueNow !== null && fatiguePrior !== null && fatiguePrior !== 0) {
+      const rawDelta = fatigueNow - fatiguePrior;
+      const pct = Math.round((rawDelta / fatiguePrior) * 100);
+      fatigue = { headline: `${Math.abs(pct)}%`, direction: directionOf(rawDelta), sub: "vs. last week" };
+    }
+
+    // Compliance: % of the last 30 days with at least one completed exercise session.
+    let compliance: TileDisplay | null = null;
+    if (consistencyByDate.size > 0) {
+      const completed = last30.filter((d) => (consistencyByDate.get(d)?.sessions_completed ?? 0) > 0).length;
+      compliance = { headline: `${Math.round((completed / last30.length) * 100)}%`, sub: "last 30 days" };
+    }
+
+    // High-load days: self-reported speaking/singing load of "high", last 7 days.
+    let highLoadDays: TileDisplay | null = null;
+    if (checkinByDate.size > 0) {
+      const count = last7.filter((d) => {
+        const c = checkinByDate.get(d);
+        return c && (c.speaking_load === "high" || c.singing_load === "high");
+      }).length;
+      highLoadDays = { headline: `${count}`, sub: "last 7 days" };
+    }
+
+    // Sessions completed: days with a completed session, last 7 days.
+    let sessionsCompleted: TileDisplay | null = null;
+    if (consistencyByDate.size > 0) {
+      const count = last7.filter((d) => (consistencyByDate.get(d)?.sessions_completed ?? 0) > 0).length;
+      sessionsCompleted = { headline: `${count}/${last7.length}`, sub: "last 7 days" };
+    }
+
+    return { range, stability, fatigue, compliance, highLoadDays, sessionsCompleted };
+  }, [summary, history]);
+
   if (error) {
     return <p className="text-sm text-red-300">{error}</p>;
   }
 
-  if (summary === null) {
+  if (summary === null || history === null) {
     return <p className="text-sm text-neutral-500">Loading...</p>;
   }
 
-  const granted = new Set(summary.granted_categories);
+  const isOverdue =
+    summary.next_reassessment_date !== null && summary.next_reassessment_date < today;
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Singer dashboard</h1>
-        <div className="flex gap-2 text-sm">
-          <Link
-            href={`/coach/singers/${params.singerId}/progress`}
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
-          >
-            Progress
-          </Link>
-          <Link
-            href={`/coach/singers/${params.singerId}/recordings`}
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
-          >
-            Recordings
-          </Link>
-          <Link
-            href={`/coach/singers/${params.singerId}/assign`}
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
-          >
-            Assign training
-          </Link>
-          <Link
-            href={`/coach/singers/${params.singerId}/notes`}
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800"
-          >
-            Notes
+    <div className="mx-auto w-full max-w-3xl">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Singer dashboard</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{summary.singer_email}</h1>
+        </div>
+        <div className="flex gap-3 text-xs text-neutral-500">
+          <Link href={`/coach/singers/${params.singerId}/progress`} className="hover:text-neutral-300">
+            Full trends
           </Link>
           <button
             type="button"
             onClick={removeSinger}
             disabled={removing}
-            className="rounded-lg border border-red-900 px-3 py-1.5 text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+            className="hover:text-red-300 disabled:opacity-50"
           >
             {removing ? "Removing..." : "Remove from roster"}
           </button>
         </div>
       </div>
 
-      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">VepAIr Score</h2>
-        {granted.has("recovery_trends") ? (
-          <RecoveryScoreCard score={summary.recovery_score} />
-        ) : (
-          <NotShared label="recovery score & trends" />
-        )}
-      </section>
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Today</p>
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StatTile label="Range" granted={granted.has("vocal_range")} display={tiles.range} />
+        <StatTile label="Stability" granted={granted.has("recovery_trends")} display={tiles.stability} />
+        <StatTile label="Fatigue" granted={granted.has("recovery_trends")} display={tiles.fatigue} />
+        <StatTile label="Compliance" granted={granted.has("exercise_history")} display={tiles.compliance} />
+        <StatTile
+          label="High-load days"
+          granted={granted.has("recovery_trends")}
+          display={tiles.highLoadDays}
+        />
+        <StatTile
+          label="Sessions completed"
+          granted={granted.has("exercise_history")}
+          display={tiles.sessionsCompleted}
+        />
+      </div>
 
-      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Vocal range</h2>
-        {granted.has("vocal_range") && summary.vocal_range ? (
-          <dl className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <dt className="text-xs text-neutral-500">Current low</dt>
-              <dd className="text-neutral-200">
-                {summary.vocal_range.current_low_note ?? "—"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-neutral-500">Current high</dt>
-              <dd className="text-neutral-200">
-                {summary.vocal_range.current_high_note ?? "—"}
-              </dd>
-            </div>
-          </dl>
-        ) : (
-          <NotShared label="vocal range history" />
-        )}
-      </section>
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <ActionButton label="Assigned exercises" onClick={() => setShowAssigned((s) => !s)} />
+        <ActionButton label="Modify program" href={`/coach/singers/${params.singerId}/assign`} />
+        <ActionButton label="Review recordings" href={`/coach/singers/${params.singerId}/recordings`} />
+        <ActionButton label="Add note" href={`/coach/singers/${params.singerId}/notes`} />
+      </div>
 
-      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-neutral-200">Target tones</h2>
-          {granted.has("vocal_range") && summary.vocal_goal && (
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs ${
-                summary.vocal_goal.source === "manual"
-                  ? "bg-emerald-500/10 text-emerald-300"
-                  : "bg-neutral-800 text-neutral-400"
-              }`}
-            >
-              {summary.vocal_goal.source === "manual" ? "Singer's target" : "AI-suggested"}
-            </span>
+      {showAssigned && (
+        <div className="mb-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+          <h2 className="mb-3 text-sm font-medium text-neutral-200">Assigned exercises</h2>
+          {granted.has("exercise_history") && summary.todays_routine ? (
+            summary.todays_routine.items.length === 0 ? (
+              <p className="text-sm text-neutral-500">Nothing in today&apos;s routine.</p>
+            ) : (
+              <ul className="space-y-1.5 text-sm">
+                {summary.todays_routine.items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-2 text-neutral-300">
+                    {item.name}
+                    <ExerciseInfoButton
+                      purpose={item.purpose}
+                      instructions={item.instructions}
+                      contraindications={item.contraindications}
+                    />
+                    {summary.todays_routine!.assigned_exercise_ids.includes(item.id) && (
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">
+                        assigned
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : (
+            <p className="text-sm text-neutral-500">Not shared: exercise routine & completion history.</p>
           )}
         </div>
-        {granted.has("vocal_range") && summary.vocal_goal ? (
-          <dl className="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <dt className="text-xs text-neutral-500">Low</dt>
-              <dd className="text-neutral-200">{summary.vocal_goal.target_low_note ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-neutral-500">Average</dt>
-              <dd className="text-neutral-200">{summary.vocal_goal.target_avg_note ?? "—"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-neutral-500">High</dt>
-              <dd className="text-neutral-200">{summary.vocal_goal.target_high_note ?? "—"}</dd>
-            </div>
-          </dl>
-        ) : (
-          <NotShared label="vocal range history" />
-        )}
-      </section>
+      )}
 
-      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Exercise trends</h2>
-        {granted.has("exercise_history") && summary.exercise_trends ? (
-          summary.exercise_trends.length === 0 ? (
-            <p className="text-sm text-neutral-500">Not enough data yet.</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {summary.exercise_trends.map((t) => (
-                <li key={t.exercise_id} className="flex justify-between text-neutral-300">
-                  <span>{t.exercise_name}</span>
-                  <span className="text-neutral-500">{t.direction}</span>
-                </li>
-              ))}
-            </ul>
-          )
-        ) : (
-          <NotShared label="exercise routine & completion history" />
-        )}
-      </section>
-
-      <section className="mb-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Training consistency</h2>
-        {granted.has("exercise_history") && summary.training_consistency ? (
-          <dl className="grid grid-cols-3 gap-4 text-sm">
-            <div>
-              <dt className="text-xs text-neutral-500">Current streak</dt>
-              <dd className="text-neutral-200">
-                {summary.training_consistency.current_streak_days}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-neutral-500">Longest streak</dt>
-              <dd className="text-neutral-200">
-                {summary.training_consistency.longest_streak_days}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-neutral-500">Sessions</dt>
-              <dd className="text-neutral-200">
-                {summary.training_consistency.total_sessions_in_range}
-              </dd>
-            </div>
-          </dl>
-        ) : (
-          <NotShared label="exercise routine & completion history" />
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Today&apos;s routine</h2>
-        {granted.has("exercise_history") && summary.todays_routine ? (
-          <ul className="space-y-1 text-sm">
-            {summary.todays_routine.items.map((item) => (
-              <li key={item.id} className="flex items-center gap-2 text-neutral-300">
-                {item.name}
-                <ExerciseInfoButton
-                  purpose={item.purpose}
-                  instructions={item.instructions}
-                  contraindications={item.contraindications}
-                />
-                {summary.todays_routine!.assigned_exercise_ids.includes(item.id) && (
-                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">
-                    assigned
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-medium text-neutral-200">Schedule reassessment</h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              {summary.next_reassessment_date ? (
+                <>
+                  Next due{" "}
+                  <span className={isOverdue ? "text-amber-400" : "text-neutral-300"}>
+                    {formatLocalDate(summary.next_reassessment_date)}
                   </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <NotShared label="exercise routine & completion history" />
+                  {isOverdue && " (overdue)"}
+                </>
+              ) : (
+                "Not scheduled"
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowReassessment((s) => !s)}
+            className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800"
+          >
+            {showReassessment ? "Close" : summary.next_reassessment_date ? "Change date" : "Schedule"}
+          </button>
+        </div>
+
+        {showReassessment && (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={reassessmentInput}
+              onChange={(e) => setReassessmentInput(e.target.value)}
+              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+            />
+            <button
+              type="button"
+              onClick={() => saveReassessment(reassessmentInput || null)}
+              disabled={savingReassessment || !reassessmentInput}
+              className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {savingReassessment ? "Saving..." : "Save"}
+            </button>
+            {summary.next_reassessment_date && (
+              <button
+                type="button"
+                onClick={() => saveReassessment(null)}
+                disabled={savingReassessment}
+                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         )}
-      </section>
+        {reassessmentError && <p className="mt-3 text-xs text-red-300">{reassessmentError}</p>}
+      </div>
 
       <div className="mt-8">
         <Link href="/coach" className="text-xs text-neutral-500 hover:text-neutral-300">
