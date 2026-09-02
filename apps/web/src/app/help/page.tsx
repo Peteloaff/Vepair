@@ -399,6 +399,42 @@ export default function HelpPage() {
           </div>
         </section>
 
+        <section className="mb-10">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Full documentation
+          </h2>
+          <div className="space-y-3">
+            <FeatureCard title="User Guide" where="Singers, coaches & admins">
+              <p>
+                A complete, plain-English walkthrough of everything VepAIr does, organized by
+                role — jump to whichever is yours.
+              </p>
+              <a
+                href="https://claude.ai/code/artifact/1dd7d89c-8b40-4396-ae21-04324c9c09a0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm text-emerald-400 hover:text-emerald-300"
+              >
+                Open the User Guide &rarr;
+              </a>
+            </FeatureCard>
+            <FeatureCard title="Technical Reference" where="Engineering & admin">
+              <p>
+                Architecture, the full data model, every subsystem&apos;s design rationale,
+                deployment, and the privacy/medical-safety rules the product is built against.
+              </p>
+              <a
+                href="https://claude.ai/code/artifact/00c4933b-b892-4d8f-947b-8d012c0e01ca"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm text-emerald-400 hover:text-emerald-300"
+              >
+                Open the Technical Reference &rarr;
+              </a>
+            </FeatureCard>
+          </div>
+        </section>
+
         <p className="mt-10 text-xs text-neutral-500">
           VepAIr is a training and tracking tool, not a medical device. Rest day recommendations
           and every other suggestion here are guidance based on your own data, never a diagnosis
