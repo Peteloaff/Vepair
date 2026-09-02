@@ -6,9 +6,11 @@ import { useParams, useRouter } from "next/navigation";
 import { ExerciseInfoButton } from "@/components/ExerciseInfoButton";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireCoach } from "@/components/RequireCoach";
+import { TrendChart, type TrendPoint } from "@/components/TrendChart";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/apiClient";
 import { daysAgoLocalDate, lastNDates, todayLocalDate } from "@/lib/date";
+import { ALL_TIME_FROM_DATE, RANGE_OPTIONS } from "@/lib/progressCharts";
 import type { CoachSingerHistory, CoachSingerSummary } from "@/lib/types";
 
 const HISTORY_WINDOW_DAYS = 30;
@@ -118,6 +120,13 @@ function SingerDashboardContent() {
   const [savingReassessment, setSavingReassessment] = useState(false);
   const [reassessmentError, setReassessmentError] = useState<string | null>(null);
 
+  // A separate, independently-ranged fetch from the fixed 30-day `history` above -- that one
+  // feeds the "Today" tiles' fixed week-over-week comparisons, this one feeds the trend chart's
+  // own 7-day-to-all-time range picker, so changing one never disturbs the other.
+  const [trendRangeDays, setTrendRangeDays] = useState<number | "all">(30);
+  const [trendHistory, setTrendHistory] = useState<CoachSingerHistory | null>(null);
+  const [trendError, setTrendError] = useState<string | null>(null);
+
   const today = todayLocalDate();
 
   function load() {
@@ -145,6 +154,19 @@ function SingerDashboardContent() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.singerId]);
+
+  useEffect(() => {
+    const fromDate = trendRangeDays === "all" ? ALL_TIME_FROM_DATE : daysAgoLocalDate(trendRangeDays - 1);
+    apiFetch<CoachSingerHistory>(`/api/v1/coach/singers/${params.singerId}/history`, {
+      searchParams: { from_date: fromDate, to_date: today },
+    })
+      .then((data) => {
+        setTrendHistory(data);
+        setTrendError(null);
+      })
+      .catch(() => setTrendError("Could not load this Vrotégé's progress trend."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.singerId, trendRangeDays]);
 
   async function removeSinger() {
     if (
@@ -268,6 +290,20 @@ function SingerDashboardContent() {
 
     return { range, stability, fatigue, compliance, highLoadDays, sessionsCompleted };
   }, [summary, history]);
+
+  const trendDates = useMemo(
+    () =>
+      trendHistory?.training_consistency?.days.map((d) => d.for_date) ??
+      trendHistory?.score_history?.map((p) => p.score_date) ??
+      [],
+    [trendHistory]
+  );
+
+  const trendPoints: TrendPoint[] = useMemo(() => {
+    if (!trendHistory?.score_history) return [];
+    const byDate = new Map(trendHistory.score_history.map((p) => [p.score_date, p]));
+    return trendDates.map((date) => ({ date, value: byDate.get(date)?.score_value ?? null }));
+  }, [trendHistory, trendDates]);
 
   if (error) {
     return <p className="text-sm text-red-300">{error}</p>;
@@ -415,6 +451,65 @@ function SingerDashboardContent() {
         )}
         {reassessmentError && <p className="mt-3 text-xs text-red-300">{reassessmentError}</p>}
       </div>
+
+      <section className="mt-8">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-neutral-500">Progress</h2>
+          <div className="flex gap-1 rounded-lg border border-neutral-800 p-1 text-xs">
+            {RANGE_OPTIONS.map((opt) => (
+              <button
+                key={opt.days}
+                type="button"
+                onClick={() => setTrendRangeDays(opt.days)}
+                className={`rounded-md px-2.5 py-1 ${
+                  trendRangeDays === opt.days
+                    ? "bg-emerald-500 text-neutral-950"
+                    : "text-neutral-400 hover:bg-neutral-800"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setTrendRangeDays("all")}
+              className={`rounded-md px-2.5 py-1 ${
+                trendRangeDays === "all"
+                  ? "bg-emerald-500 text-neutral-950"
+                  : "text-neutral-400 hover:bg-neutral-800"
+              }`}
+            >
+              All-time
+            </button>
+          </div>
+        </div>
+
+        {!granted.has("recovery_trends") ? (
+          <p className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5 text-sm text-neutral-500">
+            Not shared: recovery score & trends.
+          </p>
+        ) : trendError ? (
+          <p className="text-sm text-red-300">{trendError}</p>
+        ) : trendHistory === null ? (
+          <p className="text-sm text-neutral-500">Loading...</p>
+        ) : (
+          <TrendChart
+            title="VepAIr Score"
+            color="#34d399"
+            points={trendPoints}
+            yMin={0}
+            yMax={100}
+            yTicks={[0, 50, 100]}
+          />
+        )}
+
+        <Link
+          href={`/coach/singers/${params.singerId}/progress`}
+          className="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+        >
+          See all progress &rarr;
+        </Link>
+      </section>
 
       <div className="mt-8">
         <Link href="/coach" className="text-xs text-neutral-500 hover:text-neutral-300">
