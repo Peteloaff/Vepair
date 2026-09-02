@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.data_retention import purge_stale_checkin_notes, purge_stale_recordings
+from app.data_retention import (
+    purge_stale_checkin_notes,
+    purge_stale_login_events,
+    purge_stale_recordings,
+)
 from app.database import get_db
 from app.reminders import send_daily_checkin_reminders
 
@@ -41,7 +45,7 @@ def purge_stale_data(
     db: Session = Depends(get_db),
 ) -> dict:
     """Meant to be called once daily by an external scheduler -- see TECHNICAL_GUIDE.md for
-    the Cloud Scheduler setup. Two independent policies (retention windows configurable via
+    the Cloud Scheduler setup. Three independent policies (retention windows configurable via
     the admin site-settings page) -- see app/data_retention.py's module docstring for what
     each one does and does not touch. Idempotent by construction: each policy only ever
     selects rows that still have something left to purge, so calling this twice in a day is
@@ -49,4 +53,9 @@ def purge_stale_data(
     handled."""
     recordings_purged = purge_stale_recordings(db)
     checkins_purged = purge_stale_checkin_notes(db)
-    return {"recordings_purged": recordings_purged, "checkin_notes_purged": checkins_purged}
+    login_events_purged = purge_stale_login_events(db)
+    return {
+        "recordings_purged": recordings_purged,
+        "checkin_notes_purged": checkins_purged,
+        "login_events_purged": login_events_purged,
+    }

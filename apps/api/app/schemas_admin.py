@@ -7,6 +7,10 @@ from pydantic import BaseModel, EmailStr, Field, model_validator
 
 class AdminSetAdminIn(BaseModel):
     is_admin: bool
+    # Only meaningful when is_admin=True; ignored (and cleared) when revoking. Defaults to
+    # "full" when granting admin without specifying a tier, matching the pre-existing meaning
+    # of is_admin=True before this tier split existed.
+    admin_role: Literal["full", "support"] | None = None
 
 
 class AdminSetPasswordIn(BaseModel):
@@ -37,6 +41,7 @@ class AdminSiteSettingsOut(BaseModel):
     nda_required: bool
     recording_retention_days: int
     checkin_notes_retention_days: int
+    login_event_retention_days: int
 
 
 class AdminSiteSettingsIn(BaseModel):
@@ -44,6 +49,7 @@ class AdminSiteSettingsIn(BaseModel):
     nda_required: bool
     recording_retention_days: int = Field(gt=0)
     checkin_notes_retention_days: int = Field(gt=0)
+    login_event_retention_days: int = Field(gt=0)
 
 
 class AdminSetCoachIn(BaseModel):
@@ -61,16 +67,42 @@ class AdminUserListItemOut(BaseModel):
     created_at: datetime
     is_active: bool
     is_admin: bool
+    # Only meaningful when is_admin is True; null on a non-admin. A null on an admin row reads
+    # as "full" -- see User.admin_role's docstring.
+    admin_role: str | None
     onboarding_complete: bool
 
 
 class AdminUserDetailOut(AdminUserListItemOut):
-    # True "last login" isn't tracked anywhere in the app today (no login-event table) --
-    # the most recent RefreshToken issued for this account is used as a proxy for v1, see
-    # app/routers/admin.py's get_user_detail. A known, documented gap, not a fabricated metric.
+    # Real last-login, from LoginEvent -- previously a RefreshToken-issued-at proxy; see
+    # app/routers/admin.py's get_user_detail.
     last_session_at: datetime | None
     last_checkin_date: date | None
     last_recording_at: datetime | None
+
+
+class AdminBulkUserIdsIn(BaseModel):
+    """Shared payload for the bulk-deactivate/bulk-reactivate endpoints -- both fully
+    reversible actions, deliberately the only two bulk operations this app offers (see
+    app/routers/admin.py's bulk endpoints' docstrings for why hard-delete and admin-grant stay
+    single-account)."""
+
+    user_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
+
+
+class AdminBulkResultOut(BaseModel):
+    updated: list[uuid.UUID]
+    not_found: list[uuid.UUID]
+
+
+class AdminImpersonateOut(BaseModel):
+    """No refresh_token -- deliberately access-only, so an impersonation session hard-expires
+    in expires_in seconds with no way to renew it short of the admin calling the impersonate
+    endpoint again (which logs a fresh impersonate_start)."""
+
+    access_token: str
+    expires_in: int
+    user_email: str
 
 
 class AdminSetCoachProIn(BaseModel):

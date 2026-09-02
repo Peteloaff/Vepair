@@ -535,7 +535,21 @@ export interface AdminUserListItem {
   created_at: string;
   is_active: boolean;
   is_admin: boolean;
+  // Only meaningful when is_admin is true; null on a non-admin, and null on an admin row
+  // reads as "full" (see the backend's User.admin_role docstring).
+  admin_role: "full" | "support" | null;
   onboarding_complete: boolean;
+}
+
+export interface AdminBulkResult {
+  updated: string[];
+  not_found: string[];
+}
+
+export interface AdminImpersonateResponse {
+  access_token: string;
+  expires_in: number;
+  user_email: string;
 }
 
 export interface AdminUserDetail extends AdminUserListItem {
@@ -575,6 +589,7 @@ export interface AdminSiteSettings {
   nda_required: boolean;
   recording_retention_days: number;
   checkin_notes_retention_days: number;
+  login_event_retention_days: number;
 }
 
 export interface NdaStatus {

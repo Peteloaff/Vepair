@@ -16,7 +16,13 @@ fields (illness_symptoms, reflux_symptoms, notes) once they're older than
 SiteSettings.checkin_notes_retention_days -- every quantitative check-in field
 (voice_quality, fatigue, sleep_hours, etc.) is untouched, so trend charts keep full history.
 
-Both commit once per row, not once at the end -- same crash-safety reasoning as
+purge_stale_login_events: hard-deletes LoginEvent rows past SiteSettings.
+login_event_retention_days -- indefinite login history is exactly the kind of data this whole
+module exists to avoid accumulating. A single bulk DELETE, unlike the two functions above: a
+LoginEvent row carries no external side effect (no storage object, nothing else references it),
+so there's no flaky-call risk a per-row commit loop would be protecting against.
+
+The first two commit once per row, not once at the end -- same crash-safety reasoning as
 app/reminders.py's send_daily_checkin_reminders: a mid-batch crash never leaves a retry to
 redo work that already succeeded.
 """
@@ -24,10 +30,10 @@ redo work that already succeeded.
 import logging
 from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models import DailyCheckIn, Recording
+from app.models import DailyCheckIn, LoginEvent, Recording
 from app.site_settings import get_site_settings
 from app.storage import get_storage
 
@@ -94,3 +100,12 @@ def purge_stale_checkin_notes(db: Session, *, older_than_days: int | None = None
         purged += 1
 
     return purged
+
+
+def purge_stale_login_events(db: Session, *, older_than_days: int | None = None) -> int:
+    retention_days = older_than_days or get_site_settings(db).login_event_retention_days
+    cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+
+    result = db.execute(delete(LoginEvent).where(LoginEvent.occurred_at < cutoff))
+    db.commit()
+    return result.rowcount

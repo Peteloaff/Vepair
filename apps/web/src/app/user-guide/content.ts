@@ -297,6 +297,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           <li><a href="#search">Finding an account</a></li>
           <li><a href="#lifecycle">Deactivate / reactivate</a></li>
           <li><a href="#roles">Roles & dual-role accounts</a></li>
+          <li><a href="#impersonate">Viewing as a user</a></li>
           <li><a href="#reset">Password reset</a></li>
           <li><a href="#delete">Hard delete</a></li>
           <li><a href="#orgs">Organizations & Coach Pro</a></li>
@@ -602,10 +603,10 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
         <div class="block-head"><span class="block-num">02</span><h2>Finding an account</h2></div>
         <div class="card">
           <div class="endpoint"><span class="chip get">GET</span><span class="path">/api/v1/admin/users?query=</span></div>
-          <p>Type any substring of an email into the search box on <code class="path">/admin</code> — capped at the 100 most recent signups; blank + search lists recent signups. Click a result to open <code class="path">/admin/users/{id}</code>, with account type, onboarding completeness, and three activity proxies:</p>
+          <p>Type any substring of an email into the search box on <code class="path">/admin</code> — capped at the 100 most recent signups; blank + search lists recent signups. Click a result to open <code class="path">/admin/users/{id}</code>, with account type, onboarding completeness, and three activity fields:</p>
           <table class="ref">
             <tr><th>Field</th><th>What it actually is</th></tr>
-            <tr><td class="code-cell">last_session_at</td><td>Most recent refresh-token issuance — a stand-in for "last login."</td></tr>
+            <tr><td class="code-cell">last_session_at</td><td>Real last-login, from the <code class="path">login_events</code> table — written only by a password-based login, never signup or a token refresh.</td></tr>
             <tr><td class="code-cell">last_checkin_date</td><td>Most recent Daily Check-In date.</td></tr>
             <tr><td class="code-cell">last_recording_at</td><td>Most recent uploaded recording's timestamp.</td></tr>
           </table>
@@ -629,6 +630,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <li><span class="ui-btn outline">Reactivate</span> reverses it — the account signs in normally again right away.</li>
           </ol>
           <div class="callout info">Nothing about deactivation touches the account's data — recordings, history, and settings come right back on reactivation. A lock on the door, not a demolition.</div>
+          <p><b>Bulk deactivate / reactivate</b>: check the boxes next to multiple rows in the search results — a bar appears with <span class="ui-btn outline">Deactivate selected</span> / <span class="ui-btn outline">Reactivate selected</span>, confirming the exact list of emails before it fires. Deliberately the only two bulk actions in the whole admin surface — hard-delete and granting admin both stay single-account, on purpose, so a misclick can't do either at scale. One audit-log row is still written per account, not one for the whole batch.</p>
         </div>
       </section>
 
@@ -643,11 +645,27 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           </table>
           <p>An admin can't target their own account with either (self-lockout prevention). <b>Make coach</b> attaches a coach profile to any existing account — including an already-onboarded Vrotégé, producing a genuine dual-role account that sees the full Vrotégé dashboard plus a Coach Portal quick-link.</p>
           <div class="callout warn"><b>Removing coach status deletes that coach's profile</b>, which cascades to any custom exercise they authored. The UI confirms this explicitly before you can proceed.</div>
+          <p><b>Admin tiers</b>: granting admin now also sets a tier, shown as a dropdown once an account is an admin. <b>Full</b> is everything on this page. <b>Support</b> can search accounts, view reports and detail pages, deactivate/reactivate (including in bulk), and send password resets — never hard-delete, grant/revoke admin, make/remove coach, set a password directly, impersonate, export the contact list, or touch site settings. Revoking admin entirely clears the tier.</p>
+        </div>
+      </section>
+
+      <section class="block admin-section" id="impersonate">
+        <div class="block-head"><span class="block-num">05</span><h2>Viewing as a user</h2></div>
+        <p class="block-note">Full admins only. Read-only, and deliberately shows nothing about voice health.</p>
+        <div class="card">
+          <div class="endpoint"><span class="chip post">POST</span><span class="path">/api/v1/admin/users/{id}/impersonate</span></div>
+          <ol class="steps">
+            <li>On the account's detail page, select <span class="ui-btn outline">View as this user</span>.</li>
+            <li>A banner reading "Viewing as ... as an admin" stays on screen the whole time, with an <span class="ui-btn outline">Exit impersonation</span> control.</li>
+            <li>The page shows account-setup and engagement facts only — practice frequency, musical style, and a 7-day check-in count. No recovery score, no check-in wellness values, nothing that reads as a health or medical status, on purpose.</li>
+          </ol>
+          <div class="callout warn"><b>Read-only, enforced by the backend, not just the UI</b> — the token this issues can only make GET requests; any attempt to change data 403s with <code class="mono">impersonation_read_only</code>, regardless of which endpoint it hits. It also expires automatically (same window as a normal login) and is never usable to reach back into anything admin-only, since it authenticates as the target account, not the admin's own.</div>
+          <p>Every session writes its own audit rows — <code class="mono">impersonate_start</code> when it begins, <code class="mono">impersonate_end</code> when you exit — separate from a normal admin login, so both are independently searchable in the audit trail.</p>
         </div>
       </section>
 
       <section class="block admin-section" id="reset">
-        <div class="block-head"><span class="block-num">05</span><h2>Sending a password reset</h2></div>
+        <div class="block-head"><span class="block-num">06</span><h2>Sending a password reset</h2></div>
         <div class="card">
           <div class="endpoint"><span class="chip post">POST</span><span class="path">/api/v1/admin/users/{id}/send-password-reset</span></div>
           <p>Select <span class="ui-btn outline">Send password reset</span> on the account's detail page — the same reset-token + email flow as the user's own "forgot password," triggered on their behalf and audit-logged. Works whether the account is active or deactivated.</p>
@@ -655,7 +673,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
       </section>
 
       <section class="block admin-section" id="delete">
-        <div class="block-head"><span class="block-num">06</span><h2>Permanently deleting an account</h2></div>
+        <div class="block-head"><span class="block-num">07</span><h2>Permanently deleting an account</h2></div>
         <p class="block-note">Irreversible. Requires the account to already be deactivated — not a bug if the button looks disabled.</p>
         <div class="card">
           <div class="lifecycle">
@@ -678,7 +696,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
       </section>
 
       <section class="block admin-section" id="orgs">
-        <div class="block-head"><span class="block-num">07</span><h2>Organizations & Coach Pro</h2></div>
+        <div class="block-head"><span class="block-num">08</span><h2>Organizations & Coach Pro</h2></div>
         <p class="block-note">Every coach belongs to one Organization — this is where you turn their access on.</p>
         <div class="card">
           <ol class="steps">
@@ -693,7 +711,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
       </section>
 
       <section class="block admin-section" id="reports">
-        <div class="block-head"><span class="block-num">08</span><h2>Reports</h2></div>
+        <div class="block-head"><span class="block-num">09</span><h2>Reports</h2></div>
         <div class="card">
           <div class="endpoint"><span class="chip get">GET</span><span class="path">/api/v1/admin/reports/summary</span></div>
           <p><code class="path">/admin/reports</code> is read-only aggregate SQL over existing tables:</p>
@@ -702,29 +720,30 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <div class="stat"><div class="k">Active / deactivated</div><div class="v">is_active split</div></div>
             <div class="stat"><div class="k">Onboarding completion</div><div class="v">has profile</div></div>
             <div class="stat"><div class="k">Signups, 7d / 90d</div><div class="v">rolling windows</div></div>
-            <div class="stat"><div class="k">DAU / WAU</div><div class="v">proxy metric</div></div>
+            <div class="stat"><div class="k">DAU / WAU</div><div class="v">engagement metric</div></div>
           </div>
           <p>Below the top stats, a <b>filterable query</b> lets you combine any of: email substring, account type, active/admin/onboarding-complete flags, and signup date range — every filter is AND-ed together, capped at 200 rows.</p>
-          <div class="callout note"><b>DAU/WAU are a proxy, not a true session metric</b> — distinct accounts with a check-in or recording in the last 1/7 days. Treat as directionally useful, not exact.</div>
+          <div class="callout note"><b>DAU/WAU count product engagement, not raw logins</b> — distinct accounts with a check-in or recording in the last 1/7 days. A real <code class="path">login_events</code> table exists now (see "Finding an account" above for per-account last-login), but DAU/WAU deliberately keeps this definition — someone using the app all day on one login would undercount on a pure-login metric.</div>
+          <p><b>Export contact list (CSV)</b>, full admins only: the same filters as the query above, uncapped, downloaded as email-addresses-only — this app keeps no other contact PII, so there's nothing else to export. The one action on this whole page that hands raw data out of the system as a file, so it's logged with hard-delete-level rigor: the filters used, never the emails themselves.</p>
         </div>
       </section>
 
       <section class="block admin-section" id="site-settings">
-        <div class="block-head"><span class="block-num">09</span><h2>Site settings</h2></div>
+        <div class="block-head"><span class="block-num">10</span><h2>Site settings</h2></div>
         <div class="card">
           <p>At the top of <code class="path">/admin</code>:</p>
           <ul>
             <li><b>Signup lockdown</b> — turns off the public <code class="path">/signup</code> and <code class="path">/coach-signup</code> forms (both return "signups disabled"). Admin-created accounts still work — this gates the public forms only, not you deliberately creating an account.</li>
             <li><b>Beta NDA gate</b> — whether every user must accept the beta confidentiality notice before using the app. Turn off once the beta period ends.</li>
-            <li><b>Data retention</b> — how many days raw recording audio and the most sensitive check-in free-text fields (illness/reflux/notes) are kept before the daily purge job removes them (90 and 30 by default). Editing either takes effect on the job's next run, no redeploy needed.</li>
+            <li><b>Data retention</b> — how many days raw recording audio, the most sensitive check-in free-text fields (illness/reflux/notes), and login history are kept before the daily purge job removes them (90, 30, and 365 by default). Editing any of the three takes effect on the job's next run, no redeploy needed.</li>
           </ul>
         </div>
       </section>
 
       <section class="block admin-section" id="audit">
-        <div class="block-head"><span class="block-num">10</span><h2>The audit trail</h2></div>
+        <div class="block-head"><span class="block-num">11</span><h2>The audit trail</h2></div>
         <div class="card">
-          <p>Every deactivate, reactivate, delete, role change, and password-reset trigger writes one row to <code class="path">admin_audit_log</code> before the action commits. No UI for this yet — query it directly:</p>
+          <p>Every deactivate, reactivate, delete, role change, password-reset, impersonation, and contact-list export writes one row to <code class="path">admin_audit_log</code> before the action commits — including one row per account for a bulk deactivate/reactivate, never one row for the whole batch. No UI for this yet — query it directly:</p>
           <pre><code>SELECT admin_user_id, action, target_user_id, details, created_at
 FROM admin_audit_log
 ORDER BY created_at DESC
@@ -734,15 +753,10 @@ LIMIT 50;</code></pre>
       </section>
 
       <section class="block admin-section" id="gaps" style="margin-bottom: 0;">
-        <div class="block-head"><span class="block-num">11</span><h2>Known gaps (not built yet)</h2></div>
+        <div class="block-head"><span class="block-num">12</span><h2>Known gaps (not built yet)</h2></div>
         <div class="card">
-          <p>Deliberately deferred — none of these exist yet:</p>
+          <p>Deliberately deferred:</p>
           <ul>
-            <li>Bulk operations (one account at a time only)</li>
-            <li>Multiple admin roles or permission tiers — every admin can do everything above</li>
-            <li>Impersonation ("log in as this user")</li>
-            <li>A dedicated login-event table (last-session and DAU/WAU stay proxies until this exists)</li>
-            <li>Contact-list / outreach export</li>
             <li>QuickBooks Online sync for Coach Pro invoicing — overage is tracked but not yet auto-invoiced</li>
           </ul>
         </div>
