@@ -354,22 +354,15 @@ export default function AdminPage() {
               <p className="text-sm text-neutral-400">Search and manage user accounts.</p>
             </div>
             <div className="flex gap-4">
-              <a
-                href="https://claude.ai/code/artifact/1dd7d89c-8b40-4396-ae21-04324c9c09a0"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm underline hover:text-neutral-200"
-              >
+              <Link href="/user-guide" className="text-sm underline hover:text-neutral-200">
                 User guide
-              </a>
-              <a
-                href="https://claude.ai/code/artifact/00c4933b-b892-4d8f-947b-8d012c0e01ca"
-                target="_blank"
-                rel="noopener noreferrer"
+              </Link>
+              <Link
+                href="/technical-reference"
                 className="text-sm underline hover:text-neutral-200"
               >
                 Technical reference
-              </a>
+              </Link>
               <Link
                 href="/admin/organizations"
                 className="text-sm underline hover:text-neutral-200"
