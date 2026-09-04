@@ -188,6 +188,55 @@ class CoachAssignmentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AssignmentTemplateCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    exercise_ids: list[uuid.UUID] = Field(min_length=1)
+    note_to_singer: str | None = Field(default=None, max_length=1000)
+    exercise_tone_targets: dict[uuid.UUID, str] | None = None
+
+    # Same validation as CoachAssignmentCreate -- kept as a separate copy rather than a shared
+    # mixin since the two models' fields (whether to require exercise_ids as a name-carrying
+    # template vs. an immediate per-singer assignment) are conceptually distinct even though the
+    # tone-target shape happens to match today.
+    @model_validator(mode="after")
+    def _validate_tone_targets(self) -> "AssignmentTemplateCreate":
+        if self.exercise_tone_targets is None:
+            return self
+        unknown = set(self.exercise_tone_targets) - set(self.exercise_ids)
+        if unknown:
+            raise ValueError(
+                f"exercise_tone_targets keys must be a subset of exercise_ids: "
+                f"{sorted(str(i) for i in unknown)} are not in exercise_ids"
+            )
+        for exercise_id, note in self.exercise_tone_targets.items():
+            try:
+                note_name_to_midi(note)
+            except ValueError:
+                raise ValueError(
+                    f"Not a valid note name for exercise {exercise_id}: {note!r}"
+                ) from None
+        return self
+
+
+class AssignmentTemplateUpdate(BaseModel):
+    """Rename only, in v1 -- changing the exercise set is done by deleting and re-saving from
+    the Assign page's current selection, rather than a partial-update endpoint that would need
+    to re-run the same tone-target/exercise-id validation as creation for every field."""
+
+    name: str = Field(min_length=1, max_length=200)
+
+
+class AssignmentTemplateOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    exercise_ids: list[uuid.UUID]
+    note_to_singer: str | None
+    exercise_tone_targets: dict[uuid.UUID, str] | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 VALID_DIFFICULTIES = {"easy", "moderate", "hard"}
 
 

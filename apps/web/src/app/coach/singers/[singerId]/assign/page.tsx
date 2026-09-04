@@ -8,7 +8,7 @@ import { NotePicker } from "@/components/NotePicker";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireCoach } from "@/components/RequireCoach";
 import { useAuth } from "@/lib/auth-context";
-import type { CoachAssignment, Exercise } from "@/lib/types";
+import type { AssignmentTemplate, CoachAssignment, Exercise } from "@/lib/types";
 
 // Must match app/exercise_library.py's CATEGORY_INTENSITY keys exactly -- the adaptive routine
 // generator's safety gate is keyed on this fixed set, so a custom exercise has to land in one
@@ -33,11 +33,16 @@ function AssignContent() {
   const params = useParams<{ singerId: string }>();
   const [exercises, setExercises] = useState<Exercise[] | null>(null);
   const [history, setHistory] = useState<CoachAssignment[] | null>(null);
+  const [templates, setTemplates] = useState<AssignmentTemplate[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toneTargets, setToneTargets] = useState<Record<string, string | null>>({});
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showSaveTemplateForm, setShowSaveTemplateForm] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [newName, setNewName] = useState("");
@@ -54,14 +59,63 @@ function AssignContent() {
 
   async function load() {
     try {
-      const [exercisesData, historyData] = await Promise.all([
+      const [exercisesData, historyData, templatesData] = await Promise.all([
         apiFetch<Exercise[]>("/api/v1/exercises"),
         apiFetch<CoachAssignment[]>(`/api/v1/coach/singers/${params.singerId}/assignments`),
+        apiFetch<AssignmentTemplate[]>("/api/v1/coach/assignment-templates"),
       ]);
       setExercises(exercisesData);
       setHistory(historyData);
+      setTemplates(templatesData);
     } catch {
       setError("Could not load exercises for this Vrotégé.");
+    }
+  }
+
+  function applyTemplate(template: AssignmentTemplate) {
+    setSelected(new Set(template.exercise_ids));
+    setToneTargets(template.exercise_tone_targets ?? {});
+    setNote(template.note_to_singer ?? "");
+  }
+
+  async function saveTemplate() {
+    if (!templateName.trim()) {
+      setTemplateError("Give this template a name.");
+      return;
+    }
+    setSavingTemplate(true);
+    setTemplateError(null);
+    try {
+      const targets: Record<string, string> = {};
+      for (const id of selected) {
+        const targetNote = toneTargets[id];
+        if (targetNote) targets[id] = targetNote;
+      }
+      const created = await apiFetch<AssignmentTemplate>("/api/v1/coach/assignment-templates", {
+        method: "POST",
+        body: {
+          name: templateName,
+          exercise_ids: Array.from(selected),
+          note_to_singer: note || null,
+          exercise_tone_targets: Object.keys(targets).length > 0 ? targets : null,
+        },
+      });
+      setTemplates((prev) => [...(prev ?? []), created]);
+      setTemplateName("");
+      setShowSaveTemplateForm(false);
+    } catch {
+      setTemplateError("Could not save this template. Please try again.");
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  async function deleteTemplate(templateId: string) {
+    try {
+      await apiFetch(`/api/v1/coach/assignment-templates/${templateId}`, { method: "DELETE" });
+      setTemplates((prev) => (prev ?? []).filter((t) => t.id !== templateId));
+    } catch {
+      // Best-effort -- the list simply keeps the item if the delete failed; the coach can retry.
     }
   }
 
@@ -153,7 +207,7 @@ function AssignContent() {
     return <p className="text-sm text-red-300">{error}</p>;
   }
 
-  if (exercises === null || history === null) {
+  if (exercises === null || history === null || templates === null) {
     return <p className="text-sm text-neutral-500">Loading...</p>;
   }
 
@@ -189,6 +243,87 @@ function AssignContent() {
           )}
         </div>
       )}
+
+      {templates.length > 0 && (
+        <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+          <p className="mb-2 text-xs text-neutral-400">
+            Load from a saved template — replaces your current selection below.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {templates.map((template) => (
+              <div
+                key={template.id}
+                className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1"
+              >
+                <button
+                  type="button"
+                  onClick={() => applyTemplate(template)}
+                  className="text-sm text-neutral-200 hover:text-emerald-400"
+                >
+                  {template.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteTemplate(template.id)}
+                  aria-label={`Delete template ${template.name}`}
+                  className="text-xs text-neutral-600 hover:text-red-400"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-4">
+        {!showSaveTemplateForm ? (
+          <button
+            type="button"
+            onClick={() => setShowSaveTemplateForm(true)}
+            disabled={selected.size === 0}
+            className="rounded-lg border border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Save current selection as template
+          </button>
+        ) : (
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+            <input
+              type="text"
+              placeholder="Template name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+            />
+            {templateError && (
+              <p className="mb-2 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">
+                {templateError}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={saveTemplate}
+                disabled={savingTemplate}
+                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+              >
+                {savingTemplate ? "Saving..." : "Save template"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSaveTemplateForm(false);
+                  setTemplateError(null);
+                }}
+                disabled={savingTemplate}
+                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="mb-4">
         {!showAddForm ? (

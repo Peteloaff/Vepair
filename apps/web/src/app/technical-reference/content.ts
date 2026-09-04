@@ -370,6 +370,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
             <tr><td class="code-cell">CoachAccess</td><td>The active grant. One active coach per singer, DB-enforced (partial unique index).</td></tr>
             <tr><td class="code-cell">CoachAccessCategoryGrant</td><td>Per-category share toggle: recovery_trends / vocal_range / exercise_history / recordings.</td></tr>
             <tr><td class="code-cell">CoachAssignment</td><td>A coach's exercise assignment, with optional per-exercise tone targets.</td></tr>
+            <tr><td class="code-cell">AssignmentTemplate</td><td>A coach's saved, reusable exercise set — private per coach, not tied to a singer. Prefills the Assign form; never creates a CoachAssignment by itself.</td></tr>
             <tr><td class="code-cell">CoachNote</td><td>Coach-authored, singer-readable, immutable (soft-delete only).</td></tr>
             <tr><td class="code-cell">CoachMessage</td><td>Two-way coach&lt;-&gt;singer chat — separate from CoachNote. <code>sender</code>, <code>flagged_terms</code>, <code>read_at</code>.</td></tr>
           </table></div>
