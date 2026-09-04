@@ -18,8 +18,8 @@ document sets binding engineering requirements, not a public-facing legal privac
 |---|---|---|
 | Account data | email, auth identity | Supabase Auth + `User` table |
 | Profile data | onboarding answers, goals | `UserProfile` |
-| Subjective journal data | daily check-ins | `DailyCheckIn` |
-| Audio recordings | raw voice samples (guided sessions, vocal range tests) | Object storage (local FS in dev; access-controlled bucket in prod), never inline in the DB |
+| Subjective journal data | daily check-ins | `DailyCheckIn`. The three free-text fields (`illness_symptoms`, `reflux_symptoms`, `notes`) are nulled after `checkin_notes_retention_days` (admin-configurable, default 30) — every quantitative field (voice quality, fatigue, sleep hours, etc.) is kept indefinitely so trend history stays whole. |
+| Audio recordings | raw voice samples (guided sessions, vocal range tests) | Object storage (local FS in dev; access-controlled bucket in prod), never inline in the DB. Auto-purged after `recording_retention_days` (admin-configurable, default 90) — the file is deleted and `Recording.file_path` nulled, but the row and its derived measurements are kept so trend history stays whole; see Section 6. |
 | Derived measurements | F0, jitter, shimmer, etc. | `AcousticMeasurement`, linked to `Recording` by id only |
 | Exercise attempt audio (Stage 8) | audio from an exercise with a target measurement | **Not stored at all** — analyzed in-memory during the upload request, then discarded; only the derived numbers persist in `ExerciseResult.measured_result` |
 | Exercise trend data (Stage 8) | per-exercise improving/declining/stable classification | Derived on read from `ExerciseResult.measured_result` history — no separate table |
@@ -29,6 +29,7 @@ document sets binding engineering requirements, not a public-facing legal privac
 | Share My Progress images (Stage 10) | rendered PNGs of the user's own aggregate stats | **Never stored anywhere** — generated client-side, in the browser, from an authenticated read of already-stored data, and only saved to the user's own device or handed to the OS share sheet when they explicitly tap Save/Share. No server-side rendering, no upload, no copy retained by VepAIr. |
 | Device metadata | mic/device fingerprint | `DeviceMetadata` |
 | Consent records | what the user agreed to, when | `ConsentRecord` |
+| Login events | timestamp of each successful password login | `LoginEvent` — deliberately **not** IP address or user-agent; auto-purged past `login_event_retention_days` (admin-configurable, default 365) |
 
 ## 3. Consent is separated by purpose
 
@@ -78,25 +79,39 @@ explicit, purpose-specific, informed consent — never bundled into a generic To
 
 ## 4. User rights implemented at the data-model level
 
-- **Recording deletion**: deleting a `Recording` removes the underlying audio file and cascades
-  to its `AcousticMeasurement`s. Aggregated/statistical baselines that already incorporated it
-  are recomputed, not silently left stale.
+- **Recording deletion**: `DELETE /api/v1/recordings/{id}` removes the underlying audio file
+  from object storage and cascades to its `AcousticMeasurement` (`ON DELETE CASCADE`). **Not**
+  fully retroactive: it removes the recording from future trend/baseline computation but does
+  not recompute an already-stored `Baseline`/`RecoveryScore` row that incorporated it — a known,
+  User-Guide-documented limitation, not a silent gap.
+- **Automatic audio purge**: independent of the above, raw audio for *every* recording is
+  auto-deleted from storage after `recording_retention_days` (Section 2) regardless of whether
+  the user ever asks — a passive minimization default, not a user action. The `Recording` row,
+  `quality_flags`, and `AcousticMeasurement` are kept either way, so trend charts and scores stay
+  intact after the audio itself is gone; playback 404s with `audio_purged` instead of erroring.
 - **Account deletion**: cascades across all tables scoped to that `User`, including object
   storage cleanup.
-- **Data export**: a user can request a machine-readable export of their own data (JSON initially
-  for structured data; audio files as-is).
+- **Data export**: `GET /api/v1/profile/export` returns a machine-readable JSON download
+  (`app/data_export.py`) covering every table keyed to the user — profile, consent history,
+  check-ins, sessions/recordings metadata and measurements, baselines, scores, vocal range,
+  goals/plans, exercises, coach connections (notes and messages, both directions) — everything
+  except raw audio bytes, which link back to the existing authenticated playback endpoint instead
+  of being embedded. Reachable from Settings, directly above account deletion.
 - **Auditable access**: every read of a `Recording`'s audio by anyone other than its owner
-  (e.g. a future authorized vocal coach, via VepAIr Coach's consent system above) must be
-  attributable to a specific actor and reason.
+  (e.g. an authorized vocal coach, via VepAIr Coach's consent system above) must be attributable
+  to a specific actor and reason.
 - **Admin access is itself access to user data, and is audited the same way.** The backend
   admin account type (Section 6) can view any account's email, activity summary, and
-  onboarding/status flags, and can deactivate, reactivate, permanently delete, or trigger a
-  password reset on any account. None of this is gated by the singer's own consent — it is
-  operational access, not a coach-style sharing relationship — but every state-changing admin
-  action is written to `AdminAuditLog` (admin, action, target, timestamp) before it takes
-  effect, so "who did what to which account, and when" is always reconstructable. Admin reads
-  (search, detail view, reports) are not individually logged — only actions that change state
-  — consistent with this document's existing practice of logging events, not every read.
+  onboarding/status flags, and can deactivate, reactivate (individually or in bulk), permanently
+  delete, or trigger a password reset on any account; a `full`-tier admin can additionally
+  impersonate an account read-only or export the contact list (Section 6). None of this is gated
+  by the singer's own consent — it is operational access, not a coach-style sharing relationship
+  — but every state-changing admin action, including each user affected by a bulk action, every
+  impersonation start/end, and every contact-list export, is written to `AdminAuditLog` (admin,
+  action, target, timestamp) before it takes effect, so "who did what to which account, and when"
+  is always reconstructable. Admin reads (search, detail view, reports) are not individually
+  logged — only actions that change state or hand data out (impersonation, export) — consistent
+  with this document's existing practice of logging events, not every read.
 
 ## 5. Transport & storage security
 
@@ -122,10 +137,20 @@ self-serve, password-gated (same bar as changing a password) endpoint: it delete
 deleting the `User` row, then lets `ON DELETE CASCADE` remove every remaining database record
 scoped to that user. A single flaky storage call is logged and skipped rather than blocking the
 deletion, so a user can never be stuck unable to delete their own account. This closes the gap
-this section used to describe. **Still not implemented: per-recording deletion and data
-export.** There is no delete endpoint for an individual `Recording` (only whole-account
-deletion), and no machine-readable export of a user's own data yet — both remain real gaps
-against this document's Section 4 requirements.
+this section used to describe.
+
+**Per-recording deletion, automatic audio purge, data export, and shortened check-in-note
+retention are all implemented** (the data-minimization round referenced throughout this
+document). `DELETE /api/v1/recordings/{id}` gives users a full-removal option per recording;
+independently, `app/data_retention.py`'s `purge_stale_recordings` and
+`purge_stale_checkin_notes` run daily via `POST /api/v1/system/purge-stale-data` (Cloud
+Scheduler job, `X-Internal-Job-Secret` auth — same pattern and secret as the reminders job, see
+`TECHNICAL_GUIDE.md` §12) to auto-delete stale raw audio and null stale sensitive free-text
+check-in fields on a rolling basis, no user action required. Both retention windows are
+admin-configurable from `/admin` without a redeploy. `GET /api/v1/profile/export`
+(`app/data_export.py`) closes the export gap. The only remaining open item against Section 4 is
+retroactive baseline recomputation on recording delete (noted above) — everything else this
+section used to flag as missing is now shipped.
 
 Stage 8 shipped exercise-attempt audio analysis with the strictest "minimal collection" posture
 in the app: audio uploaded alongside an exercise result is analyzed in-memory during that one
@@ -180,3 +205,31 @@ account to already be deactivated first (`409 must_deactivate_first` otherwise) 
 exact same `app/account_deletion.py`'s `delete_user_and_storage` self-serve delete already uses,
 so there remains exactly one account-deletion code path in the app. See Section 4's new bullet
 above for how this reconciles with "auditable access."
+
+**Admin role tiers, bulk operations, impersonation, login events, and contact export** are all
+implemented, each with the narrower guardrails this document's minimization theme calls for
+rather than the loosest possible version:
+- `User.admin_role` splits admin accounts into `support` (search, detail, reports, deactivate/
+  reactivate including bulk, password reset) and `full` (everything `support` can plus
+  hard-delete, grant/revoke admin, coach/coach-pro flags, site settings, password overwrite,
+  impersonation, and contact export) — enforced server-side by `require_full_admin`
+  (`app/admin_auth.py`), never a client-trusted flag.
+- **Bulk operations** are deliberately scoped to the two already-fully-reversible actions —
+  bulk deactivate/reactivate — never bulk hard-delete or bulk admin-grant. One `AdminAuditLog`
+  row per affected user, not one for the whole batch, so the audit trail's granularity is
+  unchanged.
+- **Impersonation** (`full`-admin only) issues a short-lived (~15 min), non-refreshable access
+  token carrying an `impersonated_by` claim, and is **enforced read-only at the framework level**
+  — `get_current_user` (`app/auth.py`) rejects any non-GET/HEAD/OPTIONS request carrying an
+  impersonation token, so it isn't a per-endpoint convention that could be missed on a future
+  route. The "view as" page itself surfaces only non-health account/engagement facts (practice
+  frequency, musical style, a 7-day check-in count) — never recovery scores or check-in wellness
+  content, by explicit design, not omission. Every start and end is its own `AdminAuditLog` row.
+- **Login events** (`LoginEvent`, Section 2) record only a timestamp per successful password
+  login — no IP, no user-agent — replacing the previous refresh-token-based last-login proxy
+  with a real signal, on the same minimize-what's-kept footing as the rest of this document.
+- **Contact-list export** (`GET /api/v1/admin/users/export`, `full`-admin only) returns **email
+  address only** — no name, no health or activity data — matching "email is the only contact PII
+  this app keeps." Every call is logged via `log_admin_action` with the filters used (not the
+  row contents), the same hard-delete-level audit rigor, since it's the one action in the admin
+  surface that hands raw PII out of the system.

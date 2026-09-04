@@ -372,3 +372,37 @@ gcloud scheduler jobs create http vepair-send-reminders \
   `gcloud scheduler jobs run vepair-send-reminders --location us-west1`.
 - To check what it actually sent: `gcloud logging read` (§3) filtered to `vepair-api`, or query
   `notification_logs` directly (§8) for today's rows.
+
+## 12. Data retention purge — Cloud Scheduler setup
+
+`POST /api/v1/system/purge-stale-data` runs three independent retention policies (see
+`apps/api/app/data_retention.py`): deletes raw recording audio past
+`recording_retention_days` (keeping the row and its measurements), nulls the three most
+sensitive `DailyCheckIn` free-text fields past `checkin_notes_retention_days`, and hard-deletes
+`login_events` rows past `login_event_retention_days`. All three windows are admin-configurable
+from `/admin` (no redeploy needed) — see the User Guide's Admin section. Same shared-secret
+auth as §11's `send-reminders`, so no new env var is needed if that one is already set.
+
+Create the scheduler job once, from Cloud Shell:
+
+```bash
+gcloud scheduler jobs create http vepair-purge-stale-data \
+  --location us-west1 \
+  --schedule "0 3 * * *" \
+  --time-zone "America/Chicago" \
+  --uri "https://vepair-api-302841837670.us-west1.run.app/api/v1/system/purge-stale-data" \
+  --http-method POST \
+  --headers "X-Internal-Job-Secret=<same value as INTERNAL_JOB_SECRET, see §11>"
+```
+
+- `--schedule "0 3 * * *"` is 3am daily, deliberately off-peak and offset from
+  `send-reminders`' 6pm slot — adjust as desired, nothing about the endpoint assumes this
+  exact time.
+- Safe to trigger more than once in a day — each policy only ever selects rows that still have
+  something left to purge (see the module's docstring).
+- To test immediately: `gcloud scheduler jobs run vepair-purge-stale-data --location us-west1`.
+  The response body (`{"recordings_purged": N, "checkin_notes_purged": N,
+  "login_events_purged": N}`) shows exactly what it did.
+- **As of this writing, this scheduler job has not been created yet** — the endpoint and its
+  admin-configurable retention windows are live, but nothing calls it automatically until the
+  command above is run once.
