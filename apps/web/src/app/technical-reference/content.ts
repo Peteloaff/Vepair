@@ -204,6 +204,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <li><a href="#billing">Coach Pro billing (SaaS)</a></li>
           <li><a href="#tonegame">Tone Match Challenge</a></li>
           <li><a href="#admin">Backend Admin</a></li>
+          <li><a href="#public-api">Public API (read-only)</a></li>
         </ul>
       </div>
       <div class="toc-group">
@@ -395,6 +396,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
             <tr><td class="code-cell">ToneGameSession / ToneGameAttempt</td><td>5-Tone Challenge results — client-graded, server-persisted.</td></tr>
             <tr><td class="code-cell">AdminAuditLog</td><td>Append-only trail of every state-changing admin action.</td></tr>
             <tr><td class="code-cell">LoginEvent</td><td>Real login history — password-based logins only, no IP/user-agent.</td></tr>
+            <tr><td class="code-cell">ApiToken</td><td>A user's own personal access token for the read-only public API — scoped, revocable, never the raw value stored.</td></tr>
             <tr><td class="code-cell">SiteSettings</td><td>Singleton row — signup lockdown, beta-NDA gate, and three retention windows.</td></tr>
           </table></div>
         </div>
@@ -709,8 +711,42 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
         </div>
       </section>
 
+      <section class="block" id="public-api">
+        <div class="block-head"><span class="block-num">17</span><h2>Public API (read-only)</h2></div>
+        <div class="card">
+          <p>A personal-access-token-gated surface (<code class="path">/api/public/v1/*</code>)
+          for pulling a user's own data into an external tool — deliberately not OAuth2: no
+          third-party app registry or delegated-access flow, just a GitHub-PAT-style token the
+          user generates for themself in Settings and hands to whatever they're using. See
+          <code class="path">ROADMAP.md</code> for why a fuller delegated-access model was
+          scoped out rather than built.</p>
+          <p><b>Auth</b> (<code class="path">app/api_token_auth.py</code>) is a completely
+          separate credential system from the JWT session auth every other endpoint uses —
+          <code>ApiToken.token_hash</code> is checked against a bearer token the same way
+          <code>RefreshToken</code> already is (<code>app/security.py</code>'s
+          <code>generate_opaque_token</code>/<code>hash_opaque_token</code>, reused as-is).
+          Every endpoint requires both a valid, unrevoked token <i>and</i> that token having
+          been granted the specific scope it reads.</p>
+          <p><b>Scopes</b> reuse the same three categories as coach-sharing consent
+          (<code>recovery_trends</code> / <code>vocal_range</code> / <code>exercise_history</code>)
+          — <code>recordings</code> is deliberately not offered here at all; raw audio is never
+          reachable through this API in v1.</p>
+          <p><b>Kill switch</b>: <code>SiteSettings.public_api_enabled</code>, default
+          <code>false</code>. A user can generate tokens regardless — nothing authenticates
+          until an admin turns this on (Admin → Site settings).</p>
+          <p><b>Rate limiting</b> is a simple in-process, per-token fixed window (60
+          requests/minute) — best-effort only, resets on deploy, and isn't shared across
+          multiple Cloud Run instances if this ever scales beyond one. Acceptable at pilot
+          scale; revisit with a shared store if usage ever justifies it.</p>
+          <p>Every successful call is logged (<code>public_api_access</code>, token id, user id,
+          scope, path — never response content) — this is the single largest data-egress
+          surface in the app, so it gets logged on every read, not just state changes, unlike
+          the rest of this codebase's "log events, not reads" convention.</p>
+        </div>
+      </section>
+
       <section class="block" id="deploy">
-        <div class="block-head"><span class="block-num">17</span><h2>Deployment topology</h2></div>
+        <div class="block-head"><span class="block-num">18</span><h2>Deployment topology</h2></div>
         <div class="card">
           <table class="ref">
             <tr><th>Account</th><th>Owns</th><th>Trigger</th></tr>
@@ -729,7 +765,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="gotchas">
-        <div class="block-head"><span class="block-num">18</span><h2>Known gotchas</h2></div>
+        <div class="block-head"><span class="block-num">19</span><h2>Known gotchas</h2></div>
         <div class="card">
           <ul>
             <li><b>Application logs land under <code>jsonPayload</code>, not <code>textPayload</code></b> in Cloud Logging — filter on <code>jsonPayload.logger</code>.</li>
@@ -744,7 +780,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="privacy">
-        <div class="block-head"><span class="block-num">19</span><h2>Privacy principles</h2></div>
+        <div class="block-head"><span class="block-num">20</span><h2>Privacy principles</h2></div>
         <div class="card">
           <ul>
             <li><b>Minimal collection</b> — collect only what a shipped feature needs. Exercise-attempt audio is analyzed in-memory and never written to storage at all; only the derived numbers persist.</li>
@@ -757,7 +793,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="medsafety">
-        <div class="block-head"><span class="block-num">20</span><h2>Medical safety rules</h2></div>
+        <div class="block-head"><span class="block-num">21</span><h2>Medical safety rules</h2></div>
         <div class="card">
           <p>Binding on all product copy, UI strings, and AI-generated text, at every stage.</p>
           <ul>
@@ -771,7 +807,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       </section>
 
       <section class="block" id="status" style="margin-bottom: 0;">
-        <div class="block-head"><span class="block-num">21</span><h2>What's live vs. planned</h2></div>
+        <div class="block-head"><span class="block-num">22</span><h2>What's live vs. planned</h2></div>
         <div class="card">
           <div class="cols2">
             <div>
@@ -785,6 +821,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Practice reminders (Cloud Scheduler-triggered daily email)</li>
                 <li>Data minimization (self-serve delete, per-recording delete, export, retention purge — §13)</li>
                 <li>Real login-event table, replacing the old last-login proxy</li>
+                <li>Public API (personal access tokens, read-only, admin-configurable kill switch — §17)</li>
               </ul>
             </div>
             <div>

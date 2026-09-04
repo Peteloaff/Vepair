@@ -42,6 +42,7 @@ class AdminSiteSettingsOut(BaseModel):
     recording_retention_days: int
     checkin_notes_retention_days: int
     login_event_retention_days: int
+    public_api_enabled: bool
 
 
 class AdminSiteSettingsIn(BaseModel):
@@ -50,6 +51,7 @@ class AdminSiteSettingsIn(BaseModel):
     recording_retention_days: int = Field(gt=0)
     checkin_notes_retention_days: int = Field(gt=0)
     login_event_retention_days: int = Field(gt=0)
+    public_api_enabled: bool
 
 
 class AdminSetCoachIn(BaseModel):

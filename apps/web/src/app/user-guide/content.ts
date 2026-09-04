@@ -354,6 +354,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
         <div class="card">
           <h3>Your account (Settings)</h3>
           <p><b>Download my data</b> gets you a single file with everything VepAIr has on your account — check-ins, measurements, vocal range history, exercise history, coach notes and messages, and more. Raw audio isn't bundled into it; each recording links to where you can get it separately (see <a href="#recording">Recording a voice sample</a>).</p>
+          <p><b>API access</b>: generate a personal access token to pull your own recovery score, vocal range, or exercise history into another tool you use — name it, pick which of those three categories it can read, and it's shown to you once (copy it then, it can't be viewed again). Revoke a token any time; it stops working immediately. Read-only, and raw recordings/check-in notes are never reachable through it, same as every other data-sharing surface in the app. A token only actually authenticates once an admin has turned the public API on site-wide — see the Admin section's <a href="#site-settings">Site settings</a>.</p>
           <p><b>Delete my account</b> is fully self-serve — no need to contact anyone. It requires your password and typing <code class="mono">DELETE</code> to confirm, and it's permanent: every recording's actual audio file, every check-in, and everything derived from them is gone, not just hidden.</p>
         </div>
       </section>
@@ -737,6 +738,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <li><b>Signup lockdown</b> — turns off the public <code class="path">/signup</code> and <code class="path">/coach-signup</code> forms (both return "signups disabled"). Admin-created accounts still work — this gates the public forms only, not you deliberately creating an account.</li>
             <li><b>Beta NDA gate</b> — whether every user must accept the beta confidentiality notice before using the app. Turn off once the beta period ends.</li>
             <li><b>Data retention</b> — how many days raw recording audio, the most sensitive check-in free-text fields (illness/reflux/notes), and login history are kept before the daily purge job removes them (90, 30, and 365 by default). Editing any of the three takes effect on the job's next run, no redeploy needed.</li>
+            <li><b>Public API</b> — the kill switch for <code class="path">/api/public/v1/*</code>. Off by default: users can still generate personal access tokens in their own Settings, but no token authenticates anything until this is turned on. Turning it off again immediately stops every existing token from working, without revoking any of them individually.</li>
           </ul>
         </div>
       </section>

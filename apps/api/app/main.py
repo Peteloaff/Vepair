@@ -12,6 +12,7 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.logging_config import configure_logging
 from app.routers import admin as admin_router
+from app.routers import api_tokens as api_tokens_router
 from app.routers import auth as auth_router
 from app.routers import baseline as baseline_router
 from app.routers import checkins as checkins_router
@@ -20,6 +21,7 @@ from app.routers import coach_access as coach_access_router
 from app.routers import consent as consent_router
 from app.routers import exercises as exercises_router
 from app.routers import profile as profile_router
+from app.routers import public_api as public_api_router
 from app.routers import recordings as recordings_router
 from app.routers import recovery_score as recovery_score_router
 from app.routers import share_progress as share_progress_router
@@ -112,6 +114,8 @@ app.include_router(coach_access_router.router)
 app.include_router(admin_router.router)
 app.include_router(tone_game_router.router)
 app.include_router(system_router.router)
+app.include_router(api_tokens_router.router)
+app.include_router(public_api_router.router)
 
 
 @app.get("/api/v1/health", response_model=HealthResponse)

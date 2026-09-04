@@ -708,6 +708,7 @@ def get_site_settings_endpoint(
         recording_retention_days=settings_row.recording_retention_days,
         checkin_notes_retention_days=settings_row.checkin_notes_retention_days,
         login_event_retention_days=settings_row.login_event_retention_days,
+        public_api_enabled=settings_row.public_api_enabled,
     )
 
 
@@ -717,15 +718,18 @@ def set_site_settings(
     db: Session = Depends(get_db),
     admin: User = Depends(require_full_admin),
 ) -> AdminSiteSettingsOut:
-    """Five independent settings sharing one row: signups_enabled is the kill switch for
+    """Six independent settings sharing one row: signups_enabled is the kill switch for
     the public signup/coach-signup forms (see app/routers/auth.py) -- for locking down new
     accounts during load testing without touching the database by hand, and doesn't affect
     admin-created accounts (POST /users above) or logins for existing accounts. nda_required
     controls whether NdaGate.tsx blocks the authenticated app behind the beta NDA click-through
     -- turn it off once the beta phase ends, no redeploy required. recording_retention_days,
     checkin_notes_retention_days, and login_event_retention_days feed
-    app/data_retention.py's daily purge job -- see that module's docstring. All values are sent
-    on every call (full replace, not a partial patch), same as the rest of this admin surface."""
+    app/data_retention.py's daily purge job -- see that module's docstring. public_api_enabled
+    is the kill switch for the whole /api/public/v1/* surface (see app/api_token_auth.py) --
+    users can mint personal access tokens in Settings regardless, but no token authenticates
+    anything until this is turned on. All values are sent on every call (full replace, not a
+    partial patch), same as the rest of this admin surface."""
     settings_row = get_site_settings(db)
     previous = {
         "signups_enabled": settings_row.signups_enabled,
@@ -733,12 +737,14 @@ def set_site_settings(
         "recording_retention_days": settings_row.recording_retention_days,
         "checkin_notes_retention_days": settings_row.checkin_notes_retention_days,
         "login_event_retention_days": settings_row.login_event_retention_days,
+        "public_api_enabled": settings_row.public_api_enabled,
     }
     settings_row.signups_enabled = payload.signups_enabled
     settings_row.nda_required = payload.nda_required
     settings_row.recording_retention_days = payload.recording_retention_days
     settings_row.checkin_notes_retention_days = payload.checkin_notes_retention_days
     settings_row.login_event_retention_days = payload.login_event_retention_days
+    settings_row.public_api_enabled = payload.public_api_enabled
     log_admin_action(
         db,
         admin.id,
@@ -757,6 +763,7 @@ def set_site_settings(
         recording_retention_days=settings_row.recording_retention_days,
         checkin_notes_retention_days=settings_row.checkin_notes_retention_days,
         login_event_retention_days=settings_row.login_event_retention_days,
+        public_api_enabled=settings_row.public_api_enabled,
     )
 
 

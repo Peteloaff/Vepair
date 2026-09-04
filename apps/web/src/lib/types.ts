@@ -599,6 +599,27 @@ export interface AdminSiteSettings {
   recording_retention_days: number;
   checkin_notes_retention_days: number;
   login_event_retention_days: number;
+  public_api_enabled: boolean;
+}
+
+export const API_TOKEN_SCOPES = ["recovery_trends", "vocal_range", "exercise_history"] as const;
+export type ApiTokenScope = (typeof API_TOKEN_SCOPES)[number];
+
+export interface ApiToken {
+  id: string;
+  name: string;
+  scopes: ApiTokenScope[];
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface ApiTokenCreateResponse {
+  id: string;
+  name: string;
+  scopes: ApiTokenScope[];
+  token: string;
+  created_at: string;
 }
 
 export interface NdaStatus {

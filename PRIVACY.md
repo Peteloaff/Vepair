@@ -97,6 +97,13 @@ explicit, purpose-specific, informed consent — never bundled into a generic To
   goals/plans, exercises, coach connections (notes and messages, both directions) — everything
   except raw audio bytes, which link back to the existing authenticated playback endpoint instead
   of being embedded. Reachable from Settings, directly above account deletion.
+- **Self-serve, scoped, revocable external access**: a user can generate their own personal
+  access token (Settings → API access) for pulling their *own* recovery score, vocal range, or
+  exercise history into an external tool — never account/profile data, never raw audio, never
+  check-in free text. Scoped at creation (only the categories checked are readable), shown once,
+  and instantly revocable — the same self-service, minimal-by-default posture as every other
+  right in this section. This is the single largest data-egress surface in the app (see Section
+  6), so it's the one read-only path that gets logged on every call, not just state changes.
 - **Auditable access**: every read of a `Recording`'s audio by anyone other than its owner
   (e.g. an authorized vocal coach, via VepAIr Coach's consent system above) must be attributable
   to a specific actor and reason.
@@ -233,3 +240,20 @@ rather than the loosest possible version:
   this app keeps." Every call is logged via `log_admin_action` with the filters used (not the
   row contents), the same hard-delete-level audit rigor, since it's the one action in the admin
   surface that hands raw PII out of the system.
+
+**The read-only public API** (`/api/public/v1/*`) is implemented as personal access tokens, not
+OAuth2 — a user generates their own scoped, named token in Settings (never an admin, never a
+third party on the user's behalf) and can revoke it any time. `ApiToken.token_hash` reuses the
+exact same opaque-token hashing `RefreshToken` already relies on (`app/security.py`) — the raw
+value is shown exactly once, at creation, and never stored or retrievable again. Scopes are the
+same three categories as coach-sharing consent minus `recordings`: raw audio is never reachable
+through this surface in v1, on purpose, regardless of what a token is granted.
+`SiteSettings.public_api_enabled` is a site-wide kill switch, off by default — a user can mint a
+token before launch, but nothing authenticates until an admin turns it on. Unlike every other
+read path in this document (logged only on state changes, per this document's existing
+practice), **every successful call here is logged** — token id, user id, scope, path, never
+response content — because this is the single largest data-egress surface in the app: the one
+place a bearer credential, once out of VepAIr's hands, could end up anywhere. Rate-limited
+in-process per token (60 requests/minute); documented as best-effort only, not shared across
+multiple server instances, since that's an honest limitation at current pilot scale rather than
+a promise this doesn't yet keep.

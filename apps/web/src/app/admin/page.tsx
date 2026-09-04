@@ -148,6 +148,37 @@ function SiteSettingsPanel() {
         </button>
       </section>
 
+      <section
+        className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
+          settings.public_api_enabled
+            ? "border-emerald-900 bg-emerald-950/20"
+            : "border-neutral-800 bg-neutral-900/40"
+        }`}
+      >
+        <div>
+          <p className="font-medium">
+            Public API is {settings.public_api_enabled ? "on" : "off"}
+          </p>
+          <p className="text-xs text-neutral-400">
+            {settings.public_api_enabled
+              ? "Personal access tokens (Settings → API access) can pull recovery, vocal range, and exercise data read-only."
+              : "Users can still generate personal access tokens, but no token authenticates anything until this is on."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => update({ public_api_enabled: !settings.public_api_enabled })}
+          disabled={busy}
+          className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+            settings.public_api_enabled
+              ? "border-red-800 text-red-300 hover:bg-red-950/60"
+              : "border-emerald-700 text-emerald-300 hover:bg-emerald-950/60"
+          }`}
+        >
+          {busy ? "..." : settings.public_api_enabled ? "Turn off public API" : "Turn on public API"}
+        </button>
+      </section>
+
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm">
         <p className="mb-1 font-medium">Data retention</p>
         <p className="mb-3 text-xs text-neutral-400">
