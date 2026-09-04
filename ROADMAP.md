@@ -167,7 +167,7 @@ exist and are recorded here so they aren't re-derived or re-litigated later.
 - **No free Coach tier.** `coach_pro` is required from signup to use any coach feature at all —
   inviting a singer, viewing a dashboard, everything. There is no capped free-coach state to
   design around.
-- **Billing cadence**: both monthly and annual, with an annual discount. Two Stripe price points
+- **Billing cadence**: both monthly and annual, with an annual discount. Two Square price points
   per paid tier, not one.
 - **Trial**: a 7-day free trial of the paid tier, one-time per account (not repeatable by
   clearing/re-subscribing on the same account). No card-required gate before the trial starts is
@@ -178,9 +178,9 @@ exist and are recorded here so they aren't re-derived or re-litigated later.
   `CoachNote` rows and the connection itself aren't deleted, just inaccessible to the coach until
   they resubscribe. A singer's own data is never affected by their coach's subscription state.
 - **Downgrade/cancellation timing**: takes effect at the end of the current billing period, not
-  immediately — standard Stripe pattern. The account keeps paid-tier access through whatever
-  they already paid for, then reverts to Free (or loses coach access entirely, for a lapsed
-  `coach_pro`) at `current_period_end`.
+  immediately — standard subscription-billing pattern. The account keeps paid-tier access
+  through whatever they already paid for, then reverts to Free (or loses coach access entirely,
+  for a lapsed `coach_pro`) at `current_period_end`.
 
 **Shape of the eventual work, for when building actually starts:**
 
@@ -193,16 +193,23 @@ exist and are recorded here so they aren't re-derived or re-litigated later.
 - **One enforcement seam, reused everywhere a feature needs gating** — the same shape as
   `app/coach_auth.py`'s `require_coach_access`: `app/subscription_auth.py`'s `require_tier(min_tier)`,
   a single dependency every tier-gated endpoint calls.
-- **Stripe as the payment provider** (subscriptions, webhooks, and a hosted customer portal for
-  self-serve plan changes/cancellation, rather than building that UI from scratch). A
-  `POST /api/v1/billing/webhook` keeps `Subscription` in sync with Stripe's own event stream
-  (`checkout.session.completed`, `customer.subscription.updated/deleted`,
-  `invoice.payment_failed`) — the webhook is the source of truth; client-reported subscription
-  state is never trusted for gating.
+- **Square as the payment provider** (subscriptions plus webhooks) — chosen over Stripe
+  specifically for its tighter QuickBooks integration, matching how the coach side already
+  reconciles through QuickBooks (founder decision, 2026-09-04). A
+  `POST /api/v1/billing/webhook` keeps `Subscription` in sync with Square's own event stream
+  (Square's Subscriptions API webhook events — exact event names to confirm against Square's
+  current API when this is built, since they don't map 1:1 to Stripe's) — the webhook is the
+  source of truth; client-reported subscription state is never trusted for gating.
+  **Caveat carried over from the Stripe plan this replaces**: Square's self-serve
+  subscription-management portal is thinner than Stripe's hosted Billing portal — there may not
+  be an equivalent drop-in "let the customer change/cancel their own plan" UI to embed, meaning
+  VepAIr may need to build more of that self-serve surface itself rather than delegating it
+  wholesale to the payment provider. Worth re-confirming against Square's current offering right
+  before this is built, not assumed away now.
 - **Still open when this is actually scoped for real**: exact endpoint-by-endpoint gating list
   for what counts as "AI coaching" (live coaching, adaptive routine, Goal Tones, Recovery Score —
   confirm each surfaces individually or as one bundled unlock); exact User Pro / Coach Pro price
-  points; whether the 7-day trial requires a card up front or not, which depends on what Stripe's
+  points; whether the 7-day trial requires a card up front or not, which depends on what Square's
   trial primitives make easiest.
 
 ### Coach organizations & invite quota (decided 2026-08-19, not yet built)
@@ -240,13 +247,15 @@ Not built yet — same rule as everything else in this section.
 **Still open, worth nailing down before this is built:** the exact per-invite overage price
 (pure pricing decision, same status as the base tier prices above).
 
-**Resolved (2026-08-19), superseding the Stripe-modeling concern this section originally raised**:
-overage doesn't get billed through Stripe's metered/usage-based billing at all — see "QuickBooks
-Online monthly invoicing sync" immediately below. Stripe's job (once it exists) is limited to
-collecting the recurring `coach_pro`/`user_pro` subscription charge itself; the variable
-per-organization invite/license overage is computed by VepAIr and handed to QuickBooks as a
-draft invoice, not metered inside Stripe. This sidesteps the annual-allowance-vs-monthly-overage
-billing-interval mismatch entirely, rather than solving it inside Stripe.
+**Resolved (2026-08-19), superseding the Stripe-modeling concern this section originally raised**
+(payment provider itself later changed to Square, 2026-09-04, but this resolution's logic is
+provider-agnostic and still holds): overage doesn't get billed through the payment provider's
+metered/usage-based billing at all — see "QuickBooks Online monthly invoicing sync" immediately
+below. The payment provider's job (once it exists) is limited to collecting the recurring
+`coach_pro`/`user_pro` subscription charge itself; the variable per-organization invite/license
+overage is computed by VepAIr and handed to QuickBooks as a draft invoice, not metered inside
+the payment provider. This sidesteps the annual-allowance-vs-monthly-overage billing-interval
+mismatch entirely, rather than solving it inside the payment provider.
 
 ### QuickBooks Online monthly invoicing sync (decided 2026-08-19, not yet built)
 
@@ -278,13 +287,17 @@ and sent.** Not built yet, same rule as everything else in this section.
   (e.g. `Organization.quickbooks_customer_id`)?
 - **Whether this draft invoice covers only the overage/license line items, or also restates the
   base `coach_pro` subscription fee as its own line.** If the base subscription fee is still
-  meant to be charged automatically via Stripe (as scoped earlier in this document), the
+  meant to be charged automatically via Square (as scoped earlier in this document), the
   QuickBooks draft invoice should probably show *only* the variable license overage, to avoid
   double-billing the base fee through two different systems. Worth confirming explicitly rather
   than assumed, since "we can do the invoicing ourselves" could also mean the founder wants *all*
-  coach billing — base fee included — to move through QuickBooks instead of Stripe's automated
+  coach billing — base fee included — to move through QuickBooks instead of Square's automated
   recurring charge. That's a bigger scope difference (it would mean `coach_pro` isn't
-  Stripe-auto-billed at all) and hasn't been explicitly confirmed either way yet.
+  Square-auto-billed at all) and hasn't been explicitly confirmed either way yet. **Note:**
+  `models.py`'s `Organization` docstring and `TECHNICAL_GUIDE.md` already assert coach billing
+  goes through QuickBooks entirely, base fee included, with no automated payment provider on the
+  coach side at all — that may already answer this open question in practice; worth reconciling
+  the two before Stage 5 actually starts rather than carrying the contradiction forward.
 - The OAuth connection itself: QuickBooks Online API access requires the founder to
   authorize VepAIr's backend against their specific QBO company file once (standard OAuth2
   consent flow) — a one-time manual setup step, not something to design further until this is
