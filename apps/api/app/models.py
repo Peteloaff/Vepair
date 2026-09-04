@@ -693,6 +693,28 @@ class CoachAssignment(Base, TimestampMixin):
     exercise_tone_targets: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
+class AssignmentTemplate(Base, TimestampMixin):
+    """A coach's saved, reusable exercise set -- built so a coach with several singers on
+    similar training doesn't re-pick the same exercises from scratch on every Assign page visit.
+    Private to the owning coach, not shared within an Organization/studio -- same scoping as
+    CoachAssignment and coach-created Exercise rows today. Not tied to any singer (unlike
+    CoachAssignment); applying one just prefills the Assign form, it never creates a
+    CoachAssignment by itself -- the coach still explicitly submits per singer."""
+
+    __tablename__ = "assignment_templates"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    exercise_ids: Mapped[list] = mapped_column(JSON)  # ordered list of Exercise UUID strings
+    note_to_singer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Same shape and validation rules as CoachAssignment.exercise_tone_targets -- see
+    # schemas_coach.py's AssignmentTemplateCreate.
+    exercise_tone_targets: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
 class CoachNote(Base, TimestampMixin):
     """Coach-authored, singer-readable by design — never a clinical chart (MEDICAL_SAFETY.md).
     Immutable once created; mistakes are soft-deleted (deleted_at), not hard-deleted, so the
