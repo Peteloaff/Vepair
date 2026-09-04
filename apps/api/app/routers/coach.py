@@ -14,6 +14,7 @@ from app.email import send_new_message_email
 from app.exercise_routine import VALID_ROUTINE_LENGTHS_MINUTES, build_routine_for_user
 from app.exercise_trends import compute_exercise_trends
 from app.models import (
+    AssignmentTemplate,
     CoachAccess,
     CoachAccessCategoryGrant,
     CoachAssignment,
@@ -34,6 +35,9 @@ from app.recovery_score import compute_and_store_recovery_score, fetch_score_his
 from app.routers.recovery_score import _to_out as _recovery_score_to_out
 from app.schemas_checkin import CheckInOut
 from app.schemas_coach import (
+    AssignmentTemplateCreate,
+    AssignmentTemplateOut,
+    AssignmentTemplateUpdate,
     CoachAssignmentCreate,
     CoachAssignmentOut,
     CoachExerciseCreate,
@@ -598,6 +602,25 @@ def get_singer_recording_audio(
     return Response(content=audio_bytes, media_type="audio/wav")
 
 
+def _validate_exercise_ids(db: Session, exercise_ids: list[uuid.UUID]) -> None:
+    existing_ids = set(
+        db.scalars(
+            select(Exercise.id).where(
+                Exercise.id.in_(exercise_ids), Exercise.is_active.is_(True)
+            )
+        ).all()
+    )
+    unknown = set(exercise_ids) - existing_ids
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "unknown_exercise_ids",
+                "message": f"Unknown or inactive exercise ids: {sorted(str(i) for i in unknown)}",
+            },
+        )
+
+
 @router.post(
     "/singers/{singer_user_id}/assignments", response_model=CoachAssignmentOut, status_code=201
 )
@@ -612,22 +635,7 @@ def create_assignment(
     category). Safety enforcement itself lives entirely in app/exercise_routine.py, not here —
     an assignment is just a list of exercise ids; whether any of them actually make it into a
     given day's routine is decided fresh every day against that day's real intensity cap."""
-    existing_ids = set(
-        db.scalars(
-            select(Exercise.id).where(
-                Exercise.id.in_(payload.exercise_ids), Exercise.is_active.is_(True)
-            )
-        ).all()
-    )
-    unknown = set(payload.exercise_ids) - existing_ids
-    if unknown:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "unknown_exercise_ids",
-                "message": f"Unknown or inactive exercise ids: {sorted(str(i) for i in unknown)}",
-            },
-        )
+    _validate_exercise_ids(db, payload.exercise_ids)
 
     prior_active = db.scalars(
         select(CoachAssignment).where(
@@ -670,6 +678,90 @@ def list_assignments(
             .order_by(CoachAssignment.created_at.desc())
         ).all()
     )
+
+
+def _get_owned_template(
+    db: Session, coach: CoachProfile, template_id: uuid.UUID
+) -> AssignmentTemplate:
+    template = db.scalar(
+        select(AssignmentTemplate).where(
+            AssignmentTemplate.id == template_id, AssignmentTemplate.coach_id == coach.id
+        )
+    )
+    if template is None:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "template_not_found", "message": "Assignment template not found."},
+        )
+    return template
+
+
+@router.post(
+    "/assignment-templates", response_model=AssignmentTemplateOut, status_code=201
+)
+def create_assignment_template(
+    payload: AssignmentTemplateCreate,
+    coach: CoachProfile = Depends(get_current_coach),
+    db: Session = Depends(get_db),
+) -> AssignmentTemplate:
+    """Not tied to any singer -- a reusable exercise set the coach can apply to whichever
+    singer's Assign page they're on. Private to this coach, same scoping as CoachAssignment and
+    coach-created Exercise rows."""
+    _validate_exercise_ids(db, payload.exercise_ids)
+
+    template = AssignmentTemplate(
+        coach_id=coach.id,
+        name=payload.name,
+        exercise_ids=[str(eid) for eid in payload.exercise_ids],
+        note_to_singer=payload.note_to_singer,
+        exercise_tone_targets=(
+            {str(eid): note for eid, note in payload.exercise_tone_targets.items()}
+            if payload.exercise_tone_targets
+            else None
+        ),
+    )
+    db.add(template)
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@router.get("/assignment-templates", response_model=list[AssignmentTemplateOut])
+def list_assignment_templates(
+    coach: CoachProfile = Depends(get_current_coach), db: Session = Depends(get_db)
+) -> list[AssignmentTemplate]:
+    return list(
+        db.scalars(
+            select(AssignmentTemplate)
+            .where(AssignmentTemplate.coach_id == coach.id)
+            .order_by(AssignmentTemplate.name)
+        ).all()
+    )
+
+
+@router.patch("/assignment-templates/{template_id}", response_model=AssignmentTemplateOut)
+def rename_assignment_template(
+    template_id: uuid.UUID,
+    payload: AssignmentTemplateUpdate,
+    coach: CoachProfile = Depends(get_current_coach),
+    db: Session = Depends(get_db),
+) -> AssignmentTemplate:
+    template = _get_owned_template(db, coach, template_id)
+    template.name = payload.name
+    db.commit()
+    db.refresh(template)
+    return template
+
+
+@router.delete("/assignment-templates/{template_id}", status_code=204)
+def delete_assignment_template(
+    template_id: uuid.UUID,
+    coach: CoachProfile = Depends(get_current_coach),
+    db: Session = Depends(get_db),
+) -> None:
+    template = _get_owned_template(db, coach, template_id)
+    db.delete(template)
+    db.commit()
 
 
 @router.post("/singers/{singer_user_id}/notes", response_model=CoachNoteOut, status_code=201)

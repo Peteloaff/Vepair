@@ -555,6 +555,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
         <div class="block-head"><span class="block-num">06</span><h2>Assign training</h2></div>
         <div class="card">
           <p>Select one or more exercises, an optional target tone per exercise, and an optional note to the Vrotégé. <b>+ Add custom exercise</b> lets you write your own (title, instructions, category, duration, difficulty) — it's immediately available to select and assign.</p>
+          <p><b>Templates</b>: once you've built a selection you'll reuse, <b>Save current selection as template</b> saves it under a name of your choice — private to you, not visible to other coaches. Any saved template appears as a chip at the top of this page; clicking it loads that exercise set, its tone targets, and its note back into the form so you can review and assign it to whichever Vrotégé you're on. Loading a template never assigns anything by itself — you still hit <b>Assign</b> per Vrotégé. The × on a template chip deletes it.</p>
           <div class="callout coach">An assignment is included in the Vrotégé's routine only where <i>today's own safety limits</i> already allow it — an assignment can never push a Vrotégé past what would be safe for them today, regardless of what you assign.</div>
         </div>
       </section>

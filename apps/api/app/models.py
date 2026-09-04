@@ -717,6 +717,28 @@ class CoachAssignment(Base, TimestampMixin):
     exercise_tone_targets: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
+class AssignmentTemplate(Base, TimestampMixin):
+    """A coach's saved, reusable exercise set -- built so a coach with several singers on
+    similar training doesn't re-pick the same exercises from scratch on every Assign page visit.
+    Private to the owning coach, not shared within an Organization/studio -- same scoping as
+    CoachAssignment and coach-created Exercise rows today. Not tied to any singer (unlike
+    CoachAssignment); applying one just prefills the Assign form, it never creates a
+    CoachAssignment by itself -- the coach still explicitly submits per singer."""
+
+    __tablename__ = "assignment_templates"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    coach_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    exercise_ids: Mapped[list] = mapped_column(JSON)  # ordered list of Exercise UUID strings
+    note_to_singer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Same shape and validation rules as CoachAssignment.exercise_tone_targets -- see
+    # schemas_coach.py's AssignmentTemplateCreate.
+    exercise_tone_targets: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
 class CoachNote(Base, TimestampMixin):
     """Coach-authored, singer-readable by design — never a clinical chart (MEDICAL_SAFETY.md).
     Immutable once created; mistakes are soft-deleted (deleted_at), not hard-deleted, so the
@@ -825,11 +847,14 @@ class SiteSettings(Base, TimestampMixin):
 class UserSubscription(Base, TimestampMixin):
     """SaaS billing, singer side (post-Stage-12 Part 2, Stage 5 -- not yet enforced anywhere;
     this table is laid down now so Stage 5 doesn't need its own migration later). Automated,
-    Stripe-driven billing -- unlike the coach side's Organization/QuickBooks model, a webhook
-    (once built) keeps this in sync with Stripe's own event stream, which is the source of truth
+    Square-driven billing -- unlike the coach side's Organization/QuickBooks model, a webhook
+    (once built) keeps this in sync with Square's own event stream, which is the source of truth
     for gating; client-reported subscription state is never trusted. tier is a whitelist
     ("free"|"user_pro"), same discipline as CoachAccessCategoryGrant.category -- never free
-    text."""
+    text. Square chosen over Stripe for its tighter QuickBooks integration (founder decision,
+    see ROADMAP.md); Square's self-serve subscription-management portal is thinner than
+    Stripe's hosted Billing portal, so the downgrade/cancellation UI described in ROADMAP.md
+    may need more first-party build-out than originally scoped."""
 
     __tablename__ = "user_subscriptions"
 
@@ -843,8 +868,8 @@ class UserSubscription(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    stripe_customer_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    stripe_subscription_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    square_customer_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    square_subscription_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
 class OrganizationInvoiceLog(Base, TimestampMixin):

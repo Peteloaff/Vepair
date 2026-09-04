@@ -371,6 +371,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
             <tr><td class="code-cell">CoachAccess</td><td>The active grant. One active coach per singer, DB-enforced (partial unique index).</td></tr>
             <tr><td class="code-cell">CoachAccessCategoryGrant</td><td>Per-category share toggle: recovery_trends / vocal_range / exercise_history / recordings.</td></tr>
             <tr><td class="code-cell">CoachAssignment</td><td>A coach's exercise assignment, with optional per-exercise tone targets.</td></tr>
+            <tr><td class="code-cell">AssignmentTemplate</td><td>A coach's saved, reusable exercise set — private per coach, not tied to a singer. Prefills the Assign form; never creates a CoachAssignment by itself.</td></tr>
             <tr><td class="code-cell">CoachNote</td><td>Coach-authored, singer-readable, immutable (soft-delete only).</td></tr>
             <tr><td class="code-cell">CoachMessage</td><td>Two-way coach&lt;-&gt;singer chat — separate from CoachNote. <code>sender</code>, <code>flagged_terms</code>, <code>read_at</code>.</td></tr>
           </table></div>
@@ -385,7 +386,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <div class="ref-wrap"><table class="ref">
             <tr><th>Entity</th><th>Purpose</th></tr>
             <tr><td class="code-cell">Organization</td><td>One per coach, always. Holds <code>is_coach_pro_active</code> and the invite quota.</td></tr>
-            <tr><td class="code-cell">UserSubscription</td><td>Singer-side tier (free/user_pro) — laid down, not yet enforced (Stripe not built).</td></tr>
+            <tr><td class="code-cell">UserSubscription</td><td>Singer-side tier (free/user_pro) — laid down, not yet enforced (Square integration not built).</td></tr>
             <tr><td class="code-cell">OrganizationInvoiceLog</td><td>Idempotency + ledger for the (not-yet-built) monthly QuickBooks sync.</td></tr>
           </table></div>
 
@@ -610,7 +611,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
 
       <section class="block" id="billing">
         <div class="block-head"><span class="block-num">14</span><h2>Coach Pro billing (SaaS)</h2></div>
-        <p class="block-note">Live in production. No Stripe on the coach side — see <code class="path">TECHNICAL_GUIDE.md</code> §10 for the operator walkthrough.</p>
+        <p class="block-note">Live in production. No Square (or any automated payment provider) on the coach side — see <code class="path">TECHNICAL_GUIDE.md</code> §10 for the operator walkthrough.</p>
         <div class="card">
           <p>Every coach belongs to exactly one <code>Organization</code>, created automatically at
           signup, <code>is_coach_pro_active = false</code> by default — there is no free coach
@@ -624,7 +625,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           accrue as overage on the org's next QuickBooks draft invoice once that sync exists.</p>
           <div class="callout info">
             <b>Not built yet:</b> the QuickBooks Online monthly sync job (draft-invoice creation,
-            OAuth connection) and the singer-side Stripe/User Pro billing track. Both are scoped
+            OAuth connection) and the singer-side Square/User Pro billing track. Both are scoped
             in <code class="path">ROADMAP.md</code>; <code>UserSubscription</code>/
             <code>OrganizationInvoiceLog</code> already exist so neither needs a future migration
             just to start.
@@ -827,7 +828,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
               <h4>Scoped, not built</h4>
               <ul>
                 <li>QuickBooks Online monthly invoicing sync</li>
-                <li>Singer-side Stripe/User Pro billing</li>
+                <li>Singer-side Square/User Pro billing</li>
                 <li>Cross-user Tone Match leaderboard</li>
               </ul>
             </div>

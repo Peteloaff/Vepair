@@ -518,6 +518,15 @@ export interface CoachAssignment {
   exercise_tone_targets: Record<string, string> | null;
 }
 
+export interface AssignmentTemplate {
+  id: string;
+  name: string;
+  exercise_ids: string[];
+  note_to_singer: string | null;
+  exercise_tone_targets: Record<string, string> | null;
+  created_at: string;
+}
+
 export interface CoachVoiceSession {
   id: string;
   started_at: string;
