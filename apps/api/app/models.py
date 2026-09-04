@@ -122,6 +122,30 @@ class PasswordResetToken(Base, TimestampMixin):
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class ApiToken(Base, TimestampMixin):
+    """A user-generated, long-lived personal access token for the read-only public API
+    (`/api/public/v1/*`, see app/api_token_auth.py) -- GitHub-PAT style: the user creates and
+    names their own token in Settings, hands the raw value to whatever external tool they're
+    using, and can revoke it any time. Not part of the self-hosted-auth JWT system -- a
+    completely separate, opt-in credential a user must explicitly mint, scoped to exactly the
+    data categories they check off (same three as CoachAccessCategoryGrant.category, minus
+    `recordings` -- raw audio is deliberately never reachable through this API, see
+    app/schemas_api_token.py). Revoked, not deleted, on revoke -- same audit-preserving pattern
+    as RefreshToken -- so "was this token ever valid, and when was it cut off" stays answerable."""
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    scopes: Mapped[list] = mapped_column(JSON)  # subset of API_TOKEN_SCOPES, never empty
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class UserProfile(Base, TimestampMixin):
     """Onboarding answers. No medical diagnosis fields — see MEDICAL_SAFETY.md."""
 
@@ -791,6 +815,11 @@ class SiteSettings(Base, TimestampMixin):
     login_event_retention_days: Mapped[int] = mapped_column(
         Integer, default=365, server_default="365"
     )
+    # Kill switch for the entire /api/public/v1/* surface (see app/api_token_auth.py) --
+    # default false so the read-only external API stays off until an admin explicitly turns it
+    # on, even though the ApiToken generation UI in Settings is always available (a user can
+    # mint a token before launch; it just won't authenticate anything until this flips true).
+    public_api_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
 
 class UserSubscription(Base, TimestampMixin):

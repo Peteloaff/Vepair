@@ -550,6 +550,7 @@ def test_site_settings_default_to_signups_enabled(client, signed_up_user, db_ses
     assert resp.json()["recording_retention_days"] == 90
     assert resp.json()["checkin_notes_retention_days"] == 30
     assert resp.json()["login_event_retention_days"] == 365
+    assert resp.json()["public_api_enabled"] is False
 
 
 def test_disabling_signups_blocks_public_signup_but_not_admin_create(
@@ -567,6 +568,7 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
             "login_event_retention_days": 365,
+            "public_api_enabled": False,
         },
     )
     assert toggle.status_code == 200
@@ -626,6 +628,7 @@ def test_disabling_signups_blocks_public_signup_but_not_admin_create(
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
             "login_event_retention_days": 365,
+            "public_api_enabled": False,
         },
     )
     assert reenable.status_code == 200
@@ -651,6 +654,7 @@ def test_site_settings_requires_admin(client, signed_up_user) -> None:
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
             "login_event_retention_days": 365,
+            "public_api_enabled": False,
         },
     )
     assert resp.status_code == 403
@@ -744,6 +748,7 @@ def test_admin_can_turn_off_nda_requirement(client, signed_up_user, db_session) 
             "recording_retention_days": 90,
             "checkin_notes_retention_days": 30,
             "login_event_retention_days": 365,
+            "public_api_enabled": False,
         },
     )
     assert toggle.status_code == 200
