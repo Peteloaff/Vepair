@@ -79,6 +79,16 @@ def _send_via_graph(to_email: str, subject: str, html_body: str) -> None:
     )
     if resp.status_code != 202:
         raise EmailSendError(f"Graph sendMail failed: {resp.status_code} {resp.text}")
+    # 202 means Graph *accepted the request*, not that Exchange Online actually delivered it --
+    # outbound anti-abuse throttling can silently drop a message after this point with nothing
+    # else logged on our side (see TECHNICAL_GUIDE.md's Graph email gotcha, diagnosed 2026-08-14
+    # the hard way, via Message Trace, precisely because this line didn't exist yet). Logging the
+    # acceptance at least gives every future "did this actually send?" question a real first data
+    # point instead of starting from zero.
+    logger.info(
+        "Graph accepted email to=%s subject=%r (202 -- acceptance, not delivery)",
+        to_email, subject,
+    )
 
 
 def _send(to_email: str, subject: str, html_body: str, text_body: str) -> None:

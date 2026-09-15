@@ -171,12 +171,17 @@ git push
   at all (see the next item).
 - **Microsoft Graph `sendMail` returning `202` does not mean the email was delivered.** A `202`
   only means Graph *accepted the request for processing* — Exchange Online's own outbound
-  protection can still silently drop the message afterward, with nothing logged on our side
-  (there's no success-path log line in `app/email.py`, only a fallback line and a failure line —
-  see below) and no error surfaced to the caller. Diagnosed 2026-08-14 by testing delivery to two
-  independent providers (Gmail and a disposable mail.tm inbox) — zero delivery to either, which
-  ruled out "Gmail is just filtering a new domain" and pointed at something on Microsoft's side
-  instead of DNS or app config.
+  protection can still silently drop the message afterward, and no error is ever surfaced to the
+  caller either way. Diagnosed 2026-08-14 by testing delivery to two independent providers (Gmail
+  and a disposable mail.tm inbox) — zero delivery to either, which ruled out "Gmail is just
+  filtering a new domain" and pointed at something on Microsoft's side instead of DNS or app
+  config. At the time, `app/email.py` had no success-path log line at all (only a log-mode
+  fallback line and a failure line), which is a large part of why this took real time to pin
+  down — `_send_via_graph` now logs the 202 acceptance itself, so a future "did this actually
+  send?" question at least starts from a real log line instead of nothing. That line still can't
+  prove delivery on its own — Graph accepting the request and Exchange Online actually delivering
+  it are two different questions — so a *silent* failure (no error, no bounce, just nothing
+  arriving) still means checking Message Trace by recipient, per the next item.
 - **The actual cause, found via Message Trace: `550 5.7.708 Access denied, traffic not accepted
   from this IP`** — Exchange Online's own outbound anti-abuse protection had restricted the
   tenant/mailbox from sending, most likely triggered by the burst of near-identical automated
@@ -191,14 +196,9 @@ git push
   (`noreply@vepair.com`) in the Exchange admin center's classic message trace errored with an
   unrelated-looking "Sender validation failed: Invalid email address" — a red herring. The modern
   `security.microsoft.com` trace, searched by **recipient** address instead, is what actually
-  surfaced the real `5.7.708` NDR.
-- **`gcloud logging read --format="value(textPayload)"` misses all application-level log
-  lines** — `app/logging_config.py`'s `JsonFormatter` prints every `logger.*()` call as JSON on
-  stdout; Cloud Logging files that under `jsonPayload`, not `textPayload`. Only uvicorn's own
-  access logs are plain text. Filter on `jsonPayload.logger="<name>"` and read
-  `jsonPayload.message` instead — and always scope with `--freshness` when testing something
-  live, since an old matching log line (e.g. a stale `[email:log]` entry from before
-  `EMAIL_BACKEND=graph` was ever set) can look like current signal otherwise.
+  surfaced the real `5.7.708` NDR. Always scope a `gcloud logging read` with `--freshness` when
+  testing something live, too — an old matching log line (e.g. a stale `[email:log]` entry from
+  before `EMAIL_BACKEND=graph` was ever set) can look like current signal otherwise.
 - **Dockerfile must live at the repo root, not `apps/api/`.** `gcloud run deploy --source .`
   only auto-detects a Dockerfile build when a file literally named `Dockerfile` sits at the root
   of `--source`; anywhere else it silently falls back to Buildpacks, which can't handle a
