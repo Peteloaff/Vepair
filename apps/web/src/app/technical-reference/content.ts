@@ -849,6 +849,8 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Data minimization (self-serve delete, per-recording delete, export, retention purge — §13)</li>
                 <li>Real login-event table, replacing the old last-login proxy</li>
                 <li>Public API (personal access tokens, read-only, admin-configurable kill switch — §17)</li>
+                <li>App-wide light/dark theme, system-preference default</li>
+                <li>On-demand Warm Up / Cool Down routines, and 4 new SLP-sourced breathing exercises</li>
               </ul>
             </div>
             <div>
