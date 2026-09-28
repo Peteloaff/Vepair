@@ -404,6 +404,8 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           <p>Tap <b>Voice exercises</b>. Pick how much time you have and how often you want live coaching feedback (Frequent / Normal / Minimal). VepAIr builds a routine from today's check-in, your recent recordings, and your recovery status — different every day, on purpose.</p>
           <p>If your recent data suggests going gentle, you'll see <b>"Before you start"</b> explaining the routine has been kept to the gentlest exercises. Reported discomfort always caps the routine — VepAIr never tells you to push through anything.</p>
           <p>During each exercise: instructions, a countdown, and (mic permitting) live feedback on pitch, volume, onset, or glide smoothness — entirely on your device, nothing uploaded for this part. <b>Skip</b> or <b>Mark done</b> on any exercise. At the end: completion count, per-exercise trend notes, and a <b>Share My Progress</b> button.</p>
+          <h3>Warm Up &amp; Cool Down</h3>
+          <p>Need something shorter than the full daily routine? <b>Warm Up</b> and <b>Cool Down</b> (linked from the dashboard and from the exercise length-picker screen) are on-demand routines you can launch any time — before a rehearsal or after a show, not just once a day. Warm Up steps through a short breathing → gentle humming → SOVT progression; Cool Down runs the same closing exercises VepAIr already ends every daily routine with. Both still respect your safety cap — a rough day still gets you a gentler version — and both count toward your training streak, same as any completed routine.</p>
         </div>
       </section>
 

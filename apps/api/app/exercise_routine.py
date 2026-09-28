@@ -44,7 +44,7 @@ VALID_ROUTINE_LENGTHS_MINUTES: tuple[int, ...] = (5, 10, 15, 20)
 INTENSITY_ORDER: dict[str, int] = {"low": 0, "moderate": 1, "high": 2}
 
 # A rest day is a stricter tier above the existing "gentlest exercises only" cutoff
-# (throat_discomfort >= 7, see _propose_intensity_caps) — reserved for the cases where even the
+# (throat_discomfort >= 7, see propose_intensity_caps) — reserved for the cases where even the
 # gentlest routine isn't the right call today. Never a hard block: generate_routine still
 # returns a valid (lowest-intensity) routine underneath, so someone who chooses to exercise
 # anyway still gets something appropriate, matching how discomfort already works.
@@ -124,7 +124,7 @@ class RoutineSignals:
     # exact same intensity-cap-filtered candidate list every adaptively-chosen exercise is
     # drawn from — see _select_exercises's `allowed` list. There is no code path where an
     # assigned exercise can exceed today's intensity_cap; this field can never weaken or
-    # bypass any rule in _propose_intensity_caps.
+    # bypass any rule in propose_intensity_caps.
     coach_assigned_exercise_ids: list[uuid.UUID] | None = None
     # How many days up to and including today have a stored "red" recovery status, with no gap
     # (see _consecutive_red_days) — feeds the rest-day recommendation below. Never inferred from
@@ -166,7 +166,7 @@ class RoutineResult:
 
 
 def _should_recommend_rest_day(signals: RoutineSignals) -> tuple[bool, str | None]:
-    """A stricter tier above _propose_intensity_caps's existing "low" cutoff
+    """A stricter tier above propose_intensity_caps's existing "low" cutoff
     (throat_discomfort >= 7) — reserved for when even the gentlest routine isn't the right call.
     Escalation language follows MEDICAL_SAFETY.md section 2/3's style: never an order, never a
     diagnosis, always pointing toward a qualified professional if it persists."""
@@ -189,7 +189,7 @@ def _should_recommend_rest_day(signals: RoutineSignals) -> tuple[bool, str | Non
     return False, None
 
 
-def _propose_intensity_caps(signals: RoutineSignals) -> tuple[list[tuple[str, str]], str | None]:
+def propose_intensity_caps(signals: RoutineSignals) -> tuple[list[tuple[str, str]], str | None]:
     """Every independent rule that fires proposes a (cap, reason) pair. Discomfort also carries
     the fixed safety message. Nothing here picks a "final" cap — the caller takes the strictest
     (lowest) of everything proposed."""
@@ -373,7 +373,7 @@ def _resolve_challenge_mode(
 def generate_routine(
     exercises: list[ExerciseInfo], length_minutes: int, signals: RoutineSignals
 ) -> RoutineResult:
-    proposals, safety_message = _propose_intensity_caps(signals)
+    proposals, safety_message = propose_intensity_caps(signals)
     if proposals:
         intensity_cap = min((cap for cap, _ in proposals), key=lambda c: INTENSITY_ORDER[c])
         reasons = [reason for _, reason in proposals]
@@ -465,7 +465,7 @@ def _consecutive_red_days(db: Session, user_id: uuid.UUID, for_date: date) -> in
     return count
 
 
-def _to_exercise_info(row: Exercise) -> ExerciseInfo:
+def to_exercise_info(row: Exercise) -> ExerciseInfo:
     return ExerciseInfo(
         id=row.id,
         name=row.name,
@@ -557,7 +557,7 @@ def build_routine_for_user(
     db: Session, user_id: uuid.UUID, length_minutes: int, for_date: date
 ) -> RoutineResult:
     exercises = [
-        _to_exercise_info(row)
+        to_exercise_info(row)
         for row in db.scalars(select(Exercise).where(Exercise.is_active.is_(True))).all()
     ]
     signals = build_signals_for_user(db, user_id, for_date)

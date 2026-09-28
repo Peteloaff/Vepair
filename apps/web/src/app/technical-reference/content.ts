@@ -323,6 +323,17 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <p style="margin-top:14px;">Auth is self-hosted rather than Supabase Auth by deliberate choice, not a placeholder
           — see <a href="#auth">Auth & accounts</a> for the swap point that keeps a later migration cheap. Nothing
           in this table is final; a change here must be documented with a rationale, not swapped silently.</p>
+          <p><b>Theming</b> is Tailwind v4's CSS-only config — no <code class="path">tailwind.config.js</code>.
+          <code class="path">globals.css</code> defines OKLCH semantic tokens (canvas/surface/border/text tiers,
+          accent, and status colors, each with a <code>-faint</code> background variant) once in <code>:root</code>
+          for light and again under <code>.dark</code>, re-exposed through <code>@theme inline</code> so ordinary
+          utilities like <code>bg-surface</code> or <code>text-text-dim</code> resolve at runtime and react to the
+          class toggle. <code>ThemeProvider</code> (<code class="path">theme-context.tsx</code>) persists
+          light/dark/system to <code>localStorage</code> and toggles <code>.dark</code> on
+          <code>&lt;html&gt;</code>; a blocking inline script in <code>&lt;head&gt;</code> (with
+          <code>suppressHydrationWarning</code> on <code>&lt;html&gt;</code>) applies the same resolution before
+          first paint, per Next's documented no-flash pattern — without it the page would flash the wrong theme
+          for a frame on every load.</p>
         </div>
       </section>
 
@@ -359,8 +370,8 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <h4>Exercises</h4>
           <div class="ref-wrap"><table class="ref">
             <tr><th>Entity</th><th>Purpose</th></tr>
-            <tr><td class="code-cell">Exercise</td><td>Library entry — 23 seeded + coach-authored. <code>created_by_coach_id</code> nullable.</td></tr>
-            <tr><td class="code-cell">ExerciseSession / ExerciseResult</td><td>One routine instance; per-exercise completion + measured outcome.</td></tr>
+            <tr><td class="code-cell">Exercise</td><td>Library entry — 27 seeded + coach-authored. <code>created_by_coach_id</code> nullable.</td></tr>
+            <tr><td class="code-cell">ExerciseSession / ExerciseResult</td><td>One routine instance; per-exercise completion + measured outcome. <code>session_type</code> (adaptive/warm_up/cool_down, default adaptive via <code>server_default</code>) distinguishes the daily routine from an on-demand quick routine — both count toward the training streak identically.</td></tr>
           </table></div>
 
           <h4>Coach Portal</h4>
@@ -468,11 +479,27 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
       <section class="block" id="exercises">
         <div class="block-head"><span class="block-num">08</span><h2>Exercises & live coaching</h2></div>
         <div class="card">
-          <p>23-exercise library across 12 categories (breathing, SOVT, trills, sirens, range
+          <p>27-exercise library across 12 categories (breathing, SOVT, trills, sirens, range
           exploration, cooldown...) — no aggressive screaming/distortion technique is included, by
           policy, until a qualified methodology exists. Each category carries an intensity tier;
           <code>throat_discomfort ≥ 7</code> forces the lowest tier and can never be outvoted by
           any other signal — the same hard-override pattern as the recovery score.</p>
+          <p><b>Breathing</b> carries 6 of the 27 (4 added for SLP breadth: pursed-lip breathing,
+          a sustained /s/-vs-/z/ breath-support check, extended exhale count, relaxed breathing
+          with tension release). The /s/-vs-/z/ exercise deliberately carries
+          <code>target_measurement = null</code> — it's adapted from the classic clinical S/Z
+          ratio technique but reframed as pure self-awareness, with no ratio or threshold ever
+          computed or shown, consistent with §21's non-diagnostic posture.</p>
+          <p><b>Warm Up / Cool Down</b> (<code class="path">app/quick_routine.py</code>) are
+          on-demand routines, separate from the once-daily adaptive routine — served by
+          <code>GET /api/v1/quick-routine?kind=warm_up|cool_down</code>. Warm Up fixes one
+          exercise from each of Breathing → Gentle humming → SOVT, in that order; Cool Down draws
+          one from the existing Vocal cooldown category (the category every adaptive routine
+          already closes with). Both reuse the adaptive routine's own
+          <code>build_signals_for_user</code>/<code>propose_intensity_caps</code>/
+          <code>to_exercise_info</code> functions unchanged (promoted from module-private since
+          they're now genuinely shared) — so the same hard discomfort override applies here too,
+          not a separate, weaker safety check.</p>
           <p><b>Live coaching runs 100% client-side</b> via a dependency-free normalized-
           autocorrelation pitch detector (<code class="path">pitchDetector.ts</code>) — deliberately
           simple, not ML-based, since it only needs "roughly what note is this right now," not

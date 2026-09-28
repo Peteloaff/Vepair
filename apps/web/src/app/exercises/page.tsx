@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
-import { ReferenceTonePlayer } from "@/components/ReferenceTonePlayer";
-import { coachingProfileForCategory, type FeedbackContext } from "@/lib/feedbackEngine";
-import {
-  LiveCoachSession,
-  MicrophonePermissionDeniedError,
-  type LiveCoachSummary,
-} from "@/lib/liveCoach";
+import { ExerciseRunner, type FeedbackFrequency, type LoggedResult } from "@/components/ExerciseRunner";
 import { useAuth } from "@/lib/auth-context";
 import { todayLocalDate } from "@/lib/date";
 import {
   ROUTINE_LENGTHS_MINUTES,
   type BaselineSummary,
-  type Exercise,
   type ExerciseSessionRecord,
   type ExerciseTrend,
   type RestCheck,
@@ -23,54 +16,19 @@ import {
   type RoutineLengthMinutes,
 } from "@/lib/types";
 
-type Phase = "choose-length" | "loading" | "safety" | "exercise" | "complete" | "error";
-type FeedbackFrequency = "frequent" | "normal" | "minimal";
-type MicStatus = "unknown" | "granted" | "denied" | "unavailable";
-
-interface LoggedResult {
-  exercise: Exercise;
-  completed: boolean;
-  self_reported_difficulty: number | null;
-  voicedRatio: number | null;
-}
-
-const INTENSITY_LABEL: Record<Routine["intensity_cap"], string> = {
-  low: "Gentle",
-  moderate: "Moderate",
-  high: "Full",
-};
-
-// "Configurable feedback frequency" from the product brief, expressed as the minimum time
-// between any two live-coaching messages — see feedbackEngine.ts's minIntervalMs.
-const FEEDBACK_INTERVALS_MS: Record<FeedbackFrequency, number> = {
-  frequent: 2500,
-  normal: 5000,
-  minimal: 9000,
-};
-
-const LIVE_FEEDBACK_DISPLAY_MS = 4000;
+type Phase = "choose-length" | "loading" | "runner" | "complete" | "error";
 
 function ExercisesFlow() {
   const { apiFetch } = useAuth();
   const [phase, setPhase] = useState<Phase>("choose-length");
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [session, setSession] = useState<ExerciseSessionRecord | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
   const [logged, setLogged] = useState<LoggedResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [feedbackFrequency, setFeedbackFrequency] = useState<FeedbackFrequency>("normal");
-  const [liveFeedback, setLiveFeedback] = useState<string | null>(null);
-  const [micStatus, setMicStatus] = useState<MicStatus>("unknown");
   const [baseline, setBaseline] = useState<BaselineSummary | null>(null);
   const [trends, setTrends] = useState<ExerciseTrend[]>([]);
   const [restCheck, setRestCheck] = useState<RestCheck | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const timerRef = useRef<number | null>(null);
-  const feedbackClearRef = useRef<number | null>(null);
-  const coachRef = useRef<LiveCoachSession | null>(null);
-  const coachingRef = useRef(false); // whether the current exercise has an active coaching session
 
   useEffect(() => {
     apiFetch<BaselineSummary>("/api/v1/baseline")
@@ -85,68 +43,8 @@ function ExercisesFlow() {
       .catch(() => {
         // Best-effort — the length-picker screen still works without this banner.
       });
-    return () => {
-      if (timerRef.current !== null) window.clearInterval(timerRef.current);
-      if (feedbackClearRef.current !== null) window.clearTimeout(feedbackClearRef.current);
-      coachRef.current?.release();
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function startTimer(durationSeconds: number) {
-    if (timerRef.current !== null) window.clearInterval(timerRef.current);
-    setRemainingSeconds(durationSeconds);
-    timerRef.current = window.setInterval(() => {
-      setRemainingSeconds((s) => (s > 0 ? s - 1 : 0));
-    }, 1000);
-  }
-
-  function comfortableRangeFor(metricName: string): number | null {
-    return baseline?.voice_baselines.find((b) => b.metric_name === metricName)?.median_value ?? null;
-  }
-
-  async function startCoachingFor(exercise: Exercise) {
-    coachingRef.current = false;
-    const profile = coachingProfileForCategory(exercise.category);
-    if (profile === "none" || micStatus === "denied" || micStatus === "unavailable") return;
-
-    if (!coachRef.current) coachRef.current = new LiveCoachSession();
-    const coach = coachRef.current;
-
-    if (micStatus !== "granted") {
-      try {
-        await coach.requestPermissionAndPrepare();
-        setMicStatus("granted");
-      } catch (err) {
-        setMicStatus(err instanceof MicrophonePermissionDeniedError ? "denied" : "unavailable");
-        return;
-      }
-    }
-
-    const context: FeedbackContext = {
-      profile,
-      comfortableMinHz: comfortableRangeFor("f0_min_hz"),
-      comfortableMaxHz: comfortableRangeFor("f0_max_hz"),
-      minIntervalMs: FEEDBACK_INTERVALS_MS[feedbackFrequency],
-    };
-    coach.onFeedback = (message) => {
-      setLiveFeedback(message.text);
-      if (feedbackClearRef.current !== null) window.clearTimeout(feedbackClearRef.current);
-      feedbackClearRef.current = window.setTimeout(
-        () => setLiveFeedback(null),
-        LIVE_FEEDBACK_DISPLAY_MS
-      );
-    };
-    coach.start(context);
-    coachingRef.current = true;
-  }
-
-  function stopCoaching(): LiveCoachSummary | null {
-    setLiveFeedback(null);
-    if (!coachingRef.current || !coachRef.current) return null;
-    coachingRef.current = false;
-    return coachRef.current.stop();
-  }
 
   async function chooseLength(lengthMinutes: RoutineLengthMinutes) {
     setPhase("loading");
@@ -158,17 +56,12 @@ function ExercisesFlow() {
       setRoutine(fetchedRoutine);
       const createdSession = await apiFetch<ExerciseSessionRecord>("/api/v1/exercise-sessions", {
         method: "POST",
-        body: { routine_length_minutes: lengthMinutes },
+        body: { routine_length_minutes: lengthMinutes, session_type: "adaptive" },
       });
       setSession(createdSession);
-      setStepIndex(0);
       setLogged([]);
-      if (fetchedRoutine.safety_message) {
-        setPhase("safety");
-      } else if (fetchedRoutine.items.length > 0) {
-        startTimer(fetchedRoutine.items[0].duration_seconds);
-        setPhase("exercise");
-        void startCoachingFor(fetchedRoutine.items[0]);
+      if (fetchedRoutine.items.length > 0) {
+        setPhase("runner");
       } else {
         setPhase("complete");
       }
@@ -178,87 +71,14 @@ function ExercisesFlow() {
     }
   }
 
-  function beginAfterSafetyNotice() {
-    if (!routine || routine.items.length === 0) {
-      setPhase("complete");
-      return;
-    }
-    startTimer(routine.items[0].duration_seconds);
-    setPhase("exercise");
-    void startCoachingFor(routine.items[0]);
-  }
-
-  async function logCurrentExercise(completed: boolean, difficulty: number | null) {
-    if (!routine || !session || submitting) return;
-    setSubmitting(true);
-    const exercise = routine.items[stepIndex];
-    let summary: LiveCoachSummary | null = null;
+  async function handleFinished(finishedLogged: LoggedResult[]) {
+    setLogged(finishedLogged);
     try {
-      summary = stopCoaching();
+      setTrends(await apiFetch<ExerciseTrend[]>("/api/v1/exercise-trends"));
     } catch {
-      // The recorder can throw if it was never fully started (e.g. mic permission still
-      // resolving) -- losing the live-measured summary shouldn't block marking the step done.
+      // Trends are a nice-to-have on the summary screen, not required to finish the routine.
     }
-    try {
-      const form = new FormData();
-      form.append("exercise_id", exercise.id);
-      form.append("order_index", String(stepIndex));
-      form.append("completed", String(completed));
-      if (difficulty !== null) form.append("self_reported_difficulty", String(difficulty));
-      if (summary) {
-        form.append(
-          "live_measured_result",
-          JSON.stringify({
-            voiced_ratio: summary.voicedRatio,
-            frame_count: summary.frameCount,
-            average_analysis_latency_ms: summary.averageAnalysisLatencyMs,
-          })
-        );
-        // Only uploaded for exercises with a target_measurement -- that's the one thing this
-        // exercise is meant to move, and the only thing app/exercise_trends.py ever trends on.
-        // Nothing is uploaded for exercises with no target (or when coaching never started).
-        if (exercise.target_measurement) {
-          form.append("audio", new Blob([summary.wavBytes], { type: "audio/wav" }), "attempt.wav");
-        }
-      }
-      await apiFetch(`/api/v1/exercise-sessions/${session.id}/results`, {
-        method: "POST",
-        body: form,
-      });
-    } catch {
-      // Logging a single result failing shouldn't block the user from finishing their routine.
-    }
-    setLogged((prev) => [
-      ...prev,
-      {
-        exercise,
-        completed,
-        self_reported_difficulty: difficulty,
-        voicedRatio: summary?.voicedRatio ?? null,
-      },
-    ]);
-
-    const nextIndex = stepIndex + 1;
-    if (nextIndex < routine.items.length) {
-      setStepIndex(nextIndex);
-      startTimer(routine.items[nextIndex].duration_seconds);
-      void startCoachingFor(routine.items[nextIndex]);
-    } else {
-      if (timerRef.current !== null) window.clearInterval(timerRef.current);
-      coachRef.current?.release();
-      try {
-        await apiFetch(`/api/v1/exercise-sessions/${session.id}/complete`, { method: "PATCH" });
-      } catch {
-        // Non-critical: the session still happened even if marking it complete fails.
-      }
-      try {
-        setTrends(await apiFetch<ExerciseTrend[]>("/api/v1/exercise-trends"));
-      } catch {
-        // Trends are a nice-to-have on the summary screen, not required to finish the routine.
-      }
-      setPhase("complete");
-    }
-    setSubmitting(false);
+    setPhase("complete");
   }
 
   if (phase === "choose-length") {
@@ -310,6 +130,21 @@ function ExercisesFlow() {
             </button>
           ))}
         </div>
+
+        <div className="mt-6 flex justify-center gap-2 text-sm">
+          <Link
+            href="/quick-routine/warm_up"
+            className="rounded-lg border border-border-strong px-3 py-1.5 hover:bg-surface-2"
+          >
+            Just need a warm up?
+          </Link>
+          <Link
+            href="/quick-routine/cool_down"
+            className="rounded-lg border border-border-strong px-3 py-1.5 hover:bg-surface-2"
+          >
+            Just need a cool down?
+          </Link>
+        </div>
       </div>
     );
   }
@@ -333,107 +168,19 @@ function ExercisesFlow() {
     );
   }
 
-  if (phase === "safety" && routine) {
+  if (phase === "runner" && routine && session) {
     return (
-      <div className="mx-auto w-full max-w-lg">
-        <h1 className="mb-4 text-xl font-semibold">Before you start</h1>
-        <div className="mb-6 rounded-lg bg-danger-faint px-4 py-3 text-sm text-danger">
-          {routine.safety_message}
-        </div>
-        <p className="mb-6 text-sm text-text-dim">
-          Today&apos;s routine has been kept to the gentlest exercises only.
-        </p>
-        <button
-          type="button"
-          onClick={beginAfterSafetyNotice}
-          className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
-        >
-          Continue
-        </button>
-      </div>
-    );
-  }
-
-  if (phase === "exercise" && routine) {
-    const exercise = routine.items[stepIndex];
-    const profile = coachingProfileForCategory(exercise.category);
-    return (
-      <div className="mx-auto w-full max-w-lg">
-        <p className="mb-1 text-xs text-text-faint">
-          Exercise {stepIndex + 1} of {routine.items.length} &middot;{" "}
-          {INTENSITY_LABEL[routine.intensity_cap]} routine
-        </p>
-        {stepIndex === 0 && routine.reasons.length > 0 && (
-          <details className="mb-3 text-xs text-text-faint">
-            <summary className="cursor-pointer hover:text-text-dim">
-              Why this routine?
-            </summary>
-            <ul className="mt-1 list-disc space-y-1 pl-4">
-              {routine.reasons.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          </details>
-        )}
-        <h1 className="mb-1 text-2xl font-semibold tracking-tight">{exercise.name}</h1>
-        <p className="mb-4 text-sm text-text-dim">{exercise.purpose}</p>
-
-        <div className="mb-4 rounded-lg border border-border bg-surface/60 p-4 text-sm text-text">
-          {exercise.instructions}
-        </div>
-
-        {exercise.contraindications && (
-          <div className="mb-4 rounded-lg bg-warning-faint px-3 py-2 text-xs text-warning">
-            {exercise.contraindications}
-          </div>
-        )}
-
-        {routine.exercise_tone_targets[exercise.id] && (
-          <div className="mb-4 rounded-lg bg-accent-faint px-3 py-2 text-xs text-accent">
-            Your coach&apos;s target for this exercise:{" "}
-            {routine.exercise_tone_targets[exercise.id]}
-          </div>
-        )}
-
-        {profile !== "none" && <ReferenceTonePlayer />}
-
-        <p className="mb-2 text-center font-mono text-3xl tabular-nums text-text">
-          {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
-        </p>
-
-        <div className="mb-4 flex min-h-10 items-center justify-center">
-          {liveFeedback ? (
-            <p className="rounded-lg bg-accent-faint px-3 py-1.5 text-center text-sm text-accent">
-              {liveFeedback}
-            </p>
-          ) : profile !== "none" && micStatus !== "denied" && micStatus !== "unavailable" ? (
-            <p className="text-center text-xs text-text-faint">Live coaching listening...</p>
-          ) : profile !== "none" ? (
-            <p className="text-center text-xs text-text-faint">
-              Live coaching unavailable (microphone access {micStatus === "denied" ? "denied" : "not available"}) — continue at your own pace.
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => logCurrentExercise(false, null)}
-            disabled={submitting}
-            className="flex-1 rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Skip
-          </button>
-          <button
-            type="button"
-            onClick={() => logCurrentExercise(true, null)}
-            disabled={submitting}
-            className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? "Saving..." : "Mark done"}
-          </button>
-        </div>
-      </div>
+      <ExerciseRunner
+        items={routine.items}
+        session={session}
+        safetyMessage={routine.safety_message}
+        intensityCap={routine.intensity_cap}
+        reasons={routine.reasons}
+        exerciseToneTargets={routine.exercise_tone_targets}
+        baseline={baseline}
+        feedbackFrequency={feedbackFrequency}
+        onFinished={handleFinished}
+      />
     );
   }
 

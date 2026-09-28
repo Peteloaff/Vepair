@@ -226,6 +226,17 @@ export interface ExerciseSessionRecord {
   completed_at: string | null;
 }
 
+export type QuickRoutineKind = "warm_up" | "cool_down";
+
+export interface QuickRoutine {
+  kind: QuickRoutineKind;
+  intensity_cap: "low" | "moderate" | "high";
+  total_duration_seconds: number;
+  safety_message: string | null;
+  reasons: string[];
+  items: Exercise[];
+}
+
 export interface ExerciseTrend {
   exercise_id: string;
   exercise_name: string;

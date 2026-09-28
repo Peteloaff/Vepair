@@ -250,6 +250,18 @@ function Dashboard({
             Voice exercises
           </Link>
           <Link
+            href="/quick-routine/warm_up"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
+          >
+            Warm Up
+          </Link>
+          <Link
+            href="/quick-routine/cool_down"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
+          >
+            Cool Down
+          </Link>
+          <Link
             href="/tone-match"
             className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
           >

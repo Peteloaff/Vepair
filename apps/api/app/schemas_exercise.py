@@ -48,8 +48,29 @@ class RestCheckOut(BaseModel):
     rest_day_reason: str | None
 
 
+class QuickRoutineOut(BaseModel):
+    """A standalone, on-demand Warm Up / Cool Down routine -- deliberately its own shape, not
+    RoutineOut: no length_minutes (not user-timeboxed), no assigned_exercise_ids/
+    exercise_tone_targets (coach assignment is an adaptive-routine-only concept), no
+    rest_day_* fields (a quick routine is low-stakes enough that a rest-day banner would
+    contradict "even a rough day still gets a safely shrunk version" -- see
+    app/quick_routine.py)."""
+
+    kind: str  # "warm_up" | "cool_down"
+    intensity_cap: str
+    total_duration_seconds: int
+    safety_message: str | None
+    reasons: list[str]
+    items: list[ExerciseOut]
+
+
 class ExerciseSessionCreate(BaseModel):
-    routine_length_minutes: int = Field(ge=1, le=60)
+    routine_length_minutes: int | None = Field(default=None, ge=1, le=60)
+    # "adaptive" (default) is the existing once-daily routine; "warm_up"/"cool_down" are the
+    # standalone on-demand sessions -- see app/quick_routine.py. Plain string, matching how
+    # every other categorical field in this schema (intensity_cap, difficulty, etc.) is stored,
+    # not a DB enum.
+    session_type: str = "adaptive"
 
 
 class ExerciseResultOut(BaseModel):
