@@ -57,8 +57,8 @@ export function ToneGameTrendCard() {
         yMax={500}
         yTicks={[0, 250, 500]}
       />
-      <p className="mt-3 text-xs text-neutral-500">
-        <Link href="/tone-match" className="text-emerald-400 hover:text-emerald-300">
+      <p className="mt-3 text-xs text-text-faint">
+        <Link href="/tone-match" className="text-accent hover:text-accent">
           Play another round
         </Link>
       </p>

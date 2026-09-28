@@ -57,7 +57,7 @@ export function TrackSelector() {
   }
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
@@ -74,41 +74,41 @@ export function TrackSelector() {
               onClick={() => chooseTrack(option)}
               className={`rounded-xl border p-4 text-left disabled:opacity-50 ${
                 selected
-                  ? "border-emerald-500 bg-emerald-500/10"
-                  : "border-neutral-700 hover:bg-neutral-800"
+                  ? "border-accent bg-accent/10"
+                  : "border-border-strong hover:bg-surface-2"
               }`}
             >
               <span
-                className={`text-sm font-medium ${selected ? "text-emerald-300" : "text-neutral-200"}`}
+                className={`text-sm font-medium ${selected ? "text-accent" : "text-text"}`}
               >
                 {copy.title}
                 {selected && " (selected)"}
               </span>
-              <p className="mt-1 text-xs text-neutral-400">{copy.description}</p>
+              <p className="mt-1 text-xs text-text-dim">{copy.description}</p>
             </button>
           );
         })}
       </div>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="mt-3 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
 
       {pendingReason && (
-        <p className="mt-3 rounded-lg bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
+        <p className="mt-3 rounded-lg bg-warning-faint px-3 py-2 text-xs text-warning">
           {pendingReason}
         </p>
       )}
 
       {track && !pendingReason && (
-        <p className="mt-3 text-xs text-neutral-500">
-          <Link href="/vocal-plan" className="text-emerald-400 hover:text-emerald-300">
+        <p className="mt-3 text-xs text-text-faint">
+          <Link href="/vocal-plan" className="text-accent hover:text-accent">
             View your 90-day plan &rarr;
           </Link>
         </p>
       )}
 
-      <p className="mt-3 text-xs text-neutral-600">
+      <p className="mt-3 text-xs text-text-faint">
         This is a self-selected focus, not a diagnosis — VepAIr has no way to know whether you
         ever had a vocal injury. You can change it at any time. See MEDICAL_SAFETY.md.
       </p>

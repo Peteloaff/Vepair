@@ -25,7 +25,7 @@ export function ReferenceTonePlayer() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-4 text-xs text-emerald-400 hover:text-emerald-300"
+        className="mb-4 text-xs text-accent hover:text-accent"
       >
         Need a starting note? Tap one to hear it &rarr;
       </button>
@@ -33,13 +33,13 @@ export function ReferenceTonePlayer() {
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+    <div className="mb-4 rounded-lg border border-border bg-surface/60 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-xs text-neutral-400">Tap a note to hear it (2s)</p>
+        <p className="text-xs text-text-dim">Tap a note to hear it (2s)</p>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-xs text-neutral-500 hover:text-neutral-300"
+          className="text-xs text-text-faint hover:text-text-dim"
         >
           Hide
         </button>
@@ -53,8 +53,8 @@ export function ReferenceTonePlayer() {
             onClick={() => handlePlay(label, frequencyHz)}
             className={`rounded-md border px-2 py-1.5 text-xs font-medium disabled:opacity-40 ${
               playing === label
-                ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                : "border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border-strong text-text-dim hover:bg-surface-2"
             }`}
           >
             {label}
@@ -63,7 +63,7 @@ export function ReferenceTonePlayer() {
       </div>
       <Link
         href="/tone-match"
-        className="mt-2 block text-xs text-emerald-400 hover:text-emerald-300"
+        className="mt-2 block text-xs text-accent hover:text-accent"
       >
         Want to practice matching pitch on its own? Try Tone Match &rarr;
       </Link>

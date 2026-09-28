@@ -36,12 +36,12 @@ export function NotificationsConsent() {
   }
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
     <div>
-      <span className="mb-1 block text-xs text-neutral-400">
+      <span className="mb-1 block text-xs text-text-dim">
         Would you like to receive notifications and updates from VepAIr? If you opt in, we may
         use your contact information to reach you — see PRIVACY.md. You can change this any
         time.
@@ -60,15 +60,15 @@ export function NotificationsConsent() {
             onClick={() => choose(val)}
             className={`rounded-lg border px-3 py-1.5 text-xs disabled:opacity-50 ${
               granted === val
-                ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                : "border-neutral-700 text-neutral-400 hover:bg-neutral-800"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border-strong text-text-dim hover:bg-surface-2"
             }`}
           >
             {text}
           </button>
         ))}
       </div>
-      {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
+      {error && <p className="mt-2 text-xs text-danger">{error}</p>}
     </div>
   );
 }

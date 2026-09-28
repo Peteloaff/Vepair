@@ -31,7 +31,7 @@ function ResetPasswordForm() {
 
   if (done) {
     return (
-      <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-3 text-sm text-neutral-300">
+      <p className="rounded-lg border border-border bg-surface/60 px-3 py-3 text-sm text-text-dim">
         Password updated. Redirecting to log in...
       </p>
     );
@@ -40,7 +40,7 @@ function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="token" className="mb-1 block text-xs text-neutral-400">
+        <label htmlFor="token" className="mb-1 block text-xs text-text-dim">
           Reset token
         </label>
         <input
@@ -48,15 +48,15 @@ function ResetPasswordForm() {
           required
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-text-faint">
           Paste the token from the reset email (dev: check the API server log).
         </p>
       </div>
 
       <div>
-        <label htmlFor="newPassword" className="mb-1 block text-xs text-neutral-400">
+        <label htmlFor="newPassword" className="mb-1 block text-xs text-text-dim">
           New password
         </label>
         <input
@@ -67,18 +67,18 @@ function ResetPasswordForm() {
           autoComplete="new-password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+        className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
       >
         {submitting ? "Updating..." : "Update password"}
       </button>
@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Set a new password</h1>
-        <p className="mb-8 text-sm text-neutral-400">
+        <p className="mb-8 text-sm text-text-dim">
           Enter the reset token you received and choose a new password.
         </p>
 
@@ -99,8 +99,8 @@ export default function ResetPasswordPage() {
           <ResetPasswordForm />
         </Suspense>
 
-        <div className="mt-6 text-xs text-neutral-500">
-          <Link href="/login" className="hover:text-neutral-300">
+        <div className="mt-6 text-xs text-text-faint">
+          <Link href="/login" className="hover:text-text-dim">
             Back to log in
           </Link>
         </div>

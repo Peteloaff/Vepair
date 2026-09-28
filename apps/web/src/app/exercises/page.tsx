@@ -265,36 +265,36 @@ function ExercisesFlow() {
     return (
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Voice Exercises</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           A routine built from today&apos;s check-in, recent recordings, and recovery status —
           never the same every day.
         </p>
         {error && (
-          <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+          <p className="mb-4 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
         )}
         {restCheck?.rest_day_recommended && (
-          <div className="mb-4 rounded-lg bg-red-950/40 px-4 py-3 text-sm text-red-300">
+          <div className="mb-4 rounded-lg bg-danger-faint px-4 py-3 text-sm text-danger">
             {restCheck.rest_day_reason}
           </div>
         )}
-        <p className="mb-3 text-sm text-neutral-300">How much time do you have?</p>
+        <p className="mb-3 text-sm text-text-dim">How much time do you have?</p>
         <div className="mb-6 grid grid-cols-2 gap-3">
           {ROUTINE_LENGTHS_MINUTES.map((minutes) => (
             <button
               key={minutes}
               type="button"
               onClick={() => chooseLength(minutes)}
-              className="rounded-lg border border-neutral-700 px-4 py-3 text-sm hover:border-emerald-600 hover:bg-neutral-800"
+              className="rounded-lg border border-border-strong px-4 py-3 text-sm hover:border-accent hover:bg-surface-2"
             >
               {minutes} minutes
             </button>
           ))}
         </div>
 
-        <p className="mb-2 text-xs text-neutral-500">
+        <p className="mb-2 text-xs text-text-faint">
           Live coaching feedback frequency (while you exercise)
         </p>
-        <div className="flex gap-1 rounded-lg border border-neutral-800 p-1 text-xs">
+        <div className="flex gap-1 rounded-lg border border-border p-1 text-xs">
           {(["frequent", "normal", "minimal"] as const).map((f) => (
             <button
               key={f}
@@ -302,8 +302,8 @@ function ExercisesFlow() {
               onClick={() => setFeedbackFrequency(f)}
               className={`flex-1 rounded-md px-2.5 py-1.5 capitalize ${
                 feedbackFrequency === f
-                  ? "bg-emerald-500 text-neutral-950"
-                  : "text-neutral-400 hover:bg-neutral-800"
+                  ? "bg-accent text-accent-ink"
+                  : "text-text-dim hover:bg-surface-2"
               }`}
             >
               {f}
@@ -315,17 +315,17 @@ function ExercisesFlow() {
   }
 
   if (phase === "loading") {
-    return <p className="text-sm text-neutral-500">Building today&apos;s routine...</p>;
+    return <p className="text-sm text-text-faint">Building today&apos;s routine...</p>;
   }
 
   if (phase === "error") {
     return (
       <div className="mx-auto w-full max-w-lg text-sm">
-        <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-red-300">{error}</p>
+        <p className="mb-4 rounded-lg bg-danger-faint px-3 py-2 text-danger">{error}</p>
         <button
           type="button"
           onClick={() => setPhase("choose-length")}
-          className="rounded-lg border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 hover:bg-surface-2"
         >
           Try again
         </button>
@@ -337,16 +337,16 @@ function ExercisesFlow() {
     return (
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-4 text-xl font-semibold">Before you start</h1>
-        <div className="mb-6 rounded-lg bg-red-950/40 px-4 py-3 text-sm text-red-300">
+        <div className="mb-6 rounded-lg bg-danger-faint px-4 py-3 text-sm text-danger">
           {routine.safety_message}
         </div>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           Today&apos;s routine has been kept to the gentlest exercises only.
         </p>
         <button
           type="button"
           onClick={beginAfterSafetyNotice}
-          className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+          className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
         >
           Continue
         </button>
@@ -359,13 +359,13 @@ function ExercisesFlow() {
     const profile = coachingProfileForCategory(exercise.category);
     return (
       <div className="mx-auto w-full max-w-lg">
-        <p className="mb-1 text-xs text-neutral-500">
+        <p className="mb-1 text-xs text-text-faint">
           Exercise {stepIndex + 1} of {routine.items.length} &middot;{" "}
           {INTENSITY_LABEL[routine.intensity_cap]} routine
         </p>
         {stepIndex === 0 && routine.reasons.length > 0 && (
-          <details className="mb-3 text-xs text-neutral-500">
-            <summary className="cursor-pointer hover:text-neutral-300">
+          <details className="mb-3 text-xs text-text-faint">
+            <summary className="cursor-pointer hover:text-text-dim">
               Why this routine?
             </summary>
             <ul className="mt-1 list-disc space-y-1 pl-4">
@@ -376,20 +376,20 @@ function ExercisesFlow() {
           </details>
         )}
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">{exercise.name}</h1>
-        <p className="mb-4 text-sm text-neutral-400">{exercise.purpose}</p>
+        <p className="mb-4 text-sm text-text-dim">{exercise.purpose}</p>
 
-        <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/60 p-4 text-sm text-neutral-200">
+        <div className="mb-4 rounded-lg border border-border bg-surface/60 p-4 text-sm text-text">
           {exercise.instructions}
         </div>
 
         {exercise.contraindications && (
-          <div className="mb-4 rounded-lg bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
+          <div className="mb-4 rounded-lg bg-warning-faint px-3 py-2 text-xs text-warning">
             {exercise.contraindications}
           </div>
         )}
 
         {routine.exercise_tone_targets[exercise.id] && (
-          <div className="mb-4 rounded-lg bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300">
+          <div className="mb-4 rounded-lg bg-accent-faint px-3 py-2 text-xs text-accent">
             Your coach&apos;s target for this exercise:{" "}
             {routine.exercise_tone_targets[exercise.id]}
           </div>
@@ -397,19 +397,19 @@ function ExercisesFlow() {
 
         {profile !== "none" && <ReferenceTonePlayer />}
 
-        <p className="mb-2 text-center font-mono text-3xl tabular-nums text-neutral-200">
+        <p className="mb-2 text-center font-mono text-3xl tabular-nums text-text">
           {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
         </p>
 
         <div className="mb-4 flex min-h-10 items-center justify-center">
           {liveFeedback ? (
-            <p className="rounded-lg bg-emerald-950/40 px-3 py-1.5 text-center text-sm text-emerald-300">
+            <p className="rounded-lg bg-accent-faint px-3 py-1.5 text-center text-sm text-accent">
               {liveFeedback}
             </p>
           ) : profile !== "none" && micStatus !== "denied" && micStatus !== "unavailable" ? (
-            <p className="text-center text-xs text-neutral-600">Live coaching listening...</p>
+            <p className="text-center text-xs text-text-faint">Live coaching listening...</p>
           ) : profile !== "none" ? (
-            <p className="text-center text-xs text-neutral-600">
+            <p className="text-center text-xs text-text-faint">
               Live coaching unavailable (microphone access {micStatus === "denied" ? "denied" : "not available"}) — continue at your own pace.
             </p>
           ) : null}
@@ -420,7 +420,7 @@ function ExercisesFlow() {
             type="button"
             onClick={() => logCurrentExercise(false, null)}
             disabled={submitting}
-            className="flex-1 rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Skip
           </button>
@@ -428,7 +428,7 @@ function ExercisesFlow() {
             type="button"
             onClick={() => logCurrentExercise(true, null)}
             disabled={submitting}
-            className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Saving..." : "Mark done"}
           </button>
@@ -443,7 +443,7 @@ function ExercisesFlow() {
     return (
       <div className="mx-auto w-full max-w-lg text-center">
         <h1 className="mb-2 text-2xl font-semibold tracking-tight">Routine complete</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           {completedCount} of {logged.length} exercise{logged.length === 1 ? "" : "s"} completed.
         </p>
         <ul className="mb-6 space-y-2 text-left text-sm">
@@ -452,18 +452,18 @@ function ExercisesFlow() {
             return (
               <li
                 key={l.exercise.id}
-                className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2"
+                className="rounded-lg border border-border bg-surface/60 px-3 py-2"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-300">{l.exercise.name}</span>
-                  <span className={l.completed ? "text-emerald-400" : "text-neutral-500"}>
+                  <span className="text-text-dim">{l.exercise.name}</span>
+                  <span className={l.completed ? "text-accent" : "text-text-faint"}>
                     {l.completed ? "Done" : "Skipped"}
                   </span>
                 </div>
                 {trend && (trend.direction === "improving" || trend.direction === "declining") && (
                   <p
                     className={`mt-1 text-xs ${
-                      trend.direction === "improving" ? "text-emerald-400" : "text-amber-400"
+                      trend.direction === "improving" ? "text-accent" : "text-warning"
                     }`}
                   >
                     {trend.direction === "improving" ? "Trending better" : "Trending down"} over
@@ -477,13 +477,13 @@ function ExercisesFlow() {
         <div className="flex justify-center gap-2">
           <Link
             href="/share"
-            className="inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            className="inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
           >
             Share My Progress
           </Link>
           <Link
             href="/"
-            className="inline-block rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+            className="inline-block rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
           >
             Back to dashboard
           </Link>

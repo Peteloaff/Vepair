@@ -187,28 +187,28 @@ function Dashboard({
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">VepAIr</h1>
-            <p className="mt-1 text-sm text-neutral-400">
+            <p className="mt-1 text-sm text-text-dim">
               Signed in as a coach{user?.email ? ` (${user.email})` : ""}.
             </p>
           </div>
           <Link
             href="/coach"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
           >
             Go to Coach Portal &rarr;
           </Link>
         </div>
 
-        <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-          <h2 className="mb-2 text-sm font-medium text-neutral-200">Coach Portal</h2>
-          <p className="text-sm text-neutral-400">
+        <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+          <h2 className="mb-2 text-sm font-medium text-text">Coach Portal</h2>
+          <p className="text-sm text-text-dim">
             Manage your Vrotégé roster, send invites, assign training, and write notes from your
             Coach Portal — a coach account doesn&apos;t have its own voice check-in or exercise
             data the way a Vrotégé account does.
           </p>
           <Link
             href="/coach"
-            className="mt-4 inline-block rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+            className="mt-4 inline-block rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
           >
             Go to Coach Portal &rarr;
           </Link>
@@ -222,42 +222,42 @@ function Dashboard({
       <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">VepAIr</h1>
-          <p className="mt-1 text-sm text-neutral-400">Today&apos;s Vocal Check-In</p>
+          <p className="mt-1 text-sm text-text-dim">Today&apos;s Vocal Check-In</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:justify-end">
           <Link
             href="/progress"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
           >
             Progress
           </Link>
           <Link
             href="/vocal-plan"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
           >
             Vocal plan
           </Link>
           <Link
             href="/vocal-range"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
           >
             Vocal range
           </Link>
           <Link
             href="/exercises"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
           >
             Voice exercises
           </Link>
           <Link
             href="/tone-match"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
           >
             Tone Match
           </Link>
           <Link
             href="/recordings"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
           >
             Recordings
           </Link>
@@ -272,11 +272,11 @@ function Dashboard({
           {(pendingInviteCount > 0 || hasCoachConnection) && (
             <Link
               href="/coach-access"
-              className="relative rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+              className="relative rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
             >
               Coach Access
               {pendingInviteCount + unreadMessageCount > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
                   {pendingInviteCount + unreadMessageCount}
                 </span>
               )}
@@ -284,7 +284,7 @@ function Dashboard({
           )}
           <Link
             href="/record"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
           >
             Record voice sample
           </Link>
@@ -294,104 +294,104 @@ function Dashboard({
       {profileMissing && (
         <Link
           href="/onboarding"
-          className="mt-4 block rounded-xl border border-emerald-800 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-200 hover:bg-emerald-950/50"
+          className="mt-4 block rounded-xl border border-accent bg-accent-faint px-4 py-3 text-sm text-accent hover:bg-accent-faint"
         >
           Finish setting up your profile &rarr;
         </Link>
       )}
 
       {restCheck?.rest_day_recommended && (
-        <div className="mt-4 rounded-xl bg-red-950/40 px-4 py-3 text-sm text-red-300">
+        <div className="mt-4 rounded-xl bg-danger-faint px-4 py-3 text-sm text-danger">
           {restCheck.rest_day_reason}
         </div>
       )}
 
       {loadError && (
-        <p className="mt-4 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">
+        <p className="mt-4 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">
           {loadError}
         </p>
       )}
 
-      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">VepAIr Score</h2>
+      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-text">VepAIr Score</h2>
         {recoveryScoreError ? (
-          <p className="text-sm text-neutral-500">Could not load today&apos;s score.</p>
+          <p className="text-sm text-text-faint">Could not load today&apos;s score.</p>
         ) : (
           <RecoveryScoreCard score={recoveryScore} />
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Your Plan</h2>
+      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-text">Your Plan</h2>
         {planError ? (
-          <p className="text-sm text-neutral-500">Could not load your vocal plan.</p>
+          <p className="text-sm text-text-faint">Could not load your vocal plan.</p>
         ) : planView === null ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-text-faint">Loading...</p>
         ) : planView.plan ? (
           <div>
-            <p className="text-sm text-neutral-300">
+            <p className="text-sm text-text-dim">
               {TRACK_LABEL[planView.plan.track] ?? planView.plan.track} &middot;{" "}
               {planView.plan.target_milestones.description}
             </p>
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-text-faint">
               {daysRemaining(planView.plan.target_end_date)} days left in this 90-day plan
             </p>
             <Link
               href="/exercises"
-              className="mt-3 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+              className="mt-3 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
             >
               Start today&apos;s routine &rarr;
             </Link>
           </div>
         ) : (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-text-faint">
             Complete your profile and record a voice sample plus a{" "}
-            <Link href="/vocal-range" className="text-emerald-400 hover:text-emerald-300">
+            <Link href="/vocal-range" className="text-accent hover:text-accent">
               vocal range test
             </Link>{" "}
             to get your custom 90-day plan.{" "}
-            <Link href="/onboarding" className="text-emerald-400 hover:text-emerald-300">
+            <Link href="/onboarding" className="text-accent hover:text-accent">
               Get started &rarr;
             </Link>
           </p>
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
         {history === null ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-text-faint">Loading...</p>
         ) : todaysCheckIn && !editingToday ? (
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-neutral-200">
+              <h2 className="text-sm font-medium text-text">
                 You&apos;ve checked in today
               </h2>
               <button
                 type="button"
                 onClick={() => setEditingToday(true)}
-                className="text-xs text-emerald-400 hover:text-emerald-300"
+                className="text-xs text-accent hover:text-accent"
               >
                 Edit
               </button>
             </div>
             <dl className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <dt className="text-xs text-neutral-500">Voice quality</dt>
-                <dd className="text-neutral-200">{todaysCheckIn.voice_quality ?? "—"}</dd>
+                <dt className="text-xs text-text-faint">Voice quality</dt>
+                <dd className="text-text">{todaysCheckIn.voice_quality ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs text-neutral-500">Fatigue</dt>
-                <dd className="text-neutral-200">{todaysCheckIn.fatigue ?? "—"}</dd>
+                <dt className="text-xs text-text-faint">Fatigue</dt>
+                <dd className="text-text">{todaysCheckIn.fatigue ?? "—"}</dd>
               </div>
               <div>
-                <dt className="text-xs text-neutral-500">Throat discomfort</dt>
-                <dd className="text-neutral-200">{todaysCheckIn.throat_discomfort ?? "—"}</dd>
+                <dt className="text-xs text-text-faint">Throat discomfort</dt>
+                <dd className="text-text">{todaysCheckIn.throat_discomfort ?? "—"}</dd>
               </div>
             </dl>
           </div>
         ) : (
           <>
-            <h2 className="mb-4 text-sm font-medium text-neutral-200">
+            <h2 className="mb-4 text-sm font-medium text-text">
               {todaysCheckIn ? "Edit today's check-in" : "How's your voice today?"}
             </h2>
             <CheckInForm
@@ -403,19 +403,19 @@ function Dashboard({
         )}
       </section>
 
-      <section className="mt-10 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Your vocal baseline</h2>
+      <section className="mt-10 rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-text">Your vocal baseline</h2>
         {baselineError ? (
-          <p className="text-sm text-neutral-500">Could not load your vocal baseline.</p>
+          <p className="text-sm text-text-faint">Could not load your vocal baseline.</p>
         ) : (
           <VocalBaseline summary={baseline} />
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Your target range</h2>
+      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-text">Your target range</h2>
         {goalError ? (
-          <p className="text-sm text-neutral-500">Could not load your target tones.</p>
+          <p className="text-sm text-text-faint">Could not load your target tones.</p>
         ) : (
           <GoalTonesCard goal={goal} />
         )}
@@ -424,7 +424,7 @@ function Dashboard({
       <section className="mt-10">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-medium tracking-tight">Trend</h2>
-          <div className="flex gap-1 rounded-lg border border-neutral-800 p-1 text-xs">
+          <div className="flex gap-1 rounded-lg border border-border p-1 text-xs">
             {RANGE_OPTIONS.map((opt) => (
               <button
                 key={opt.days}
@@ -432,8 +432,8 @@ function Dashboard({
                 onClick={() => setRangeDays(opt.days)}
                 className={`rounded-md px-2.5 py-1 ${
                   rangeDays === opt.days
-                    ? "bg-emerald-500 text-neutral-950"
-                    : "text-neutral-400 hover:bg-neutral-800"
+                    ? "bg-accent text-accent-ink"
+                    : "text-text-dim hover:bg-surface-2"
                 }`}
               >
                 {opt.label}
@@ -450,9 +450,9 @@ function Dashboard({
           yMax={10}
           yTicks={[1, 5, 10]}
         />
-        <p className="mt-3 text-xs text-neutral-500">
+        <p className="mt-3 text-xs text-text-faint">
           Fatigue, throat discomfort, sleep, and longer ranges live on{" "}
-          <Link href="/progress" className="text-emerald-400 hover:text-emerald-300">
+          <Link href="/progress" className="text-accent hover:text-accent">
             Progress
           </Link>
           .
@@ -477,7 +477,7 @@ function LandingChooser() {
           priority
         />
         <h1 className="text-3xl font-semibold tracking-tight">Welcome to VepAIr</h1>
-        <p className="mt-2 text-sm text-neutral-400">
+        <p className="mt-2 text-sm text-text-dim">
           AI-assisted vocal recovery, conditioning, and performance &mdash; for Vrotégés and the
           coaches who train them.
         </p>
@@ -485,34 +485,34 @@ function LandingChooser() {
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/signup"
-            className="group rounded-2xl border border-neutral-800 bg-neutral-900/60 p-8 text-left transition hover:border-emerald-700 hover:bg-neutral-900"
+            className="group rounded-2xl border border-border bg-surface/60 p-8 text-left transition hover:border-accent hover:bg-surface"
           >
-            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Vrotégé</p>
-            <p className="mt-2 text-sm text-neutral-400">
+            <p className="text-lg font-semibold text-text">I&apos;m a Vrotégé</p>
+            <p className="mt-2 text-sm text-text-dim">
               Track your voice, get personalized daily exercises, and train safely with VepAIr.
             </p>
-            <span className="mt-4 inline-block text-sm font-medium text-emerald-400 group-hover:text-emerald-300">
+            <span className="mt-4 inline-block text-sm font-medium text-accent group-hover:text-accent">
               Get started &rarr;
             </span>
           </Link>
 
           <Link
             href="/coach-signup"
-            className="group rounded-2xl border border-neutral-800 bg-neutral-900/60 p-8 text-left transition hover:border-emerald-700 hover:bg-neutral-900"
+            className="group rounded-2xl border border-border bg-surface/60 p-8 text-left transition hover:border-accent hover:bg-surface"
           >
-            <p className="text-lg font-semibold text-neutral-100">I&apos;m a Coach</p>
-            <p className="mt-2 text-sm text-neutral-400">
+            <p className="text-lg font-semibold text-text">I&apos;m a Coach</p>
+            <p className="mt-2 text-sm text-text-dim">
               Invite Vrotégés, assign custom training, and follow their progress in real time.
             </p>
-            <span className="mt-4 inline-block text-sm font-medium text-emerald-400 group-hover:text-emerald-300">
+            <span className="mt-4 inline-block text-sm font-medium text-accent group-hover:text-accent">
               Get started &rarr;
             </span>
           </Link>
         </div>
 
-        <p className="mt-8 text-sm text-neutral-500">
+        <p className="mt-8 text-sm text-text-faint">
           Already have an account?{" "}
-          <Link href="/login" className="text-emerald-400 hover:text-emerald-300">
+          <Link href="/login" className="text-accent hover:text-accent">
             Log in
           </Link>
         </p>
@@ -571,7 +571,7 @@ export default function Home() {
   ) {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-text-faint">Loading...</p>
       </main>
     );
   }
@@ -584,10 +584,10 @@ export default function Home() {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
         <div className="max-w-sm text-center">
-          <h1 className="mb-2 text-lg font-semibold text-neutral-100">
+          <h1 className="mb-2 text-lg font-semibold text-text">
             Your account is pending activation
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-text-dim">
             Your coach account has been created, but isn&apos;t active yet. Contact us to get
             started.
           </p>

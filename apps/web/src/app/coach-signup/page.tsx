@@ -47,13 +47,13 @@ export default function CoachSignupPage() {
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Create a coach account</h1>
-        <p className="mb-8 text-sm text-neutral-400">
+        <p className="mb-8 text-sm text-text-dim">
           For vocal coaches and studios — separate from a regular VepAIr account.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="displayName" className="mb-1 block text-xs text-neutral-400">
+            <label htmlFor="displayName" className="mb-1 block text-xs text-text-dim">
               Your name
             </label>
             <input
@@ -61,24 +61,24 @@ export default function CoachSignupPage() {
               required
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
 
           <div>
-            <label htmlFor="studioName" className="mb-1 block text-xs text-neutral-400">
+            <label htmlFor="studioName" className="mb-1 block text-xs text-text-dim">
               Studio name (optional)
             </label>
             <input
               id="studioName"
               value={studioName}
               onChange={(e) => setStudioName(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
 
           <div>
-            <label htmlFor="email" className="mb-1 block text-xs text-neutral-400">
+            <label htmlFor="email" className="mb-1 block text-xs text-text-dim">
               Email
             </label>
             <input
@@ -88,12 +88,12 @@ export default function CoachSignupPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-xs text-neutral-400">
+            <label htmlFor="password" className="mb-1 block text-xs text-text-dim">
               Password
             </label>
             <input
@@ -104,35 +104,35 @@ export default function CoachSignupPage() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
-            <p className="mt-1 text-xs text-neutral-500">At least 8 characters.</p>
+            <p className="mt-1 text-xs text-text-faint">At least 8 characters.</p>
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+            <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
           >
             {submitting ? "Creating account..." : "Create coach account"}
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-neutral-500">
+        <p className="mt-4 text-xs text-text-faint">
           By creating an account, you agree to our{" "}
-          <Link href="/terms" className="underline hover:text-neutral-300">
+          <Link href="/terms" className="underline hover:text-text-dim">
             Terms of Service
           </Link>
           .
         </p>
 
-        <div className="mt-6 text-xs text-neutral-500">
+        <div className="mt-6 text-xs text-text-faint">
           Not a coach?{" "}
-          <Link href="/signup" className="text-neutral-300 hover:text-neutral-100">
+          <Link href="/signup" className="text-text-dim hover:text-text">
             Sign up as a Vrotégé
           </Link>
         </div>

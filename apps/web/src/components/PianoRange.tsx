@@ -47,10 +47,10 @@ export function PianoRange({
 
   return (
     <div>
-      <div className="relative h-16 w-full overflow-hidden rounded-lg border border-neutral-800">
+      <div className="relative h-16 w-full overflow-hidden rounded-lg border border-border">
         {highlightStart !== null && highlightEnd !== null && (
           <div
-            className="absolute top-0 h-full bg-emerald-500/20"
+            className="absolute top-0 h-full bg-accent/20"
             style={{ left: `${highlightStart}%`, width: `${highlightEnd - highlightStart}%` }}
           />
         )}
@@ -58,33 +58,33 @@ export function PianoRange({
           {naturalKeys.map((midi) => (
             <div
               key={midi}
-              className="flex-1 border-r border-neutral-800 last:border-r-0"
+              className="flex-1 border-r border-border last:border-r-0"
               title={midiToNoteName(midi)}
             />
           ))}
         </div>
         {historicalBestHighNote && currentHighMidi !== noteNameToMidi(historicalBestHighNote) && (
           <div
-            className="absolute top-0 h-full w-0.5 bg-amber-400"
+            className="absolute top-0 h-full w-0.5 bg-warning"
             style={{ left: `${xForMidi(noteNameToMidi(historicalBestHighNote))}%` }}
             title={`Historical best: ${historicalBestHighNote}`}
           />
         )}
         {stretchTargetNote && (
           <div
-            className="absolute top-0 h-full w-0.5 border-l-2 border-dashed border-emerald-400"
+            className="absolute top-0 h-full w-0.5 border-l-2 border-dashed border-accent"
             style={{ left: `${xForMidi(noteNameToMidi(stretchTargetNote))}%` }}
             title={`Optional stretch target: ${stretchTargetNote}`}
           />
         )}
       </div>
-      <div className="mt-1 flex justify-between text-xs text-neutral-600">
+      <div className="mt-1 flex justify-between text-xs text-text-faint">
         <span>{midiToNoteName(LOW_MIDI)}</span>
         <span>{midiToNoteName(HIGH_MIDI)}</span>
       </div>
       {historicalBestLowNote && (
-        <p className="mt-2 text-xs text-neutral-500">
-          <span className="inline-block h-2 w-2 rounded-full bg-amber-400 align-middle" />{" "}
+        <p className="mt-2 text-xs text-text-faint">
+          <span className="inline-block h-2 w-2 rounded-full bg-warning align-middle" />{" "}
           Historical best marker shown when different from your current range.
         </p>
       )}

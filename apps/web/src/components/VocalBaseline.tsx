@@ -16,10 +16,10 @@ const CONFIDENCE_COPY: Record<string, string> = {
 };
 
 function confidenceColor(label: string): string {
-  if (label === "established") return "text-emerald-400";
-  if (label === "developing") return "text-emerald-300";
-  if (label === "building") return "text-amber-400";
-  return "text-neutral-500";
+  if (label === "established") return "text-accent";
+  if (label === "developing") return "text-accent";
+  if (label === "building") return "text-warning";
+  return "text-text-faint";
 }
 
 function BaselineStat({ baseline }: { baseline: Baseline }) {
@@ -27,8 +27,8 @@ function BaselineStat({ baseline }: { baseline: Baseline }) {
   if (!meta || baseline.median_value === null) return null;
   return (
     <div>
-      <dt className="text-xs text-neutral-500">{meta.label}</dt>
-      <dd className="text-neutral-200">
+      <dt className="text-xs text-text-faint">{meta.label}</dt>
+      <dd className="text-text">
         {baseline.median_value.toFixed(meta.decimals)}
         {meta.unit}
       </dd>
@@ -38,12 +38,12 @@ function BaselineStat({ baseline }: { baseline: Baseline }) {
 
 export function VocalBaseline({ summary }: { summary: BaselineSummary | null }) {
   if (summary === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   if (summary.usable_session_count === 0) {
     return (
-      <p className="text-sm text-neutral-500">
+      <p className="text-sm text-text-faint">
         Record a few sustained-vowel samples to start building your personal vocal baseline —
         it&apos;s compared only against your own voice over time, never anyone else&apos;s.
       </p>
@@ -62,12 +62,12 @@ export function VocalBaseline({ summary }: { summary: BaselineSummary | null }) 
             summary.voice_confidence_label.slice(1)}{" "}
           ({summary.voice_confidence_pct}%)
         </span>
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-text-faint">
           {summary.usable_session_count} usable session
           {summary.usable_session_count === 1 ? "" : "s"}
         </span>
       </div>
-      <p className="mb-4 text-xs text-neutral-500">
+      <p className="mb-4 text-xs text-text-faint">
         {CONFIDENCE_COPY[summary.voice_confidence_label]}
       </p>
       {displayedMetrics.length > 0 && (
@@ -77,7 +77,7 @@ export function VocalBaseline({ summary }: { summary: BaselineSummary | null }) 
           ))}
         </dl>
       )}
-      <p className="mt-4 text-xs text-neutral-600">
+      <p className="mt-4 text-xs text-text-faint">
         These numbers describe your own recent recordings, not a clinical reference range — see
         MEDICAL_SAFETY.md.
       </p>

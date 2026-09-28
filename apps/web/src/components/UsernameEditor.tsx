@@ -53,13 +53,13 @@ export function UsernameEditor() {
   }
 
   if (current === undefined) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
-      <label htmlFor="username" className="mb-1 block text-xs text-neutral-400">
-        Username <span className="text-neutral-600">(optional)</span>
+      <label htmlFor="username" className="mb-1 block text-xs text-text-dim">
+        Username <span className="text-text-faint">(optional)</span>
       </label>
       <div className="flex flex-wrap gap-2">
         <input
@@ -72,20 +72,20 @@ export function UsernameEditor() {
           placeholder="e.g. vrotege_pete"
           minLength={3}
           maxLength={30}
-          className="w-full max-w-xs rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full max-w-xs rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
       </div>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-text-faint">
         {current ? (
           <>
-            Currently <span className="text-neutral-300">{current}</span>. Clear the field and
+            Currently <span className="text-text-dim">{current}</span>. Clear the field and
             save to remove it.
           </>
         ) : (
@@ -93,10 +93,10 @@ export function UsernameEditor() {
         )}
       </p>
       {error && (
-        <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
       {saved && (
-        <p className="rounded-lg bg-emerald-950/40 px-3 py-2 text-xs text-emerald-300">Saved.</p>
+        <p className="rounded-lg bg-accent-faint px-3 py-2 text-xs text-accent">Saved.</p>
       )}
     </form>
   );

@@ -17,7 +17,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   if (status === "loading") {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-text-faint">Loading...</p>
       </main>
     );
   }

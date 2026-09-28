@@ -42,7 +42,7 @@ function MessagesContent() {
   }
 
   if (error && messages === null) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   return (
@@ -54,7 +54,7 @@ function MessagesContent() {
       <div className="mt-8">
         <Link
           href={`/coach/singers/${params.singerId}`}
-          className="text-xs text-neutral-500 hover:text-neutral-300"
+          className="text-xs text-text-faint hover:text-text-dim"
         >
           &larr; Back to dashboard
         </Link>

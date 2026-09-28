@@ -44,30 +44,30 @@ function AdminOrganizationSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by org name, coach email, or coach name..."
-          className="w-full max-w-sm rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full max-w-sm rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
         >
           {loading ? "Searching..." : "Search"}
         </button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {results === null ? (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-text-faint">
           Enter a search term, or search with an empty query to list the most recent 100
           coach organizations.
         </p>
       ) : results.length === 0 ? (
-        <p className="text-sm text-neutral-500">No matching organizations.</p>
+        <p className="text-sm text-text-faint">No matching organizations.</p>
       ) : (
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-neutral-800 text-left text-neutral-400">
+            <tr className="border-b border-border text-left text-text-dim">
               <th className="py-2 pr-4">Organization</th>
               <th className="py-2 pr-4">Coach</th>
               <th className="py-2 pr-4">Coach Pro</th>
@@ -76,11 +76,11 @@ function AdminOrganizationSearch() {
           </thead>
           <tbody>
             {results.map((org) => (
-              <tr key={org.id} className="border-b border-neutral-900">
+              <tr key={org.id} className="border-b border-border">
                 <td className="py-2 pr-4">
                   <Link
                     href={`/admin/organizations/${org.id}`}
-                    className="underline hover:text-neutral-200"
+                    className="underline hover:text-text"
                   >
                     {org.name || "(unnamed)"}
                   </Link>
@@ -92,7 +92,7 @@ function AdminOrganizationSearch() {
                   {org.is_coach_pro_active ? (
                     "active"
                   ) : (
-                    <span className="text-amber-400">inactive</span>
+                    <span className="text-warning">inactive</span>
                   )}
                 </td>
                 <td className="py-2 pr-4">
@@ -115,12 +115,12 @@ export default function AdminOrganizationsPage() {
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="mb-1 text-2xl font-semibold tracking-tight">Organizations</h1>
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-text-dim">
                 Coach billing entities — one per coach account. Activate Coach Pro to unblock a
                 coach&apos;s account.
               </p>
             </div>
-            <Link href="/admin" className="text-sm underline hover:text-neutral-200">
+            <Link href="/admin" className="text-sm underline hover:text-text">
               ← Back to Admin
             </Link>
           </div>

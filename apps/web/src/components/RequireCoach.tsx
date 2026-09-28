@@ -39,7 +39,7 @@ export function RequireCoach({ children }: { children: React.ReactNode }) {
   if (status === "loading") {
     return (
       <main className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-neutral-500">Loading...</p>
+        <p className="text-sm text-text-faint">Loading...</p>
       </main>
     );
   }
@@ -52,10 +52,10 @@ export function RequireCoach({ children }: { children: React.ReactNode }) {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
         <div className="max-w-sm text-center">
-          <h1 className="mb-2 text-lg font-semibold text-neutral-100">
+          <h1 className="mb-2 text-lg font-semibold text-text">
             Your account is pending activation
           </h1>
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-text-dim">
             Your coach account has been created, but isn&apos;t active yet. Contact us to get
             started.
           </p>

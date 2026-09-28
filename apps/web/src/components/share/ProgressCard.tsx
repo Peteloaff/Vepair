@@ -26,20 +26,20 @@ function MetricBlock({
   basis: string;
 }) {
   return (
-    <div className="border-b border-neutral-800 py-6">
+    <div className="border-b border-border py-6">
       <div className="flex items-baseline justify-between">
-        <span className="text-2xl text-neutral-400">{label}</span>
-        <span className="text-xl text-neutral-600">{BASIS_LABEL[basis] ?? ""}</span>
+        <span className="text-2xl text-text-dim">{label}</span>
+        <span className="text-xl text-text-faint">{BASIS_LABEL[basis] ?? ""}</span>
       </div>
       <div className="mt-2 flex items-baseline justify-between">
         <div>
-          <span className="text-lg text-neutral-500">START </span>
-          <span className="text-3xl font-semibold text-neutral-300">{start}</span>
-          <span className="mx-4 text-2xl text-neutral-600">→</span>
-          <span className="text-lg text-neutral-500">NOW </span>
-          <span className="text-3xl font-semibold text-neutral-50">{now}</span>
+          <span className="text-lg text-text-faint">START </span>
+          <span className="text-3xl font-semibold text-text-dim">{start}</span>
+          <span className="mx-4 text-2xl text-text-faint">→</span>
+          <span className="text-lg text-text-faint">NOW </span>
+          <span className="text-3xl font-semibold text-text">{now}</span>
         </div>
-        <span className="text-3xl font-semibold text-emerald-300">
+        <span className="text-3xl font-semibold text-accent">
           {delta}
           {unit}
         </span>
@@ -86,19 +86,19 @@ export const ProgressCard = forwardRef<HTMLDivElement, { snapshot: ProgressSnaps
       <div
         ref={ref}
         style={{ width: 1080, height: 1920 }}
-        className="flex flex-col bg-neutral-950 px-16 py-20"
+        className="flex flex-col bg-canvas px-16 py-20"
       >
-        <p className="text-3xl font-medium tracking-[0.3em] text-emerald-400">MY PROGRESS</p>
-        <p className="mt-2 text-2xl text-neutral-500">HOW HAS MY VOICE CHANGED?</p>
+        <p className="text-3xl font-medium tracking-[0.3em] text-accent">MY PROGRESS</p>
+        <p className="mt-2 text-2xl text-text-faint">HOW HAS MY VOICE CHANGED?</p>
 
         {snapshot.insufficient_data ? (
           <div className="mt-24 flex flex-1 flex-col items-center justify-center text-center">
-            <p className="text-4xl font-semibold text-neutral-200">BUILDING YOUR BASELINE</p>
-            <p className="mt-6 text-2xl text-neutral-500">
+            <p className="text-4xl font-semibold text-text">BUILDING YOUR BASELINE</p>
+            <p className="mt-6 text-2xl text-text-faint">
               {snapshot.valid_session_count} valid session
               {snapshot.valid_session_count === 1 ? "" : "s"} recorded.
             </p>
-            <p className="mt-2 text-2xl text-neutral-500">
+            <p className="mt-2 text-2xl text-text-faint">
               Continue using VepAIr to unlock progress comparisons.
             </p>
           </div>
@@ -114,20 +114,20 @@ export const ProgressCard = forwardRef<HTMLDivElement, { snapshot: ProgressSnaps
 
             <div className="mt-8 grid grid-cols-3 gap-6 text-center">
               <div>
-                <p className="text-4xl font-bold text-neutral-50">{snapshot.days_tracked}</p>
-                <p className="mt-1 text-xl text-neutral-500">Days Tracked</p>
+                <p className="text-4xl font-bold text-text">{snapshot.days_tracked}</p>
+                <p className="mt-1 text-xl text-text-faint">Days Tracked</p>
               </div>
               <div>
-                <p className="text-4xl font-bold text-neutral-50">{snapshot.sessions_completed}</p>
-                <p className="mt-1 text-xl text-neutral-500">Sessions Completed</p>
+                <p className="text-4xl font-bold text-text">{snapshot.sessions_completed}</p>
+                <p className="mt-1 text-xl text-text-faint">Sessions Completed</p>
               </div>
               <div>
-                <p className="text-4xl font-bold text-neutral-50">
+                <p className="text-4xl font-bold text-text">
                   {snapshot.training_compliance_pct !== null
                     ? `${Math.round(snapshot.training_compliance_pct)}%`
                     : "—"}
                 </p>
-                <p className="mt-1 text-xl text-neutral-500">Training Compliance</p>
+                <p className="mt-1 text-xl text-text-faint">Training Compliance</p>
               </div>
             </div>
           </div>
@@ -137,9 +137,9 @@ export const ProgressCard = forwardRef<HTMLDivElement, { snapshot: ProgressSnaps
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element -- plain <img> renders reliably for html-to-image's DOM capture */}
             <img src="/brand/vepair-logo.png" alt="" width={40} height={40} />
-            <span className="text-3xl font-semibold tracking-tight text-neutral-100">VepAIr</span>
+            <span className="text-3xl font-semibold tracking-tight text-text">VepAIr</span>
           </div>
-          <span className="text-2xl text-neutral-500">
+          <span className="text-2xl text-text-faint">
             {new Date(snapshot.for_date).toLocaleDateString(undefined, {
               year: "numeric",
               month: "long",

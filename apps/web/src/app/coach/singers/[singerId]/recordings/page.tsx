@@ -46,9 +46,9 @@ function PlayableRecording({
 
   return (
     <li className="flex items-center justify-between text-sm">
-      <span className="text-neutral-300">{sampleType}</span>
+      <span className="text-text-dim">{sampleType}</span>
       {!audioAvailable ? (
-        <span className="text-xs text-neutral-600">Audio no longer available</span>
+        <span className="text-xs text-text-faint">Audio no longer available</span>
       ) : audioUrl ? (
         <audio controls autoPlay src={audioUrl} className="h-8" />
       ) : (
@@ -56,7 +56,7 @@ function PlayableRecording({
           type="button"
           onClick={play}
           disabled={loading}
-          className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-50"
         >
           {loading ? "Loading..." : error ? "Retry" : "Play"}
         </button>
@@ -83,11 +83,11 @@ function RecordingsContent() {
   }, [params.singerId]);
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (sessions === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
@@ -95,15 +95,15 @@ function RecordingsContent() {
       <h1 className="mb-6 text-2xl font-semibold tracking-tight">Recordings</h1>
 
       {sessions.length === 0 ? (
-        <p className="text-sm text-neutral-500">No recordings yet.</p>
+        <p className="text-sm text-text-faint">No recordings yet.</p>
       ) : (
         <div className="space-y-4">
           {sessions.map((session) => (
             <div
               key={session.id}
-              className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4"
+              className="rounded-xl border border-border bg-surface/60 p-4"
             >
-              <p className="mb-2 text-xs text-neutral-500">
+              <p className="mb-2 text-xs text-text-faint">
                 {new Date(session.started_at).toLocaleString()}
               </p>
               <ul className="space-y-2">
@@ -125,7 +125,7 @@ function RecordingsContent() {
       <div className="mt-8">
         <Link
           href={`/coach/singers/${params.singerId}`}
-          className="text-xs text-neutral-500 hover:text-neutral-300"
+          className="text-xs text-text-faint hover:text-text-dim"
         >
           &larr; Back to dashboard
         </Link>

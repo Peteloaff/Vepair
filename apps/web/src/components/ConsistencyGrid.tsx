@@ -9,7 +9,7 @@ export function ConsistencyGrid({ consistency }: { consistency: TrainingConsiste
           key={d.for_date}
           title={`${d.for_date}: ${d.sessions_completed} session${d.sessions_completed === 1 ? "" : "s"}`}
           className={`h-3 w-3 rounded-sm ${
-            d.sessions_completed > 0 ? "bg-emerald-500" : "bg-neutral-800"
+            d.sessions_completed > 0 ? "bg-accent" : "bg-surface-2"
           }`}
         />
       ))}

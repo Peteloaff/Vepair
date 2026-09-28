@@ -124,15 +124,15 @@ export function TrendChart({
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
+    <div className="rounded-2xl border border-border bg-surface/60 p-4">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-neutral-200">{title}</h3>
+        <h3 className="text-sm font-medium text-text">{title}</h3>
         {lastKnown && (
-          <span className="text-xs text-neutral-500">
-            latest: <span className="text-neutral-200">{lastKnown.value}</span>
+          <span className="text-xs text-text-faint">
+            latest: <span className="text-text">{lastKnown.value}</span>
             {delta !== null && firstKnown && (
               <span className="ml-1.5">
-                (<span className="text-neutral-300">{sign(delta)}{Math.abs(delta)}</span>{" "}
+                (<span className="text-text-dim">{sign(delta)}{Math.abs(delta)}</span>{" "}
                 vs {formatDate(firstKnown.date)})
               </span>
             )}
@@ -141,7 +141,7 @@ export function TrendChart({
       </div>
 
       {known.length === 0 ? (
-        <p className="py-10 text-center text-xs text-neutral-600">No data in this range yet.</p>
+        <p className="py-10 text-center text-xs text-text-faint">No data in this range yet.</p>
       ) : (
         <>
           <svg
@@ -227,11 +227,11 @@ export function TrendChart({
           <div className="relative h-0">
             {hovered && (
               <div
-                className="pointer-events-none absolute -top-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs shadow-lg"
+                className="pointer-events-none absolute -top-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border-strong bg-canvas px-2 py-1 text-xs shadow-lg"
                 style={{ left: `${(xFor(hoverIndex!) / WIDTH) * 100}%` }}
               >
-                <span className="text-neutral-500">{formatDate(hovered.date)}: </span>
-                <span className="font-medium text-neutral-100">
+                <span className="text-text-faint">{formatDate(hovered.date)}: </span>
+                <span className="font-medium text-text">
                   {hovered.value ?? "no data"}
                 </span>
               </div>
@@ -239,7 +239,7 @@ export function TrendChart({
           </div>
 
           {bridgePath && (
-            <p className="mt-1 text-xs text-neutral-600">
+            <p className="mt-1 text-xs text-text-faint">
               <span
                 className="mr-1 inline-block w-3 border-t border-dashed align-middle"
                 style={{ borderColor: color }}
@@ -251,15 +251,15 @@ export function TrendChart({
           <button
             type="button"
             onClick={() => setShowTable((s) => !s)}
-            className="mt-3 text-xs text-neutral-500 hover:text-neutral-300"
+            className="mt-3 text-xs text-text-faint hover:text-text-dim"
           >
             {showTable ? "Hide" : "View"} as table
           </button>
 
           {showTable && (
-            <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-neutral-800">
+            <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-border">
               <table className="w-full text-left text-xs">
-                <thead className="sticky top-0 bg-neutral-900 text-neutral-500">
+                <thead className="sticky top-0 bg-surface text-text-faint">
                   <tr>
                     <th className="px-2 py-1 font-normal">Date</th>
                     <th className="px-2 py-1 font-normal">{title}</th>
@@ -270,9 +270,9 @@ export function TrendChart({
                     .slice()
                     .reverse()
                     .map((p) => (
-                      <tr key={p.date} className="border-t border-neutral-800">
-                        <td className="px-2 py-1 text-neutral-400">{p.date}</td>
-                        <td className="px-2 py-1 text-neutral-200">{p.value}</td>
+                      <tr key={p.date} className="border-t border-border">
+                        <td className="px-2 py-1 text-text-dim">{p.date}</td>
+                        <td className="px-2 py-1 text-text">{p.value}</td>
                       </tr>
                     ))}
                 </tbody>

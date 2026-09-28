@@ -10,7 +10,7 @@ export default function UserGuidePage() {
       <main className="flex flex-1 flex-col px-6 py-6">
         <Link
           href="/help"
-          className="mb-4 inline-block w-fit text-xs text-neutral-500 hover:text-neutral-300"
+          className="mb-4 inline-block w-fit text-xs text-text-faint hover:text-text-dim"
         >
           &larr; Back to Help
         </Link>
@@ -23,7 +23,7 @@ export default function UserGuidePage() {
         <iframe
           srcDoc={USER_GUIDE_HTML}
           title="VepAIr User Guide"
-          className="min-h-[80vh] w-full flex-1 rounded-2xl border border-neutral-800"
+          className="min-h-[80vh] w-full flex-1 rounded-2xl border border-border"
         />
       </main>
     </RequireAuth>
