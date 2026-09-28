@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import UTC, date, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
@@ -16,12 +17,14 @@ from app.exercise_routine import (
 )
 from app.exercise_trends import compute_exercise_trends
 from app.models import Exercise, ExerciseResult, ExerciseSession, User
+from app.quick_routine import build_quick_routine_for_user
 from app.schemas_exercise import (
     ExerciseOut,
     ExerciseResultOut,
     ExerciseSessionCreate,
     ExerciseSessionOut,
     ExerciseSessionWithResultsOut,
+    QuickRoutineOut,
     RestCheckOut,
     RoutineOut,
 )
@@ -106,6 +109,24 @@ def get_routine(
     )
 
 
+@router.get("/quick-routine", response_model=QuickRoutineOut)
+def get_quick_routine(
+    kind: Literal["warm_up", "cool_down"] = Query(...),
+    for_date: date = Query(..., alias="date"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> QuickRoutineOut:
+    result = build_quick_routine_for_user(db, current_user.id, kind, for_date)
+    return QuickRoutineOut(
+        kind=result.kind,
+        intensity_cap=result.intensity_cap,
+        total_duration_seconds=result.total_duration_seconds,
+        safety_message=result.safety_message,
+        reasons=result.reasons,
+        items=[ExerciseOut(audio_demo_url=None, **vars(item)) for item in result.items],
+    )
+
+
 @router.get("/routine/rest-check", response_model=RestCheckOut)
 def get_rest_check(
     for_date: date = Query(..., alias="date"),
@@ -123,7 +144,9 @@ def create_exercise_session(
     db: Session = Depends(get_db),
 ) -> ExerciseSession:
     session = ExerciseSession(
-        user_id=current_user.id, routine_length_minutes=payload.routine_length_minutes
+        user_id=current_user.id,
+        routine_length_minutes=payload.routine_length_minutes,
+        session_type=payload.session_type,
     )
     db.add(session)
     db.commit()

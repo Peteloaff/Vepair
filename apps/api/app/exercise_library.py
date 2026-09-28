@@ -90,6 +90,73 @@ SEED_EXERCISES: list[ExerciseDef] = [
         expected_result="An even, controlled exhale without straining.",
     ),
     ExerciseDef(
+        name="Pursed-lip breathing",
+        category="Breathing",
+        purpose="Regulate airflow and slow the exhale — a standard breathing-regulation "
+        "technique used in respiratory and voice therapy.",
+        instructions=(
+            "Inhale slowly through your nose with your mouth closed. Purse your lips as if "
+            "about to whistle, then exhale slowly and evenly through them — roughly twice as "
+            "long as the inhale. Repeat for the full duration."
+        ),
+        duration_seconds=90,
+        difficulty="easy",
+        contraindications=None,
+        target_measurement=None,
+        expected_result="A slower, more controlled breathing rate with no sense of rushing.",
+    ),
+    ExerciseDef(
+        name="Sustained /s/ vs. /z/ breath check",
+        category="Breathing",
+        purpose="Notice how breath support compares between voiceless and voiced airflow — "
+        "adapted from a classic speech-language-pathology breath-support technique, used here "
+        "purely as a personal awareness exercise.",
+        instructions=(
+            "Take a relaxed breath, then sustain a quiet 'sss' for as long as feels comfortable. "
+            "Rest a moment, then sustain a 'zzz' the same way. Just notice how each one felt — "
+            "which took more effort, which lasted longer — no need to time or score it."
+        ),
+        duration_seconds=60,
+        difficulty="easy",
+        contraindications=None,
+        target_measurement=None,
+        expected_result="A noticed, personal sense of how voiceless and voiced airflow compare "
+        "today — not a number to hit.",
+    ),
+    ExerciseDef(
+        name="Extended exhale count",
+        category="Breathing",
+        purpose="Build exhale capacity gradually, at your own pace, over sessions.",
+        instructions=(
+            "Take a relaxed breath in, then exhale slowly while silently counting at a steady "
+            "pace. Notice the count you reach without straining — over future sessions, see if "
+            "that count grows on its own, without forcing it."
+        ),
+        duration_seconds=60,
+        difficulty="easy",
+        contraindications=(
+            "Stop counting the moment it starts to feel forced — the exhale should stay smooth."
+        ),
+        target_measurement=None,
+        expected_result="A steady, unforced exhale, with capacity building gradually over time.",
+    ),
+    ExerciseDef(
+        name="Relaxed breathing with tension release",
+        category="Breathing",
+        purpose="Release shoulder, neck, and jaw tension before phonation-heavy work — drawn "
+        "from resonant-voice-therapy practice.",
+        instructions=(
+            "Breathe slowly and naturally. With each exhale, consciously soften your shoulders, "
+            "unclench your jaw, and let your neck relax. Let each breath feel a little easier "
+            "than the last."
+        ),
+        duration_seconds=60,
+        difficulty="easy",
+        contraindications=None,
+        target_measurement=None,
+        expected_result="Noticeably less tension in the shoulders, neck, and jaw.",
+    ),
+    ExerciseDef(
         name="Gentle hum on a comfortable pitch",
         category="Gentle humming",
         purpose="Warm up voiced sound with minimal vocal fold effort.",

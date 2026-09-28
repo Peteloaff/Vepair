@@ -357,6 +357,12 @@ class ExerciseSession(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
     )
     routine_length_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # "adaptive" (the existing once-daily routine) | "warm_up" | "cool_down" (standalone,
+    # on-demand sessions -- see app/quick_routine.py). server_default backfills every
+    # pre-existing row to "adaptive" at the DB level, no application backfill needed.
+    session_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="adaptive"
+    )
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
