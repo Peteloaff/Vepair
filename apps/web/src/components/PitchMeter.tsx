@@ -23,15 +23,15 @@ function zoneFor(diff: number | null): Zone {
 }
 
 const ZONE_TEXT: Record<Zone, string> = {
-  on: "text-emerald-400",
-  close: "text-amber-400",
-  far: "text-neutral-100",
+  on: "text-accent",
+  close: "text-warning",
+  far: "text-text",
 };
 
 const ZONE_NEEDLE: Record<Zone, string> = {
-  on: "bg-emerald-400 motion-safe:animate-pulse shadow-[0_0_10px_1px_rgba(52,211,153,0.65)]",
-  close: "bg-amber-400",
-  far: "bg-neutral-300",
+  on: "bg-accent-strong motion-safe:animate-pulse shadow-[0_0_10px_1px_rgba(52,211,153,0.65)]",
+  close: "bg-warning",
+  far: "bg-text-faint",
 };
 
 const ZONE_LABEL: Record<Zone, string> = {
@@ -43,9 +43,9 @@ const ZONE_LABEL: Record<Zone, string> = {
 export function PitchMeter({ liveHz, goalHz }: { liveHz: number | null; goalHz: number | null }) {
   if (goalHz === null) {
     return (
-      <p className="font-mono text-4xl font-bold leading-none tabular-nums text-neutral-100">
+      <p className="font-mono text-4xl font-bold leading-none tabular-nums text-text">
         {liveHz != null ? liveHz.toFixed(1) : "—"}
-        <span className="ml-1 text-base font-normal text-neutral-500">Hz</span>
+        <span className="ml-1 text-base font-normal text-text-faint">Hz</span>
       </p>
     );
   }
@@ -67,29 +67,29 @@ export function PitchMeter({ liveHz, goalHz }: { liveHz: number | null; goalHz: 
             className={`font-mono text-4xl font-bold leading-none tabular-nums transition-colors ${ZONE_TEXT[zone]}`}
           >
             {liveHz != null ? liveHz.toFixed(1) : "—"}
-            <span className="ml-1 text-base font-normal text-neutral-500">Hz</span>
+            <span className="ml-1 text-base font-normal text-text-faint">Hz</span>
           </p>
           <p className={`mt-1 h-4 text-xs font-medium ${ZONE_TEXT[zone]}`}>
             {liveHz != null ? ZONE_LABEL[zone] : ""}
           </p>
         </div>
-        <p className="text-right text-xs leading-tight text-neutral-500">
+        <p className="text-right text-xs leading-tight text-text-faint">
           Goal
           <br />
-          <span className="font-mono text-sm text-neutral-300">{goalHz.toFixed(1)} Hz</span>
+          <span className="font-mono text-sm text-text-dim">{goalHz.toFixed(1)} Hz</span>
         </p>
       </div>
 
-      <div className="relative h-3 rounded-full bg-neutral-800">
+      <div className="relative h-3 rounded-full bg-surface-2">
         <div
-          className="absolute top-0 h-3 rounded-full bg-amber-500/20"
+          className="absolute top-0 h-3 rounded-full bg-warning/20"
           style={{ left: `${50 - closeZoneWidthPct / 2}%`, width: `${closeZoneWidthPct}%` }}
         />
         <div
-          className="absolute top-0 h-3 rounded-full bg-emerald-500/40"
+          className="absolute top-0 h-3 rounded-full bg-accent/40"
           style={{ left: `${50 - onZoneWidthPct / 2}%`, width: `${onZoneWidthPct}%` }}
         />
-        <div className="absolute left-1/2 top-1/2 h-5 w-px -translate-x-1/2 -translate-y-1/2 bg-neutral-500" />
+        <div className="absolute left-1/2 top-1/2 h-5 w-px -translate-x-1/2 -translate-y-1/2 bg-border-strong" />
         {positionPct != null && (
           <div
             className={`absolute top-1/2 h-6 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-[left] duration-150 ${ZONE_NEEDLE[zone]}`}

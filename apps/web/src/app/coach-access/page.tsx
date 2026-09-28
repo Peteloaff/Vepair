@@ -73,28 +73,28 @@ function InviteCard({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
-      <p className="text-sm font-medium text-neutral-100">
+    <div className="rounded-xl border border-border bg-surface/60 p-4">
+      <p className="text-sm font-medium text-text">
         {invite.coach_display_name}
         {invite.coach_studio_name && (
-          <span className="text-neutral-500"> &middot; {invite.coach_studio_name}</span>
+          <span className="text-text-faint"> &middot; {invite.coach_studio_name}</span>
         )}
       </p>
       {invite.message && (
-        <p className="mt-1 text-sm text-neutral-400">&ldquo;{invite.message}&rdquo;</p>
+        <p className="mt-1 text-sm text-text-dim">&ldquo;{invite.message}&rdquo;</p>
       )}
 
-      <p className="mt-3 mb-2 text-xs text-neutral-500">
+      <p className="mt-3 mb-2 text-xs text-text-faint">
         Choose what to share — nothing is selected by default:
       </p>
       <div className="space-y-1.5">
         {COACH_SHARE_CATEGORIES.map((category) => (
-          <label key={category} className="flex items-center gap-2 text-sm text-neutral-300">
+          <label key={category} className="flex items-center gap-2 text-sm text-text-dim">
             <input
               type="checkbox"
               checked={checked.has(category)}
               onChange={() => toggle(category)}
-              className="h-4 w-4 rounded border-neutral-700 bg-neutral-900"
+              className="h-4 w-4 rounded border-border-strong bg-surface"
             />
             {COACH_SHARE_CATEGORY_LABEL[category]}
           </label>
@@ -102,7 +102,7 @@ function InviteCard({
       </div>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="mt-3 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
 
       <div className="mt-4 flex gap-2">
@@ -110,7 +110,7 @@ function InviteCard({
           type="button"
           onClick={accept}
           disabled={busy !== null}
-          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
         >
           {busy === "accept" ? "Accepting..." : "Accept"}
         </button>
@@ -118,12 +118,12 @@ function InviteCard({
           type="button"
           onClick={decline}
           disabled={busy !== null}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
         >
           {busy === "decline" ? "Declining..." : "Decline"}
         </button>
       </div>
-      <p className="mt-3 text-xs text-neutral-500">
+      <p className="mt-3 text-xs text-text-faint">
         You can change or revoke this any time.
       </p>
     </div>
@@ -230,16 +230,16 @@ function ConnectionCard({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
+    <div className="rounded-xl border border-border bg-surface/60 p-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-neutral-100">
+        <p className="text-sm font-medium text-text">
           {connection.coach_display_name}
           {connection.coach_studio_name && (
-            <span className="text-neutral-500"> &middot; {connection.coach_studio_name}</span>
+            <span className="text-text-faint"> &middot; {connection.coach_studio_name}</span>
           )}
         </p>
         <span
-          className={`text-xs ${isActive ? "text-emerald-400" : "text-neutral-500"}`}
+          className={`text-xs ${isActive ? "text-accent" : "text-text-faint"}`}
         >
           {isActive ? "Active" : "Revoked"}
         </span>
@@ -248,26 +248,26 @@ function ConnectionCard({
       {isActive ? (
         <div className="mt-3 space-y-1.5">
           {COACH_SHARE_CATEGORIES.map((category) => (
-            <label key={category} className="flex items-center gap-2 text-sm text-neutral-300">
+            <label key={category} className="flex items-center gap-2 text-sm text-text-dim">
               <input
                 type="checkbox"
                 checked={granted.has(category)}
                 disabled={busy !== null}
                 onChange={() => toggleCategory(category)}
-                className="h-4 w-4 rounded border-neutral-700 bg-neutral-900"
+                className="h-4 w-4 rounded border-border-strong bg-surface"
               />
               {COACH_SHARE_CATEGORY_LABEL[category]}
             </label>
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-text-faint">
           Shared: {connection.granted_categories.map((c) => COACH_SHARE_CATEGORY_LABEL[c]).join(", ") || "nothing"}
         </p>
       )}
 
       {error && (
-        <p className="mt-3 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="mt-3 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
 
       <div className="mt-4 flex gap-2">
@@ -276,7 +276,7 @@ function ConnectionCard({
             type="button"
             onClick={revoke}
             disabled={busy !== null}
-            className="rounded-lg border border-red-900 px-4 py-2 text-sm text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+            className="rounded-lg border border-danger px-4 py-2 text-sm text-danger hover:bg-danger-faint disabled:opacity-50"
           >
             {busy === "revoke" ? "Revoking..." : "Revoke access"}
           </button>
@@ -284,18 +284,18 @@ function ConnectionCard({
         <button
           type="button"
           onClick={toggleNotes}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
         >
           {notes === null ? "View notes" : "Hide notes"}
         </button>
         <button
           type="button"
           onClick={toggleMessages}
-          className="relative rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+          className="relative rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
         >
           {messages === null ? "Messages" : "Hide messages"}
           {connection.unread_message_count > 0 && (
-            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
               {connection.unread_message_count}
             </span>
           )}
@@ -318,12 +318,12 @@ function ConnectionCard({
       {notes !== null && (
         <div className="mt-3 space-y-2">
           {notes.length === 0 ? (
-            <p className="text-xs text-neutral-500">No notes yet.</p>
+            <p className="text-xs text-text-faint">No notes yet.</p>
           ) : (
             notes.map((note) => (
-              <div key={note.id} className="rounded-lg border border-neutral-800 p-2">
-                <p className="text-sm text-neutral-300">{note.body}</p>
-                <p className="mt-1 text-xs text-neutral-600">
+              <div key={note.id} className="rounded-lg border border-border p-2">
+                <p className="text-sm text-text-dim">{note.body}</p>
+                <p className="mt-1 text-xs text-text-faint">
                   {new Date(note.created_at).toLocaleString()}
                 </p>
               </div>
@@ -363,25 +363,25 @@ function CoachAccessContent() {
   }, []);
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (invites === null || connections === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
     <div className="mx-auto w-full max-w-lg">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Coach Access</h1>
-      <p className="mb-8 text-sm text-neutral-400">
+      <p className="mb-8 text-sm text-text-dim">
         Control which vocal coaches can see your data, and exactly what they can see. Nothing
         is shared automatically — a coach only sees what you explicitly choose.
       </p>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-neutral-200">Pending invites</h2>
+        <h2 className="mb-3 text-sm font-medium text-text">Pending invites</h2>
         {invites.length === 0 ? (
-          <p className="text-sm text-neutral-500">No pending invites.</p>
+          <p className="text-sm text-text-faint">No pending invites.</p>
         ) : (
           <div className="space-y-3">
             {invites.map((invite) => (
@@ -392,9 +392,9 @@ function CoachAccessContent() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-neutral-200">Your coaches</h2>
+        <h2 className="mb-3 text-sm font-medium text-text">Your coaches</h2>
         {connections.length === 0 ? (
-          <p className="text-sm text-neutral-500">No coach connections yet.</p>
+          <p className="text-sm text-text-faint">No coach connections yet.</p>
         ) : (
           <div className="space-y-3">
             {connections.map((connection) => (
@@ -405,7 +405,7 @@ function CoachAccessContent() {
       </section>
 
       <div className="mt-8">
-        <Link href="/" className="text-xs text-neutral-500 hover:text-neutral-300">
+        <Link href="/" className="text-xs text-text-faint hover:text-text-dim">
           &larr; Back to dashboard
         </Link>
       </div>

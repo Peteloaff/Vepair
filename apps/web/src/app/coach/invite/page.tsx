@@ -42,14 +42,14 @@ function InviteFormContent() {
   return (
     <div className="mx-auto w-full max-w-sm">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Invite a Vrotégé</h1>
-      <p className="mb-8 text-sm text-neutral-400">
+      <p className="mb-8 text-sm text-text-dim">
         They must already have a VepAIr account, and must explicitly accept before you see
         anything of theirs.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" className="mb-1 block text-xs text-neutral-400">
+          <label htmlFor="email" className="mb-1 block text-xs text-text-dim">
             Vrotégé&apos;s email
           </label>
           <input
@@ -58,12 +58,12 @@ function InviteFormContent() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+            className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
 
         <div>
-          <label htmlFor="message" className="mb-1 block text-xs text-neutral-400">
+          <label htmlFor="message" className="mb-1 block text-xs text-text-dim">
             Message (optional)
           </label>
           <textarea
@@ -71,25 +71,25 @@ function InviteFormContent() {
             rows={3}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+            className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+          <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
         )}
 
         <div className="flex gap-2">
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
           >
             {submitting ? "Sending..." : "Send invite"}
           </button>
           <Link
             href="/coach"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
           >
             Cancel
           </Link>

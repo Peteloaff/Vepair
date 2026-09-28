@@ -3,9 +3,9 @@ import type { TodaySnapshot } from "@/lib/types";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between border-b border-neutral-800 py-4">
-      <span className="text-2xl text-neutral-400">{label}</span>
-      <span className="text-3xl font-semibold tabular-nums text-neutral-100">{value}</span>
+    <div className="flex items-baseline justify-between border-b border-border py-4">
+      <span className="text-2xl text-text-dim">{label}</span>
+      <span className="text-3xl font-semibold tabular-nums text-text">{value}</span>
     </div>
   );
 }
@@ -59,27 +59,27 @@ export const TodayCard = forwardRef<HTMLDivElement, { snapshot: TodaySnapshot }>
       <div
         ref={ref}
         style={{ width: 1080, height: 1920 }}
-        className="flex flex-col bg-neutral-950 px-16 py-20"
+        className="flex flex-col bg-canvas px-16 py-20"
       >
-        <p className="text-3xl font-medium tracking-[0.3em] text-emerald-400">TODAY&apos;S VOICE</p>
+        <p className="text-3xl font-medium tracking-[0.3em] text-accent">TODAY&apos;S VOICE</p>
 
         {snapshot.low_measurement_confidence && (
-          <p className="mt-6 rounded-xl bg-amber-950/40 px-6 py-4 text-2xl text-amber-300">
+          <p className="mt-6 rounded-xl bg-warning-faint px-6 py-4 text-2xl text-warning">
             LOW MEASUREMENT CONFIDENCE
           </p>
         )}
 
         {snapshot.score_value !== null && (
           <div className="mt-16">
-            <p className="text-2xl text-neutral-400">VepAIr Score</p>
+            <p className="text-2xl text-text-dim">VepAIr Score</p>
             <div className="flex items-baseline gap-4">
-              <span className="text-[11rem] font-bold leading-none text-neutral-50">
+              <span className="text-[11rem] font-bold leading-none text-text">
                 {snapshot.score_value}
               </span>
               {snapshot.score_delta !== null && (
                 <span
                   className={`text-4xl font-semibold ${
-                    snapshot.score_delta >= 0 ? "text-emerald-400" : "text-amber-400"
+                    snapshot.score_delta >= 0 ? "text-accent" : "text-warning"
                   }`}
                 >
                   {snapshot.score_delta >= 0 ? "↑" : "↓"}{" "}
@@ -100,9 +100,9 @@ export const TodayCard = forwardRef<HTMLDivElement, { snapshot: TodaySnapshot }>
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element -- plain <img> renders reliably for html-to-image's DOM capture */}
             <img src="/brand/vepair-logo.png" alt="" width={40} height={40} />
-            <span className="text-3xl font-semibold tracking-tight text-neutral-100">VepAIr</span>
+            <span className="text-3xl font-semibold tracking-tight text-text">VepAIr</span>
           </div>
-          <span className="text-2xl text-neutral-500">
+          <span className="text-2xl text-text-faint">
             {new Date(snapshot.for_date).toLocaleDateString(undefined, {
               year: "numeric",
               month: "long",

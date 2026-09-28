@@ -11,23 +11,23 @@ function FeatureCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+    <div className="rounded-2xl border border-border bg-surface/60 p-5">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-neutral-200">{title}</h3>
+        <h3 className="text-sm font-medium text-text">{title}</h3>
         {where && (
-          <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-text-dim">
             {where}
           </span>
         )}
       </div>
-      <div className="space-y-2 text-sm text-neutral-400">{children}</div>
+      <div className="space-y-2 text-sm text-text-dim">{children}</div>
     </div>
   );
 }
 
 function Steps({ items }: { items: React.ReactNode[] }) {
   return (
-    <ol className="ml-4 list-decimal space-y-1.5 text-sm text-neutral-400 marker:text-neutral-600">
+    <ol className="ml-4 list-decimal space-y-1.5 text-sm text-text-dim marker:text-text-faint">
       {items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}
@@ -43,9 +43,9 @@ function Callout({
   children: React.ReactNode;
 }) {
   const styles = {
-    info: "border border-neutral-700 bg-neutral-900 text-neutral-400",
-    note: "bg-emerald-950/30 text-emerald-300",
-    warn: "bg-red-950/40 text-red-300",
+    info: "border border-border-strong bg-surface text-text-dim",
+    note: "bg-accent-faint text-accent",
+    warn: "bg-danger-faint text-danger",
   }[tone];
   return <p className={`rounded-lg px-3 py-2 text-xs ${styles}`}>{children}</p>;
 }
@@ -138,7 +138,7 @@ function AdaptiveLoopDiagram() {
           <text className="loopdiag-title" x="164" y="279"><tspan x="164" dy="0">Track Growth</tspan><tspan x="164" dy="20">Over Time</tspan></text>
         </g>
       </svg>
-      <figcaption className="mt-3 text-center text-xs text-neutral-500">
+      <figcaption className="mt-3 text-center text-xs text-text-faint">
         The loop never stops — stage 6 feeds straight back into stage 1, so every new recording
         refines the baseline everything else is measured against.
       </figcaption>
@@ -151,7 +151,7 @@ export default function HelpPage() {
     <RequireAuth>
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Help</h1>
-        <p className="mb-10 text-sm text-neutral-400">
+        <p className="mb-10 text-sm text-text-dim">
           What&apos;s new in VepAIr, and how to use it. This release is built around one idea:
           you get to say what you&apos;re training toward. VepAIr will still suggest sensible
           targets from your own history, but every suggestion is now something you can see,
@@ -159,7 +159,7 @@ export default function HelpPage() {
         </p>
 
         <section className="mb-10">
-          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-text-faint">
             How it works
           </h2>
           <FeatureCard title="How VepAIr adapts to you">
@@ -172,31 +172,31 @@ export default function HelpPage() {
             <Steps
               items={[
                 <>
-                  <strong className="text-neutral-200">Record &amp; measure</strong> — every
+                  <strong className="text-text">Record &amp; measure</strong> — every
                   recording gets its pitch and quality measured automatically.
                 </>,
                 <>
-                  <strong className="text-neutral-200">Your personal baseline</strong> — those
+                  <strong className="text-text">Your personal baseline</strong> — those
                   measurements build a picture of what&apos;s normal for you specifically, never a
                   population average.
                 </>,
                 <>
-                  <strong className="text-neutral-200">Recovery score &amp; safety check</strong> —
+                  <strong className="text-text">Recovery score &amp; safety check</strong> —
                   today is checked against your baseline; an off day gets flagged, and several
                   rough days in a row can trigger a rest-day recommendation.
                 </>,
                 <>
-                  <strong className="text-neutral-200">Adaptive daily routine</strong> —
+                  <strong className="text-text">Adaptive daily routine</strong> —
                   today&apos;s exercises are picked and sequenced from where your baseline says
                   you are right now.
                 </>,
                 <>
-                  <strong className="text-neutral-200">Live coaching &amp; Goal Tones</strong> —
+                  <strong className="text-text">Live coaching &amp; Goal Tones</strong> —
                   while you sing, real-time feedback compares your voice against a target: your
                   Goal Tone, a coach&apos;s target, or the exercise&apos;s own.
                 </>,
                 <>
-                  <strong className="text-neutral-200">Track growth over time</strong> — vocal
+                  <strong className="text-text">Track growth over time</strong> — vocal
                   range, exercise trends, and your plan all update from what just happened, then
                   feed straight back into step one next time you practice.
                 </>,
@@ -210,7 +210,7 @@ export default function HelpPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-emerald-400">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-accent">
             For everyone
           </h2>
           <div className="space-y-3">
@@ -224,24 +224,24 @@ export default function HelpPage() {
               <Steps
                 items={[
                   <>
-                    Open <strong className="text-neutral-200">Tone Match</strong>. Your current
+                    Open <strong className="text-text">Tone Match</strong>. Your current
                     targets are shown as three note pickers, labeled either{" "}
-                    <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-text-dim">
                       AI-suggested
                     </span>{" "}
                     or{" "}
-                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">
+                    <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent">
                       Your target
                     </span>{" "}
                     once you&apos;ve set your own.
                   </>,
                   <>
                     Pick new notes for any of Low / Average / High, then select{" "}
-                    <strong className="text-neutral-200">Save my targets</strong>.
+                    <strong className="text-text">Save my targets</strong>.
                   </>,
                   <>
                     Changed your mind?{" "}
-                    <strong className="text-neutral-200">Reset to AI suggestion</strong> clears
+                    <strong className="text-text">Reset to AI suggestion</strong> clears
                     your override and goes back to a live recommendation.
                   </>,
                 ]}
@@ -260,17 +260,17 @@ export default function HelpPage() {
               <Steps
                 items={[
                   <>
-                    Select <strong className="text-neutral-200">Start recording</strong> and
+                    Select <strong className="text-text">Start recording</strong> and
                     speak or sing for as long as you like.
                   </>,
                   <>
-                    Select <strong className="text-neutral-200">Stop</strong> when
+                    Select <strong className="text-text">Stop</strong> when
                     you&apos;re done. VepAIr shows the average pitch across the whole recording,
                     as both a note name and Hz.
                   </>,
                   <>
                     Like the result?{" "}
-                    <strong className="text-neutral-200">Use as my Avg goal tone</strong> saves it
+                    <strong className="text-text">Use as my Avg goal tone</strong> saves it
                     straight into your Average target from Goal Tones.
                   </>,
                 ]}
@@ -314,16 +314,16 @@ export default function HelpPage() {
             <FeatureCard title="Account & privacy" where="Settings">
               <p>
                 Not new this release, but worth knowing about: from{" "}
-                <Link href="/settings" className="text-emerald-400 hover:text-emerald-300">
+                <Link href="/settings" className="text-accent hover:text-accent">
                   Settings
                 </Link>{" "}
                 you can review the{" "}
-                <Link href="/terms" className="text-emerald-400 hover:text-emerald-300">
+                <Link href="/terms" className="text-accent hover:text-accent">
                   Terms of Service
                 </Link>{" "}
                 and permanently delete your account — including every recording&apos;s actual
                 audio file, not just the database record. Confirm your password and type{" "}
-                <span className="font-mono text-red-300">DELETE</span> to enable the final
+                <span className="font-mono text-danger">DELETE</span> to enable the final
                 button. This cannot be undone.
               </p>
             </FeatureCard>
@@ -351,16 +351,16 @@ export default function HelpPage() {
               <Steps
                 items={[
                   <>
-                    From a Vrotégé&apos;s <strong className="text-neutral-200">Assign training</strong>{" "}
-                    page, select <strong className="text-neutral-200">+ Add custom exercise</strong>.
+                    From a Vrotégé&apos;s <strong className="text-text">Assign training</strong>{" "}
+                    page, select <strong className="text-text">+ Add custom exercise</strong>.
                   </>,
                   <>
-                    Fill in a <strong className="text-neutral-200">Title</strong> and{" "}
-                    <strong className="text-neutral-200">Description</strong>, then choose a
+                    Fill in a <strong className="text-text">Title</strong> and{" "}
+                    <strong className="text-text">Description</strong>, then choose a
                     category, difficulty, and duration.
                   </>,
                   <>
-                    Select <strong className="text-neutral-200">Save exercise</strong>. It&apos;s
+                    Select <strong className="text-text">Save exercise</strong>. It&apos;s
                     added to the library immediately and pre-selected, ready to assign.
                   </>,
                 ]}
@@ -383,7 +383,7 @@ export default function HelpPage() {
         </section>
 
         <section>
-          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-text-faint">
             Quick answers
           </h2>
           <div className="space-y-3">
@@ -400,7 +400,7 @@ export default function HelpPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-text-faint">
             Full documentation
           </h2>
           <div className="space-y-3">
@@ -411,7 +411,7 @@ export default function HelpPage() {
               </p>
               <Link
                 href="/user-guide"
-                className="inline-block text-sm text-emerald-400 hover:text-emerald-300"
+                className="inline-block text-sm text-accent hover:text-accent"
               >
                 Open the User Guide &rarr;
               </Link>
@@ -423,7 +423,7 @@ export default function HelpPage() {
               </p>
               <Link
                 href="/technical-reference"
-                className="inline-block text-sm text-emerald-400 hover:text-emerald-300"
+                className="inline-block text-sm text-accent hover:text-accent"
               >
                 Open the Technical Reference &rarr;
               </Link>
@@ -431,7 +431,7 @@ export default function HelpPage() {
           </div>
         </section>
 
-        <p className="mt-10 text-xs text-neutral-500">
+        <p className="mt-10 text-xs text-text-faint">
           VepAIr is a training and tracking tool, not a medical device. Rest day recommendations
           and every other suggestion here are guidance based on your own data, never a diagnosis
           or clinical instruction. If something feels wrong with your voice, check in with a

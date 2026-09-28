@@ -188,13 +188,13 @@ function RecordingFlow() {
     return (
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Voice Recording Lab</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           A guided session capturing a few short voice samples. Takes about 3-5 minutes.
         </p>
 
-        <div className="mb-6 space-y-3 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5 text-sm">
-          <p className="text-neutral-300">Before you start:</p>
-          <ul className="list-disc space-y-1.5 pl-5 text-neutral-400">
+        <div className="mb-6 space-y-3 rounded-2xl border border-border bg-surface/60 p-5 text-sm">
+          <p className="text-text-dim">Before you start:</p>
+          <ul className="list-disc space-y-1.5 pl-5 text-text-dim">
             <li>Move to a reasonably quiet room</li>
             <li>Hold your device at a consistent distance from your mouth</li>
             <li>Avoid touching the microphone during recording</li>
@@ -203,13 +203,13 @@ function RecordingFlow() {
         </div>
 
         {error && (
-          <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+          <p className="mb-4 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
         )}
 
         <button
           type="button"
           onClick={startSession}
-          className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+          className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
         >
           Start session
         </button>
@@ -217,7 +217,7 @@ function RecordingFlow() {
         {next && (
           <Link
             href={next}
-            className="mt-3 block text-center text-xs text-neutral-500 hover:text-neutral-300"
+            className="mt-3 block text-center text-xs text-text-faint hover:text-text-dim"
           >
             Skip for now &rarr;
           </Link>
@@ -227,14 +227,14 @@ function RecordingFlow() {
   }
 
   if (phase === "requesting-permission") {
-    return <p className="text-sm text-neutral-500">Requesting microphone access...</p>;
+    return <p className="text-sm text-text-faint">Requesting microphone access...</p>;
   }
 
   if (phase === "permission-denied") {
     return (
       <div className="mx-auto w-full max-w-lg text-sm">
         <h1 className="mb-2 text-xl font-semibold">Microphone access needed</h1>
-        <p className="mb-4 text-neutral-400">
+        <p className="mb-4 text-text-dim">
           VepAIr needs microphone access to record voice samples. You denied (or previously
           denied) permission. Check your browser&apos;s site settings for this page and allow
           the microphone, then try again.
@@ -242,7 +242,7 @@ function RecordingFlow() {
         <button
           type="button"
           onClick={startSession}
-          className="rounded-lg border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 hover:bg-surface-2"
         >
           Try again
         </button>
@@ -254,13 +254,13 @@ function RecordingFlow() {
     return (
       <div className="mx-auto w-full max-w-lg text-sm">
         <h1 className="mb-2 text-xl font-semibold">No microphone found</h1>
-        <p className="mb-4 text-neutral-400">
+        <p className="mb-4 text-text-dim">
           VepAIr couldn&apos;t find a microphone on this device. Connect one and try again.
         </p>
         <button
           type="button"
           onClick={startSession}
-          className="rounded-lg border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 hover:bg-surface-2"
         >
           Try again
         </button>
@@ -271,15 +271,15 @@ function RecordingFlow() {
   if (phase === "complete") {
     const scoreColor = (label: string) =>
       label === "excellent" || label === "good"
-        ? "text-emerald-400"
+        ? "text-accent"
         : label === "fair"
-          ? "text-amber-400"
-          : "text-red-400";
+          ? "text-warning"
+          : "text-danger";
 
     return (
       <div className="mx-auto w-full max-w-lg text-center">
         <h1 className="mb-2 text-2xl font-semibold tracking-tight">Session complete</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           {uploaded.length} recording{uploaded.length === 1 ? "" : "s"} saved.
         </p>
         <ul className="mb-6 space-y-2 text-left text-sm">
@@ -289,10 +289,10 @@ function RecordingFlow() {
             return (
               <li
                 key={r.id}
-                className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2"
+                className="rounded-lg border border-border bg-surface/60 px-3 py-2"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-neutral-300">{r.sample_type}</span>
+                  <span className="text-text-dim">{r.sample_type}</span>
                   {score && (
                     <span className={scoreColor(score.label)}>
                       {score.label} ({score.score})
@@ -300,29 +300,29 @@ function RecordingFlow() {
                   )}
                 </div>
                 {m && (
-                  <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500">
+                  <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-faint">
                     {m.f0_mean_hz !== null && (
                       <div>
-                        F0 <span className="text-neutral-300">{m.f0_mean_hz.toFixed(0)}Hz</span>
+                        F0 <span className="text-text-dim">{m.f0_mean_hz.toFixed(0)}Hz</span>
                       </div>
                     )}
                     {m.jitter_percent !== null && (
                       <div>
                         Jitter{" "}
-                        <span className="text-neutral-300">{m.jitter_percent.toFixed(2)}%</span>
+                        <span className="text-text-dim">{m.jitter_percent.toFixed(2)}%</span>
                       </div>
                     )}
                     {m.shimmer_percent !== null && (
                       <div>
                         Shimmer{" "}
-                        <span className="text-neutral-300">
+                        <span className="text-text-dim">
                           {m.shimmer_percent.toFixed(2)}%
                         </span>
                       </div>
                     )}
                     {m.hnr_db !== null && (
                       <div>
-                        HNR <span className="text-neutral-300">{m.hnr_db.toFixed(1)}dB</span>
+                        HNR <span className="text-text-dim">{m.hnr_db.toFixed(1)}dB</span>
                       </div>
                     )}
                   </dl>
@@ -332,7 +332,7 @@ function RecordingFlow() {
                     {r.anomalies.map((a) => (
                       <li
                         key={a.metric_name}
-                        className="rounded-md bg-amber-950/40 px-2 py-1 text-xs text-amber-300"
+                        className="rounded-md bg-warning-faint px-2 py-1 text-xs text-warning"
                       >
                         {a.message}
                       </li>
@@ -343,13 +343,13 @@ function RecordingFlow() {
             );
           })}
         </ul>
-        <p className="mb-6 text-xs text-neutral-600">
+        <p className="mb-6 text-xs text-text-faint">
           These are raw acoustic measurements, not a diagnosis — see
           docs/acoustic-measurements.md for what each one means and its limitations.
         </p>
         <Link
           href={next ?? "/"}
-          className="inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+          className="inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
         >
           {next ? "Continue to vocal range test →" : "Back to dashboard"}
         </Link>
@@ -360,20 +360,20 @@ function RecordingFlow() {
   // ready / recording / reviewing / uploading
   return (
     <div className="mx-auto w-full max-w-lg">
-      <p className="mb-1 text-xs text-neutral-500">
+      <p className="mb-1 text-xs text-text-faint">
         Step {stepIndex + 1} of {RECORDING_SEQUENCE.length}
       </p>
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">{step.title}</h1>
-      <p className="mb-4 text-sm text-neutral-400">{step.instructions}</p>
+      <p className="mb-4 text-sm text-text-dim">{step.instructions}</p>
       {step.prompt && (
-        <blockquote className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-sm italic text-neutral-200">
+        <blockquote className="mb-4 rounded-lg border border-border bg-surface/60 px-4 py-3 text-sm italic text-text">
           {step.prompt}
         </blockquote>
       )}
 
       <Waveform ref={waveformRef} active={phase === "recording"} />
 
-      <p className="my-3 text-center font-mono text-2xl tabular-nums text-neutral-200">
+      <p className="my-3 text-center font-mono text-2xl tabular-nums text-text">
         {(elapsedMs / 1000).toFixed(1)}s
       </p>
 
@@ -382,7 +382,7 @@ function RecordingFlow() {
           <button
             type="button"
             onClick={beginRecording}
-            className="w-full rounded-lg bg-red-500 px-4 py-3 text-sm font-medium text-neutral-950 hover:bg-red-400"
+            className="w-full rounded-lg bg-danger px-4 py-3 text-sm font-medium text-accent-ink hover:bg-danger"
           >
             Record
           </button>
@@ -390,7 +390,7 @@ function RecordingFlow() {
             <button
               type="button"
               onClick={skipOptionalStep}
-              className="w-full rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+              className="w-full rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
             >
               Skip this step
             </button>
@@ -402,7 +402,7 @@ function RecordingFlow() {
         <button
           type="button"
           onClick={stopRecording}
-          className="w-full rounded-lg bg-neutral-100 px-4 py-3 text-sm font-medium text-neutral-950 hover:bg-white"
+          className="w-full rounded-lg bg-surface-2 px-4 py-3 text-sm font-medium text-text hover:bg-surface"
         >
           Stop
         </button>
@@ -418,7 +418,7 @@ function RecordingFlow() {
           {(lastResult.quality.clipping ||
             lastResult.quality.tooQuiet ||
             lastResult.quality.tooShort) && (
-            <div className="rounded-lg bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
+            <div className="rounded-lg bg-warning-faint px-3 py-2 text-xs text-warning">
               This recording looks like it might have an issue:{" "}
               {[
                 lastResult.quality.clipping && "clipping (too loud)",
@@ -432,21 +432,21 @@ function RecordingFlow() {
           )}
 
           {error && (
-            <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+            <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
           )}
 
           <div className="flex gap-2">
             <button
               type="button"
               onClick={retake}
-              className="flex-1 rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+              className="flex-1 rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
             >
               Retake
             </button>
             <button
               type="button"
               onClick={acceptAndUpload}
-              className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+              className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
             >
               Use this take
             </button>
@@ -455,7 +455,7 @@ function RecordingFlow() {
       )}
 
       {phase === "uploading" && (
-        <p className="text-center text-sm text-neutral-500">Uploading...</p>
+        <p className="text-center text-sm text-text-faint">Uploading...</p>
       )}
     </div>
   );

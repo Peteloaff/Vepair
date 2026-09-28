@@ -138,9 +138,9 @@ export function AveragePitchRecorder() {
   const noteName = hz != null ? midiToNoteName(frequencyToMidi(hz)) : null;
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-      <h2 className="mb-1 text-sm font-medium text-neutral-200">Find your average pitch</h2>
-      <p className="mb-4 text-xs text-neutral-500">
+    <div className="rounded-2xl border border-border bg-surface/60 p-5">
+      <h2 className="mb-1 text-sm font-medium text-text">Find your average pitch</h2>
+      <p className="mb-4 text-xs text-text-faint">
         Speak or sing naturally for as long as you like, then stop — we&apos;ll show the average
         pitch across the whole recording. This also counts toward your personal baseline.
       </p>
@@ -148,14 +148,14 @@ export function AveragePitchRecorder() {
       {(phase === "idle" || phase === "error") && (
         <>
           {error && (
-            <p className="mb-3 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">
+            <p className="mb-3 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">
               {error}
             </p>
           )}
           <button
             type="button"
             onClick={start}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
           >
             Start recording
           </button>
@@ -163,12 +163,12 @@ export function AveragePitchRecorder() {
       )}
 
       {phase === "requesting" && (
-        <p className="text-sm text-neutral-500">Requesting microphone access...</p>
+        <p className="text-sm text-text-faint">Requesting microphone access...</p>
       )}
 
       {phase === "recording" && (
         <div>
-          <p className="mb-1 font-mono text-sm tabular-nums text-neutral-500">
+          <p className="mb-1 font-mono text-sm tabular-nums text-text-faint">
             {Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, "0")}
           </p>
           <div className="mb-4">
@@ -177,29 +177,29 @@ export function AveragePitchRecorder() {
           <button
             type="button"
             onClick={stop}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500"
+            className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:bg-danger"
           >
             Stop
           </button>
         </div>
       )}
 
-      {phase === "uploading" && <p className="text-sm text-neutral-500">Analyzing...</p>}
+      {phase === "uploading" && <p className="text-sm text-text-faint">Analyzing...</p>}
 
       {phase === "result" && result && (
         <div>
           {hz != null ? (
             <>
-              <p className="mb-1 text-3xl font-semibold tracking-tight text-neutral-100">
+              <p className="mb-1 text-3xl font-semibold tracking-tight text-text">
                 {noteName}
               </p>
-              <p className="mb-4 text-xs text-neutral-500">Average: {hz.toFixed(1)} Hz</p>
+              <p className="mb-4 text-xs text-text-faint">Average: {hz.toFixed(1)} Hz</p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={useAsAvgGoal}
                   disabled={savingGoal || goalSaved}
-                  className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
                 >
                   {goalSaved
                     ? "Saved as your Avg goal tone"
@@ -210,14 +210,14 @@ export function AveragePitchRecorder() {
                 <button
                   type="button"
                   onClick={start}
-                  className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+                  className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
                 >
                   Record again
                 </button>
               </div>
             </>
           ) : (
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-text-faint">
               Could not measure a clear pitch from that recording — try again with a longer or
               clearer sample.
             </p>

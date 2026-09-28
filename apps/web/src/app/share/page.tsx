@@ -118,23 +118,23 @@ function SharePageFlow() {
   }
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (!today || !progress) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
     <div className="mx-auto w-full max-w-lg">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Share My Progress</h1>
-      <p className="mb-6 text-sm text-neutral-400">
+      <p className="mb-6 text-sm text-text-dim">
         Two ready-to-post images, built entirely from your own real VepAIr data.
       </p>
 
       <div className="flex justify-center">
         <div
-          className="overflow-hidden rounded-2xl border border-neutral-800"
+          className="overflow-hidden rounded-2xl border border-border"
           style={{ width: CARD_WIDTH * scale, height: CARD_HEIGHT * scale }}
         >
           <div style={{ width: CARD_WIDTH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
@@ -153,25 +153,25 @@ function SharePageFlow() {
           type="button"
           onClick={() => setPageIndex(0)}
           disabled={pageIndex === 0}
-          className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800 disabled:opacity-40"
+          className="rounded-lg border border-border-strong px-3 py-1.5 hover:bg-surface-2 disabled:opacity-40"
         >
           Previous
         </button>
-        <span className="text-neutral-500">
+        <span className="text-text-faint">
           {pageIndex === 0 ? "Page 1 · Today's Voice" : "Page 2 · My Progress"}
         </span>
         <button
           type="button"
           onClick={() => setPageIndex(1)}
           disabled={pageIndex === 1}
-          className="rounded-lg border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800 disabled:opacity-40"
+          className="rounded-lg border border-border-strong px-3 py-1.5 hover:bg-surface-2 disabled:opacity-40"
         >
           Next
         </button>
       </div>
 
       {actionError && (
-        <p className="mt-4 rounded-lg bg-red-950/50 px-3 py-2 text-center text-xs text-red-300">
+        <p className="mt-4 rounded-lg bg-danger-faint px-3 py-2 text-center text-xs text-danger">
           {actionError}
         </p>
       )}
@@ -181,7 +181,7 @@ function SharePageFlow() {
           type="button"
           onClick={handleShare}
           disabled={busy !== null}
-          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
         >
           {busy === "share" ? "Preparing..." : "Share"}
         </button>
@@ -189,7 +189,7 @@ function SharePageFlow() {
           type="button"
           onClick={handleSave}
           disabled={busy !== null}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
         >
           {busy === "save" ? "Saving..." : "Save"}
         </button>
@@ -197,14 +197,14 @@ function SharePageFlow() {
           type="button"
           onClick={handleSaveBoth}
           disabled={busy !== null}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
         >
           {busy === "save-both" ? "Saving..." : "Save Both"}
         </button>
       </div>
 
       <div className="mt-8 text-center">
-        <Link href="/" className="text-xs text-neutral-500 hover:text-neutral-300">
+        <Link href="/" className="text-xs text-text-faint hover:text-text-dim">
           Close
         </Link>
       </div>

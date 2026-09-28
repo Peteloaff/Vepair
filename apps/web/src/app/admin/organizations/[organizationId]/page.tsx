@@ -56,44 +56,44 @@ function OrganizationDetailContent() {
   }
 
   if (error && !detail) {
-    return <p className="text-sm text-red-400">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (!detail) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin/organizations" className="text-sm underline hover:text-neutral-200">
+        <Link href="/admin/organizations" className="text-sm underline hover:text-text">
           ← Back to search
         </Link>
       </div>
 
-      <section className="rounded-2xl border border-neutral-800 p-5">
+      <section className="rounded-2xl border border-border p-5">
         <h1 className="mb-1 text-xl font-semibold">{detail.name || "(unnamed organization)"}</h1>
-        <p className="mb-4 text-sm text-neutral-400">
+        <p className="mb-4 text-sm text-text-dim">
           {detail.coach_display_name} &middot; {detail.coach_email}
         </p>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          <dt className="text-neutral-500">Coach Pro status</dt>
+          <dt className="text-text-faint">Coach Pro status</dt>
           <dd>
             {detail.is_coach_pro_active ? (
               "active"
             ) : (
-              <span className="text-amber-400">inactive</span>
+              <span className="text-warning">inactive</span>
             )}
           </dd>
-          <dt className="text-neutral-500">Period start</dt>
+          <dt className="text-text-faint">Period start</dt>
           <dd>{formatDate(detail.coach_pro_period_start)}</dd>
-          <dt className="text-neutral-500">Period end</dt>
+          <dt className="text-text-faint">Period end</dt>
           <dd>{formatDate(detail.coach_pro_period_end)}</dd>
-          <dt className="text-neutral-500">Invites used this period</dt>
+          <dt className="text-text-faint">Invites used this period</dt>
           <dd>
             {detail.invites_used_this_period} / {detail.invite_quota_included} included
             {detail.invites_used_this_period > detail.invite_quota_included && (
-              <span className="ml-1 text-amber-400">
+              <span className="ml-1 text-warning">
                 ({detail.invites_used_this_period - detail.invite_quota_included} over — bills on
                 the next QuickBooks invoice)
               </span>
@@ -103,15 +103,15 @@ function OrganizationDetailContent() {
       </section>
 
       {notice && (
-        <p className="rounded-lg bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">
+        <p className="rounded-lg bg-accent-faint px-3 py-2 text-sm text-accent">
           {notice}
         </p>
       )}
-      {error && <p className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-faint px-3 py-2 text-sm text-danger">{error}</p>}
 
-      <section className="rounded-2xl border border-neutral-800 p-5">
-        <h2 className="mb-3 text-sm font-medium text-neutral-300">Coach Pro</h2>
-        <p className="mb-3 text-xs text-neutral-500">
+      <section className="rounded-2xl border border-border p-5">
+        <h2 className="mb-3 text-sm font-medium text-text-dim">Coach Pro</h2>
+        <p className="mb-3 text-xs text-text-faint">
           All coach billing goes through QuickBooks, not Stripe — there&apos;s no automatic payment
           signal, so activation is manual. Turn this on once payment is confirmed outside the
           app.
@@ -122,8 +122,8 @@ function OrganizationDetailContent() {
           onClick={toggleCoachPro}
           className={`rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50 ${
             detail.is_coach_pro_active
-              ? "border-red-800 text-red-300 hover:bg-red-950/60"
-              : "border-emerald-700 text-emerald-300 hover:bg-emerald-950/60"
+              ? "border-danger text-danger hover:bg-danger-faint"
+              : "border-accent text-accent hover:bg-accent-faint"
           }`}
         >
           {busy

@@ -38,11 +38,11 @@ export default function LoginPage() {
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Log in</h1>
-        <p className="mb-8 text-sm text-neutral-400">Welcome back to VepAIr.</p>
+        <p className="mb-8 text-sm text-text-dim">Welcome back to VepAIr.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1 block text-xs text-neutral-400">
+            <label htmlFor="email" className="mb-1 block text-xs text-text-dim">
               Email
             </label>
             <input
@@ -52,12 +52,12 @@ export default function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-xs text-neutral-400">
+            <label htmlFor="password" className="mb-1 block text-xs text-text-dim">
               Password
             </label>
             <input
@@ -67,35 +67,35 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+            <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
           >
             {submitting ? "Logging in..." : "Log in"}
           </button>
         </form>
 
-        <div className="mt-6 border-t border-neutral-800 pt-6">
-          <p className="mb-2 text-xs text-neutral-500">New to VepAIr?</p>
+        <div className="mt-6 border-t border-border pt-6">
+          <p className="mb-2 text-xs text-text-faint">New to VepAIr?</p>
           <Link
             href="/signup"
-            className="block w-full rounded-lg border border-neutral-700 px-4 py-2 text-center text-sm font-medium hover:bg-neutral-800"
+            className="block w-full rounded-lg border border-border-strong px-4 py-2 text-center text-sm font-medium hover:bg-surface-2"
           >
             Create an account
           </Link>
         </div>
 
-        <div className="mt-4 text-center text-xs text-neutral-500">
-          <Link href="/forgot-password" className="hover:text-neutral-300">
+        <div className="mt-4 text-center text-xs text-text-faint">
+          <Link href="/forgot-password" className="hover:text-text-dim">
             Forgot password?
           </Link>
         </div>

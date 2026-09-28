@@ -62,53 +62,53 @@ function UserDetailContent() {
   }
 
   if (error && !detail) {
-    return <p className="text-sm text-red-400">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (!detail) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/admin" className="text-sm underline hover:text-neutral-200">
+        <Link href="/admin" className="text-sm underline hover:text-text">
           ← Back to search
         </Link>
       </div>
 
-      <section className="rounded-2xl border border-neutral-800 p-5">
+      <section className="rounded-2xl border border-border p-5">
         <h1 className="mb-1 text-xl font-semibold">{detail.email}</h1>
-        <p className="mb-4 text-sm text-neutral-400">
+        <p className="mb-4 text-sm text-text-dim">
           {ACCOUNT_TYPE_LABEL[detail.account_type]} · {detail.is_active ? "active" : "deactivated"}
           {detail.is_admin ? ` · admin (${detail.admin_role ?? "full"})` : ""}
         </p>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-          <dt className="text-neutral-500">Signed up</dt>
+          <dt className="text-text-faint">Signed up</dt>
           <dd>{formatDate(detail.created_at)}</dd>
-          <dt className="text-neutral-500">Onboarding complete</dt>
+          <dt className="text-text-faint">Onboarding complete</dt>
           <dd>{detail.onboarding_complete ? "yes" : "no"}</dd>
-          <dt className="text-neutral-500">Last session issued</dt>
+          <dt className="text-text-faint">Last session issued</dt>
           <dd>{formatDate(detail.last_session_at)}</dd>
-          <dt className="text-neutral-500">Last check-in</dt>
+          <dt className="text-text-faint">Last check-in</dt>
           <dd>{detail.last_checkin_date ?? "—"}</dd>
-          <dt className="text-neutral-500">Last recording</dt>
+          <dt className="text-text-faint">Last recording</dt>
           <dd>{formatDate(detail.last_recording_at)}</dd>
         </dl>
       </section>
 
       {notice && (
-        <p className="rounded-lg bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">
+        <p className="rounded-lg bg-accent-faint px-3 py-2 text-sm text-accent">
           {notice}
         </p>
       )}
-      {error && <p className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-faint px-3 py-2 text-sm text-danger">{error}</p>}
 
-      <section className="rounded-2xl border border-neutral-800 p-5">
-        <h2 className="mb-3 text-sm font-medium text-neutral-300">Roles</h2>
+      <section className="rounded-2xl border border-border p-5">
+        <h2 className="mb-3 text-sm font-medium text-text-dim">Roles</h2>
         <div className="flex flex-wrap items-start gap-4">
           <div>
-            <p className="mb-1.5 text-xs text-neutral-500">Admin</p>
+            <p className="mb-1.5 text-xs text-text-faint">Admin</p>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -123,7 +123,7 @@ function UserDetailContent() {
                     detail.is_admin ? "Admin access revoked." : "Admin access granted."
                   )
                 }
-                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+                className="rounded-lg border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-2 disabled:opacity-50"
               >
                 {detail.is_admin ? "Revoke admin" : "Grant admin"}
               </button>
@@ -141,21 +141,21 @@ function UserDetailContent() {
                       `Tier set to ${e.target.value}.`
                     )
                   }
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500 disabled:opacity-50"
+                  className="rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-sm outline-none focus:border-accent disabled:opacity-50"
                 >
                   <option value="full">Full</option>
                   <option value="support">Support</option>
                 </select>
               )}
             </div>
-            <p className="mt-1.5 text-xs text-neutral-600">
+            <p className="mt-1.5 text-xs text-text-faint">
               Support can view accounts, deactivate/reactivate, and send password resets —
               never hard-delete, grant admin, set-coach, or site settings.
             </p>
           </div>
 
           <div>
-            <p className="mb-1.5 text-xs text-neutral-500">Coach</p>
+            <p className="mb-1.5 text-xs text-text-faint">Coach</p>
             {detail.account_type === "coach" ? (
               <button
                 type="button"
@@ -177,7 +177,7 @@ function UserDetailContent() {
                     "Coach status removed."
                   );
                 }}
-                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+                className="rounded-lg border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-2 disabled:opacity-50"
               >
                 Remove coach
               </button>
@@ -188,7 +188,7 @@ function UserDetailContent() {
                   placeholder="Display name"
                   value={newCoachName}
                   onChange={(e) => setNewCoachName(e.target.value)}
-                  className="w-40 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500"
+                  className="w-40 rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-sm outline-none focus:border-accent"
                 />
                 <button
                   type="button"
@@ -203,7 +203,7 @@ function UserDetailContent() {
                       "Coach access granted."
                     ).then(() => setNewCoachName(""))
                   }
-                  className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Make coach
                 </button>
@@ -211,14 +211,14 @@ function UserDetailContent() {
             )}
           </div>
         </div>
-        <p className="mt-3 text-xs text-neutral-500">
+        <p className="mt-3 text-xs text-text-faint">
           Making a Vrotégé account a coach doesn&apos;t remove their Vrotégé data — the account
           keeps both.
         </p>
       </section>
 
-      <section className="rounded-2xl border border-neutral-800 p-5">
-        <h2 className="mb-3 text-sm font-medium text-neutral-300">Account actions</h2>
+      <section className="rounded-2xl border border-border p-5">
+        <h2 className="mb-3 text-sm font-medium text-text-dim">Account actions</h2>
         <div className="flex flex-wrap gap-2">
           {detail.is_active ? (
             <button
@@ -231,7 +231,7 @@ function UserDetailContent() {
                   "Account deactivated. All sessions were revoked."
                 )
               }
-              className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+              className="rounded-lg border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-2 disabled:opacity-50"
             >
               Deactivate
             </button>
@@ -246,7 +246,7 @@ function UserDetailContent() {
                   "Account reactivated."
                 )
               }
-              className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+              className="rounded-lg border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-2 disabled:opacity-50"
             >
               Reactivate
             </button>
@@ -264,21 +264,21 @@ function UserDetailContent() {
                 "Password reset email sent."
               )
             }
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-lg border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-2 disabled:opacity-50"
           >
             Send password reset
           </button>
 
           <Link
             href={`/admin/users/${detail.id}/view-as`}
-            className="rounded-lg border border-amber-800 px-3 py-1.5 text-sm text-amber-300 hover:bg-amber-950/40"
+            className="rounded-lg border border-warning px-3 py-1.5 text-sm text-warning hover:bg-warning-faint"
           >
             View as this user
           </Link>
         </div>
 
-        <div className="mt-4 border-t border-neutral-800 pt-4">
-          <p className="mb-1.5 text-xs text-neutral-500">
+        <div className="mt-4 border-t border-border pt-4">
+          <p className="mb-1.5 text-xs text-text-faint">
             Or set a new password directly — takes effect immediately, no email required. Every
             existing session for this account is signed out.
           </p>
@@ -289,7 +289,7 @@ function UserDetailContent() {
               autoComplete="off"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full max-w-xs rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-sm outline-none focus:border-neutral-500"
+              className="w-full max-w-xs rounded-lg border border-border-strong bg-surface px-2.5 py-1.5 text-sm outline-none focus:border-accent"
             />
             <button
               type="button"
@@ -304,7 +304,7 @@ function UserDetailContent() {
                   "Password updated. Every existing session was signed out."
                 ).then(() => setNewPassword(""))
               }
-              className="shrink-0 rounded-lg border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+              className="shrink-0 rounded-lg border border-border-strong px-3 py-1.5 text-sm hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Set password
             </button>
@@ -312,9 +312,9 @@ function UserDetailContent() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-red-900/60 bg-red-950/10 p-5">
-        <h2 className="mb-1 text-sm font-medium text-red-300">Permanently delete account</h2>
-        <p className="mb-4 text-xs text-neutral-400">
+      <section className="rounded-2xl border border-danger/60 bg-danger-faint p-5">
+        <h2 className="mb-1 text-sm font-medium text-danger">Permanently delete account</h2>
+        <p className="mb-4 text-xs text-text-dim">
           Deletes this account, every recording (the actual audio files, not just the database
           record), and everything derived from them. This cannot be undone. The account must
           already be deactivated first.
@@ -326,15 +326,15 @@ function UserDetailContent() {
             disabled={detail.is_active}
             onClick={() => setShowDeleteConfirm(true)}
             title={detail.is_active ? "Deactivate the account first" : undefined}
-            className="rounded-lg border border-red-800 px-3 py-1.5 text-sm text-red-300 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg border border-danger px-3 py-1.5 text-sm text-danger hover:bg-danger-faint disabled:cursor-not-allowed disabled:opacity-50"
           >
             Delete this account
           </button>
         ) : (
           <div className="space-y-3">
             <div>
-              <label htmlFor="admin-delete-confirm" className="mb-1 block text-xs text-neutral-400">
-                Type <span className="font-mono text-red-300">{CONFIRM_PHRASE}</span> to confirm
+              <label htmlFor="admin-delete-confirm" className="mb-1 block text-xs text-text-dim">
+                Type <span className="font-mono text-danger">{CONFIRM_PHRASE}</span> to confirm
               </label>
               <input
                 id="admin-delete-confirm"
@@ -342,7 +342,7 @@ function UserDetailContent() {
                 autoComplete="off"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                className="w-full max-w-xs rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-red-600"
+                className="w-full max-w-xs rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-danger"
               />
             </div>
             <div className="flex gap-2">
@@ -358,7 +358,7 @@ function UserDetailContent() {
                     setConfirmText("");
                   })
                 }
-                className="rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white hover:bg-danger disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {busy ? "Deleting..." : "Permanently delete"}
               </button>
@@ -369,7 +369,7 @@ function UserDetailContent() {
                   setConfirmText("");
                 }}
                 disabled={busy}
-                className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+                className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
               >
                 Cancel
               </button>

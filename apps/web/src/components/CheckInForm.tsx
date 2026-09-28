@@ -56,8 +56,8 @@ function ScaleInput({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
-        <label className="text-xs text-neutral-400">{label}</label>
-        <span className="text-xs text-neutral-300">{value ?? "Skipped"}</span>
+        <label className="text-xs text-text-dim">{label}</label>
+        <span className="text-xs text-text-dim">{value ?? "Skipped"}</span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -72,7 +72,7 @@ function ScaleInput({
           <button
             type="button"
             onClick={() => onChange(undefined)}
-            className="shrink-0 text-xs text-neutral-500 hover:text-neutral-300"
+            className="shrink-0 text-xs text-text-faint hover:text-text-dim"
           >
             Clear
           </button>
@@ -93,12 +93,12 @@ function LoadSelect({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-neutral-400">{label}</label>
+      <label className="mb-1 block text-xs text-text-dim">{label}</label>
       <select
         value={value ?? ""}
         aria-label={label}
         onChange={(e) => onChange(e.target.value || undefined)}
-        className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+        className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
       >
         <option value="">Skip</option>
         <option value="none">None</option>
@@ -178,7 +178,7 @@ export function CheckInForm({
       </div>
 
       <div>
-        <span className="mb-1 block text-xs text-neutral-400">
+        <span className="mb-1 block text-xs text-text-dim">
           Rehearsal or performance yesterday?
         </span>
         <div className="flex gap-2">
@@ -195,8 +195,8 @@ export function CheckInForm({
               onClick={() => set("rehearsal_or_performance_yesterday", val)}
               className={`rounded-lg border px-3 py-1.5 text-xs ${
                 values.rehearsal_or_performance_yesterday === val
-                  ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                  : "border-neutral-700 text-neutral-400 hover:bg-neutral-800"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border-strong text-text-dim hover:bg-surface-2"
               }`}
             >
               {text}
@@ -206,7 +206,7 @@ export function CheckInForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-neutral-400">Sleep last night (hours)</label>
+        <label className="mb-1 block text-xs text-text-dim">Sleep last night (hours)</label>
         <input
           type="number"
           min={0}
@@ -216,7 +216,7 @@ export function CheckInForm({
           onChange={(e) =>
             set("sleep_hours", e.target.value === "" ? undefined : Number(e.target.value))
           }
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
@@ -239,47 +239,47 @@ export function CheckInForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-neutral-400">
+        <label className="mb-1 block text-xs text-text-dim">
           Illness symptoms (optional)
         </label>
         <textarea
           value={values.illness_symptoms ?? ""}
           onChange={(e) => set("illness_symptoms", e.target.value || undefined)}
           rows={2}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-neutral-400">
+        <label className="mb-1 block text-xs text-text-dim">
           Reflux symptoms (optional)
         </label>
         <textarea
           value={values.reflux_symptoms ?? ""}
           onChange={(e) => set("reflux_symptoms", e.target.value || undefined)}
           rows={2}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-neutral-400">Notes</label>
+        <label className="mb-1 block text-xs text-text-dim">Notes</label>
         <textarea
           value={values.notes ?? ""}
           onChange={(e) => set("notes", e.target.value || undefined)}
           rows={2}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+        className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
       >
         {submitting ? "Saving..." : submitLabel}
       </button>

@@ -32,7 +32,7 @@ function TriState({
 }) {
   return (
     <div>
-      <span className="mb-1 block text-xs text-neutral-400">{label}</span>
+      <span className="mb-1 block text-xs text-text-dim">{label}</span>
       <div className="flex gap-2">
         {(
           [
@@ -47,8 +47,8 @@ function TriState({
             onClick={() => onChange(val)}
             className={`rounded-lg border px-3 py-1.5 text-xs ${
               value === val
-                ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                : "border-neutral-700 text-neutral-400 hover:bg-neutral-800"
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border-strong text-text-dim hover:bg-surface-2"
             }`}
           >
             {text}
@@ -123,20 +123,20 @@ function OnboardingForm() {
   }
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label htmlFor="voice_use" className="mb-1 block text-xs text-neutral-400">
+        <label htmlFor="voice_use" className="mb-1 block text-xs text-text-dim">
           How do you mainly use your voice?
         </label>
         <select
           id="voice_use"
           value={form.voice_use ?? ""}
           onChange={(e) => setText("voice_use", e.target.value)}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         >
           <option value="">Prefer not to say</option>
           <option value="singing">Primarily singing</option>
@@ -153,7 +153,7 @@ function OnboardingForm() {
       />
 
       <div>
-        <label htmlFor="musical_style" className="mb-1 block text-xs text-neutral-400">
+        <label htmlFor="musical_style" className="mb-1 block text-xs text-text-dim">
           Musical style(s)
         </label>
         <input
@@ -161,19 +161,19 @@ function OnboardingForm() {
           value={form.musical_style ?? ""}
           onChange={(e) => setText("musical_style", e.target.value)}
           placeholder="e.g. rock, metal, musical theatre"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
       <div>
-        <label htmlFor="practice_frequency" className="mb-1 block text-xs text-neutral-400">
+        <label htmlFor="practice_frequency" className="mb-1 block text-xs text-text-dim">
           How often do you typically practice or perform?
         </label>
         <select
           id="practice_frequency"
           value={form.practice_frequency ?? ""}
           onChange={(e) => setText("practice_frequency", e.target.value)}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         >
           <option value="">Prefer not to say</option>
           <option value="daily">Daily</option>
@@ -185,7 +185,7 @@ function OnboardingForm() {
       </div>
 
       <div>
-        <label htmlFor="perceived_vocal_range" className="mb-1 block text-xs text-neutral-400">
+        <label htmlFor="perceived_vocal_range" className="mb-1 block text-xs text-text-dim">
           How would you describe your current vocal range?
         </label>
         <input
@@ -193,12 +193,12 @@ function OnboardingForm() {
           value={form.perceived_vocal_range ?? ""}
           onChange={(e) => setText("perceived_vocal_range", e.target.value)}
           placeholder="e.g. tenor, alto, or just describe it"
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
       <div>
-        <label htmlFor="goals" className="mb-1 block text-xs text-neutral-400">
+        <label htmlFor="goals" className="mb-1 block text-xs text-text-dim">
           What are your goals with VepAIr?
         </label>
         <textarea
@@ -206,14 +206,14 @@ function OnboardingForm() {
           value={form.goals ?? ""}
           onChange={(e) => setText("goals", e.target.value)}
           rows={3}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
       <div>
         <label
           htmlFor="vocal_coaching_history"
-          className="mb-1 block text-xs text-neutral-400"
+          className="mb-1 block text-xs text-text-dim"
         >
           Have you worked with a vocal coach or speech therapist before?
         </label>
@@ -222,7 +222,7 @@ function OnboardingForm() {
           value={form.vocal_coaching_history ?? ""}
           onChange={(e) => setText("vocal_coaching_history", e.target.value)}
           rows={2}
-          className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
 
@@ -233,10 +233,10 @@ function OnboardingForm() {
       />
 
       {error && (
-        <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
       {saved && (
-        <p className="rounded-lg bg-emerald-950/40 px-3 py-2 text-xs text-emerald-300">
+        <p className="rounded-lg bg-accent-faint px-3 py-2 text-xs text-accent">
           Saved.
         </p>
       )}
@@ -245,7 +245,7 @@ function OnboardingForm() {
         <button
           type="submit"
           disabled={saving}
-          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save"}
         </button>
@@ -256,7 +256,7 @@ function OnboardingForm() {
               isNewSignup ? `/record?next=${encodeURIComponent("/vocal-range")}` : "/"
             )
           }
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
         >
           {isNewSignup ? "Done — record your baseline →" : "Done"}
         </button>
@@ -270,24 +270,24 @@ export default function OnboardingPage() {
     <RequireAuth>
       <main className="mx-auto w-full max-w-lg flex-1 px-6 py-12">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Tell us about your voice</h1>
-        <p className="mb-8 text-sm text-neutral-400">
+        <p className="mb-8 text-sm text-text-dim">
           Every question here is optional — skip anything you&apos;d rather not answer. This
           helps VepAIr personalize your baseline, not diagnose anything.
         </p>
 
         <section className="mb-10">
-          <h2 className="mb-1 text-sm font-medium text-neutral-200">Username</h2>
-          <p className="mb-4 text-xs text-neutral-500">
+          <h2 className="mb-1 text-sm font-medium text-text">Username</h2>
+          <p className="mb-4 text-xs text-text-faint">
             A display handle, separate from your email — set one if you&apos;d like.
           </p>
           <UsernameEditor />
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-1 text-sm font-medium text-neutral-200">
+          <h2 className="mb-1 text-sm font-medium text-text">
             What brings you to VepAIr?
           </h2>
-          <p className="mb-4 text-xs text-neutral-500">
+          <p className="mb-4 text-xs text-text-faint">
             Once you&apos;ve recorded a voice sample and a vocal range test, VepAIr builds a
             90-day plan specific to your own measured range.
           </p>
@@ -295,7 +295,7 @@ export default function OnboardingPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-1 text-sm font-medium text-neutral-200">Notifications</h2>
+          <h2 className="mb-1 text-sm font-medium text-text">Notifications</h2>
           <NotificationsConsent />
         </section>
 

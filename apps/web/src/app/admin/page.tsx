@@ -38,7 +38,7 @@ function RetentionInput({
   }
 
   return (
-    <label className="flex items-center gap-2 text-xs text-neutral-300">
+    <label className="flex items-center gap-2 text-xs text-text-dim">
       {label}
       <input
         type="number"
@@ -47,7 +47,7 @@ function RetentionInput({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         disabled={disabled}
-        className="w-20 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm outline-none focus:border-neutral-500 disabled:opacity-50"
+        className="w-20 rounded-lg border border-border-strong bg-surface px-2 py-1 text-sm outline-none focus:border-accent disabled:opacity-50"
       />
     </label>
   );
@@ -89,15 +89,15 @@ function SiteSettingsPanel() {
       <section
         className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
           settings.signups_enabled
-            ? "border-neutral-800 bg-neutral-900/40"
-            : "border-red-900 bg-red-950/40"
+            ? "border-border bg-surface/40"
+            : "border-danger bg-danger-faint"
         }`}
       >
         <div>
           <p className="font-medium">
             New signups are {settings.signups_enabled ? "open" : "locked down"}
           </p>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-text-dim">
             {settings.signups_enabled
               ? "Anyone can create an account from the public signup pages."
               : "The public signup and coach-signup pages are rejecting new accounts. Admin-created accounts still work."}
@@ -109,8 +109,8 @@ function SiteSettingsPanel() {
           disabled={busy}
           className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
             settings.signups_enabled
-              ? "border-red-800 text-red-300 hover:bg-red-950/60"
-              : "border-emerald-700 text-emerald-300 hover:bg-emerald-950/60"
+              ? "border-danger text-danger hover:bg-danger-faint"
+              : "border-accent text-accent hover:bg-accent-faint"
           }`}
         >
           {busy ? "..." : settings.signups_enabled ? "Lock down signups" : "Re-open signups"}
@@ -120,15 +120,15 @@ function SiteSettingsPanel() {
       <section
         className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
           settings.nda_required
-            ? "border-amber-900 bg-amber-950/20"
-            : "border-neutral-800 bg-neutral-900/40"
+            ? "border-warning bg-warning-faint"
+            : "border-border bg-surface/40"
         }`}
       >
         <div>
           <p className="font-medium">
             Beta NDA is {settings.nda_required ? "required" : "not required"} on login
           </p>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-text-dim">
             {settings.nda_required
               ? "Every user has to accept the beta NDA before they can use the app. Turn this off once the beta phase ends."
               : "The NDA pop-up is off — users go straight into the app after logging in."}
@@ -140,8 +140,8 @@ function SiteSettingsPanel() {
           disabled={busy}
           className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
             settings.nda_required
-              ? "border-amber-700 text-amber-300 hover:bg-amber-950/60"
-              : "border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+              ? "border-warning text-warning hover:bg-warning-faint"
+              : "border-border-strong text-text-dim hover:bg-surface-2"
           }`}
         >
           {busy ? "..." : settings.nda_required ? "Turn off NDA gate" : "Turn on NDA gate"}
@@ -151,15 +151,15 @@ function SiteSettingsPanel() {
       <section
         className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${
           settings.public_api_enabled
-            ? "border-emerald-900 bg-emerald-950/20"
-            : "border-neutral-800 bg-neutral-900/40"
+            ? "border-accent bg-accent-faint"
+            : "border-border bg-surface/40"
         }`}
       >
         <div>
           <p className="font-medium">
             Public API is {settings.public_api_enabled ? "on" : "off"}
           </p>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-text-dim">
             {settings.public_api_enabled
               ? "Personal access tokens (Settings → API access) can pull recovery, vocal range, and exercise data read-only."
               : "Users can still generate personal access tokens, but no token authenticates anything until this is on."}
@@ -171,17 +171,17 @@ function SiteSettingsPanel() {
           disabled={busy}
           className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
             settings.public_api_enabled
-              ? "border-red-800 text-red-300 hover:bg-red-950/60"
-              : "border-emerald-700 text-emerald-300 hover:bg-emerald-950/60"
+              ? "border-danger text-danger hover:bg-danger-faint"
+              : "border-accent text-accent hover:bg-accent-faint"
           }`}
         >
           {busy ? "..." : settings.public_api_enabled ? "Turn off public API" : "Turn on public API"}
         </button>
       </section>
 
-      <section className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-3 text-sm">
+      <section className="rounded-lg border border-border bg-surface/40 px-4 py-3 text-sm">
         <p className="mb-1 font-medium">Data retention</p>
-        <p className="mb-3 text-xs text-neutral-400">
+        <p className="mb-3 text-xs text-text-dim">
           Days to keep raw recording audio (measurements are never purged) and the most
           sensitive check-in free-text fields (illness/reflux/notes), before the daily purge
           job removes them. Changes apply on the job&apos;s next run — see TECHNICAL_GUIDE.md
@@ -203,7 +203,7 @@ function SiteSettingsPanel() {
         </div>
       </section>
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }
@@ -263,18 +263,18 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
   }
 
   return (
-    <section className="mb-8 rounded-lg border border-neutral-800 p-4">
+    <section className="mb-8 rounded-lg border border-border p-4">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="text-sm font-medium hover:text-neutral-200"
+        className="text-sm font-medium hover:text-text"
       >
         {open ? "Cancel" : "+ Create user"}
       </button>
       {open && (
         <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          {success && <p className="text-sm text-emerald-400">{success}</p>}
+          {error && <p className="text-sm text-danger">{error}</p>}
+          {success && <p className="text-sm text-accent">{success}</p>}
           <div className="flex gap-2">
             <input
               type="email"
@@ -282,7 +282,7 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full max-w-sm rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full max-w-sm rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
             <input
               type="text"
@@ -291,11 +291,11 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password (min 8 characters)"
-              className="w-full max-w-sm rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="w-full max-w-sm rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex gap-1 rounded-lg border border-neutral-800 p-1 text-xs">
+            <div className="flex gap-1 rounded-lg border border-border p-1 text-xs">
               {ACCOUNT_TYPE_OPTIONS.map((t) => (
                 <button
                   key={t}
@@ -303,8 +303,8 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
                   onClick={() => setAccountType(t)}
                   className={`rounded-md px-2.5 py-1.5 ${
                     accountType === t
-                      ? "bg-emerald-500 text-neutral-950"
-                      : "text-neutral-400 hover:bg-neutral-800"
+                      ? "bg-accent text-accent-ink"
+                      : "text-text-dim hover:bg-surface-2"
                   }`}
                 >
                   {ACCOUNT_TYPE_LABEL[t]}
@@ -318,15 +318,15 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Coach display name"
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+                className="rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
               />
             )}
-            <label className="flex items-center gap-2 text-xs text-neutral-400">
+            <label className="flex items-center gap-2 text-xs text-text-dim">
               <input
                 type="checkbox"
                 checked={isAdmin}
                 onChange={(e) => setIsAdmin(e.target.checked)}
-                className="rounded border-neutral-700 bg-neutral-900"
+                className="rounded border-border-strong bg-surface"
               />
               Grant admin
             </label>
@@ -334,7 +334,7 @@ function CreateUserForm({ onCreated }: { onCreated: (user: AdminUserListItem) =>
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
           >
             {submitting ? "Creating..." : "Create account"}
           </button>
@@ -379,11 +379,11 @@ function ExportContactsButton() {
         type="button"
         onClick={download}
         disabled={busy}
-        className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
+        className="rounded-lg border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
       >
         {busy ? "Exporting..." : "Export contact list (CSV)"}
       </button>
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
     </div>
   );
 }
@@ -468,12 +468,12 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by email..."
-            className="w-full max-w-sm rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+            className="w-full max-w-sm rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
           >
             {loading ? "Searching..." : "Search"}
           </button>
@@ -481,17 +481,17 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
         <ExportContactsButton />
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {selected.size > 0 && (
-        <div className="mb-3 flex items-center justify-between rounded-lg border border-neutral-700 bg-neutral-900/60 px-3 py-2">
-          <p className="text-xs text-neutral-300">{selected.size} selected</p>
+        <div className="mb-3 flex items-center justify-between rounded-lg border border-border-strong bg-surface/60 px-3 py-2">
+          <p className="text-xs text-text-dim">{selected.size} selected</p>
           <div className="flex gap-2">
             <button
               type="button"
               disabled={bulkBusy}
               onClick={() => runBulk("bulk-deactivate")}
-              className="rounded-lg border border-red-800 px-3 py-1 text-xs text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+              className="rounded-lg border border-danger px-3 py-1 text-xs text-danger hover:bg-danger-faint disabled:opacity-50"
             >
               Deactivate selected
             </button>
@@ -499,7 +499,7 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
               type="button"
               disabled={bulkBusy}
               onClick={() => runBulk("bulk-reactivate")}
-              className="rounded-lg border border-neutral-700 px-3 py-1 text-xs hover:bg-neutral-800 disabled:opacity-50"
+              className="rounded-lg border border-border-strong px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-50"
             >
               Reactivate selected
             </button>
@@ -508,16 +508,16 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
       )}
 
       {results === null ? (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-text-faint">
           Enter an email substring, or search with an empty query to list the most recent 100
           signups.
         </p>
       ) : results.length === 0 ? (
-        <p className="text-sm text-neutral-500">No matching accounts.</p>
+        <p className="text-sm text-text-faint">No matching accounts.</p>
       ) : (
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-neutral-800 text-left text-neutral-400">
+            <tr className="border-b border-border text-left text-text-dim">
               <th className="w-8 py-2 pr-2"></th>
               <th className="py-2 pr-4">Email</th>
               <th className="py-2 pr-4">Type</th>
@@ -528,28 +528,28 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
           </thead>
           <tbody>
             {results.map((u) => (
-              <tr key={u.id} className="border-b border-neutral-900">
+              <tr key={u.id} className="border-b border-border">
                 <td className="py-2 pr-2">
                   <input
                     type="checkbox"
                     checked={selected.has(u.id)}
                     onChange={() => toggle(u.id)}
-                    className="rounded border-neutral-700 bg-neutral-900"
+                    className="rounded border-border-strong bg-surface"
                   />
                 </td>
                 <td className="py-2 pr-4">
-                  <Link href={`/admin/users/${u.id}`} className="underline hover:text-neutral-200">
+                  <Link href={`/admin/users/${u.id}`} className="underline hover:text-text">
                     {u.email}
                   </Link>
                   {u.is_admin && (
-                    <span className="ml-2 text-xs text-amber-400">
+                    <span className="ml-2 text-xs text-warning">
                       (admin{u.admin_role === "support" ? " · support" : ""})
                     </span>
                   )}
                 </td>
                 <td className="py-2 pr-4">{ACCOUNT_TYPE_LABEL[u.account_type]}</td>
                 <td className="py-2 pr-4">
-                  {u.is_active ? "active" : <span className="text-red-400">deactivated</span>}
+                  {u.is_active ? "active" : <span className="text-danger">deactivated</span>}
                 </td>
                 <td className="py-2 pr-4">{u.onboarding_complete ? "yes" : "no"}</td>
                 <td className="py-2 pr-4">{new Date(u.created_at).toLocaleDateString()}</td>
@@ -572,25 +572,25 @@ export default function AdminPage() {
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="mb-1 text-2xl font-semibold tracking-tight">Admin</h1>
-              <p className="text-sm text-neutral-400">Search and manage user accounts.</p>
+              <p className="text-sm text-text-dim">Search and manage user accounts.</p>
             </div>
             <div className="flex gap-4">
-              <Link href="/user-guide" className="text-sm underline hover:text-neutral-200">
+              <Link href="/user-guide" className="text-sm underline hover:text-text">
                 User guide
               </Link>
               <Link
                 href="/technical-reference"
-                className="text-sm underline hover:text-neutral-200"
+                className="text-sm underline hover:text-text"
               >
                 Technical reference
               </Link>
               <Link
                 href="/admin/organizations"
-                className="text-sm underline hover:text-neutral-200"
+                className="text-sm underline hover:text-text"
               >
                 Organizations
               </Link>
-              <Link href="/admin/reports" className="text-sm underline hover:text-neutral-200">
+              <Link href="/admin/reports" className="text-sm underline hover:text-text">
                 Reports
               </Link>
             </div>

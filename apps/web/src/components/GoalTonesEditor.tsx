@@ -57,24 +57,24 @@ export function GoalTonesEditor() {
   }
 
   if (goal === null) {
-    return <p className="text-sm text-neutral-500">Loading your target tones...</p>;
+    return <p className="text-sm text-text-faint">Loading your target tones...</p>;
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+    <div className="rounded-2xl border border-border bg-surface/60 p-5">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-neutral-200">Your target tones</h2>
+        <h2 className="text-sm font-medium text-text">Your target tones</h2>
         <span
           className={`rounded-full px-2 py-0.5 text-xs ${
             goal.source === "manual"
-              ? "bg-emerald-500/10 text-emerald-300"
-              : "bg-neutral-800 text-neutral-400"
+              ? "bg-accent/10 text-accent"
+              : "bg-surface-2 text-text-dim"
           }`}
         >
           {goal.source === "manual" ? "Your target" : "AI-suggested"}
         </span>
       </div>
-      <p className="mb-4 text-xs text-neutral-500">
+      <p className="mb-4 text-xs text-text-faint">
         Set the low, average, and high notes you&apos;re working toward. The AI suggests these
         from your own measured vocal range until you set your own — your daily exercises and
         home page adapt to whichever is active.
@@ -93,7 +93,7 @@ export function GoalTonesEditor() {
       </div>
 
       {error && (
-        <p className="mt-3 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="mt-3 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
 
       <div className="mt-4 flex gap-2">
@@ -101,7 +101,7 @@ export function GoalTonesEditor() {
           type="button"
           onClick={save}
           disabled={saving}
-          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save my targets"}
         </button>
@@ -109,7 +109,7 @@ export function GoalTonesEditor() {
           type="button"
           onClick={resetToAi}
           disabled={saving || goal.source === "ai"}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
         >
           Reset to AI suggestion
         </button>

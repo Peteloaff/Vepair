@@ -204,11 +204,11 @@ function AssignContent() {
   }
 
   if (error && exercises === null) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (exercises === null || history === null || templates === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   const active = history.find((a) => a.status === "active");
@@ -216,28 +216,28 @@ function AssignContent() {
   return (
     <div className="mx-auto w-full max-w-2xl">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Assign training</h1>
-      <p className="mb-6 text-sm text-neutral-400">
+      <p className="mb-6 text-sm text-text-dim">
         Assigned exercises are included in the Vrotégé&apos;s daily routine only where today&apos;s
         own safety limits already allow — an assignment can never push past what would be safe
         for them today.
       </p>
 
       {active && (
-        <div className="mb-6 rounded-xl border border-emerald-800 bg-emerald-950/20 p-4">
-          <p className="text-xs text-emerald-300">Currently assigned</p>
-          <ul className="mt-1 text-sm text-neutral-300">
+        <div className="mb-6 rounded-xl border border-accent bg-accent-faint p-4">
+          <p className="text-xs text-accent">Currently assigned</p>
+          <ul className="mt-1 text-sm text-text-dim">
             {active.exercise_ids.map((id) => {
               const target = active.exercise_tone_targets?.[id];
               return (
                 <li key={id}>
                   {exercises.find((e) => e.id === id)?.name ?? id}
-                  {target && <span className="text-xs text-neutral-500"> &middot; target: {target}</span>}
+                  {target && <span className="text-xs text-text-faint"> &middot; target: {target}</span>}
                 </li>
               );
             })}
           </ul>
           {active.note_to_singer && (
-            <p className="mt-2 text-xs text-neutral-500">
+            <p className="mt-2 text-xs text-text-faint">
               &ldquo;{active.note_to_singer}&rdquo;
             </p>
           )}
@@ -245,20 +245,20 @@ function AssignContent() {
       )}
 
       {templates.length > 0 && (
-        <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
-          <p className="mb-2 text-xs text-neutral-400">
+        <div className="mb-4 rounded-lg border border-border bg-surface/60 p-3">
+          <p className="mb-2 text-xs text-text-dim">
             Load from a saved template — replaces your current selection below.
           </p>
           <div className="flex flex-wrap gap-2">
             {templates.map((template) => (
               <div
                 key={template.id}
-                className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1"
+                className="flex items-center gap-1 rounded-lg border border-border-strong bg-surface px-2 py-1"
               >
                 <button
                   type="button"
                   onClick={() => applyTemplate(template)}
-                  className="text-sm text-neutral-200 hover:text-emerald-400"
+                  className="text-sm text-text hover:text-accent"
                 >
                   {template.name}
                 </button>
@@ -266,7 +266,7 @@ function AssignContent() {
                   type="button"
                   onClick={() => deleteTemplate(template.id)}
                   aria-label={`Delete template ${template.name}`}
-                  className="text-xs text-neutral-600 hover:text-red-400"
+                  className="text-xs text-text-faint hover:text-danger"
                 >
                   ×
                 </button>
@@ -282,21 +282,21 @@ function AssignContent() {
             type="button"
             onClick={() => setShowSaveTemplateForm(true)}
             disabled={selected.size === 0}
-            className="rounded-lg border border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg border border-border-strong px-3 py-2 text-sm font-medium text-text hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Save current selection as template
           </button>
         ) : (
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+          <div className="rounded-lg border border-border bg-surface/60 p-3">
             <input
               type="text"
               placeholder="Template name"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="mb-2 w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
             {templateError && (
-              <p className="mb-2 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">
+              <p className="mb-2 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">
                 {templateError}
               </p>
             )}
@@ -305,7 +305,7 @@ function AssignContent() {
                 type="button"
                 onClick={saveTemplate}
                 disabled={savingTemplate}
-                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+                className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
               >
                 {savingTemplate ? "Saving..." : "Save template"}
               </button>
@@ -316,7 +316,7 @@ function AssignContent() {
                   setTemplateError(null);
                 }}
                 disabled={savingTemplate}
-                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
+                className="rounded-lg border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -330,16 +330,16 @@ function AssignContent() {
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 rounded-lg border border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
+            className="flex items-center gap-2 rounded-lg border border-border-strong px-3 py-2 text-sm font-medium text-text hover:bg-surface-2"
           >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-sm font-bold leading-none text-neutral-950">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-sm font-bold leading-none text-accent-ink">
               +
             </span>
             Create your own exercise
           </button>
         ) : (
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
-            <p className="mb-2 text-xs text-neutral-400">
+          <div className="rounded-lg border border-border bg-surface/60 p-3">
+            <p className="mb-2 text-xs text-text-dim">
               Adds a new exercise to the library — selectable below once saved. Add as many as
               you like; the form stays open after each save.
             </p>
@@ -348,24 +348,24 @@ function AssignContent() {
               placeholder="Name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="mb-2 w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
             <textarea
               placeholder="Description — how to do this exercise"
               value={newInstructions}
               onChange={(e) => setNewInstructions(e.target.value)}
               rows={3}
-              className="mb-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+              className="mb-2 w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
             />
 
             <button
               type="button"
               onClick={() => setShowAdvanced((s) => !s)}
-              className="mb-2 text-xs text-neutral-500 hover:text-neutral-300"
+              className="mb-2 text-xs text-text-faint hover:text-text-dim"
             >
               {showAdvanced ? "Hide" : "Show"} category, difficulty & duration
               {!showAdvanced && (
-                <span className="text-neutral-600">
+                <span className="text-text-faint">
                   {" "}
                   (currently {newCategory} &middot; {newDifficulty} &middot; {newDuration}s)
                 </span>
@@ -376,7 +376,7 @@ function AssignContent() {
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
+                  className="rounded-lg border border-border-strong bg-surface px-2 py-2 text-sm outline-none focus:border-accent"
                 >
                   {EXERCISE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
@@ -389,7 +389,7 @@ function AssignContent() {
                   onChange={(e) =>
                     setNewDifficulty(e.target.value as "easy" | "moderate" | "hard")
                   }
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
+                  className="rounded-lg border border-border-strong bg-surface px-2 py-2 text-sm outline-none focus:border-accent"
                 >
                   <option value="easy">Easy</option>
                   <option value="moderate">Moderate</option>
@@ -401,24 +401,24 @@ function AssignContent() {
                   max={1800}
                   value={newDuration}
                   onChange={(e) => setNewDuration(Number(e.target.value))}
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm outline-none focus:border-neutral-500"
+                  className="rounded-lg border border-border-strong bg-surface px-2 py-2 text-sm outline-none focus:border-accent"
                   aria-label="Duration in seconds"
                 />
               </div>
             )}
 
             {addError && (
-              <p className="mb-2 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">
+              <p className="mb-2 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">
                 {addError}
               </p>
             )}
 
             {addedThisSession.length > 0 && (
-              <div className="mb-2 rounded-lg border border-emerald-900 bg-emerald-950/20 p-2">
-                <p className="mb-1 text-xs text-emerald-300">
+              <div className="mb-2 rounded-lg border border-accent bg-accent-faint p-2">
+                <p className="mb-1 text-xs text-accent">
                   Added just now ({addedThisSession.length}):
                 </p>
-                <ul className="text-xs text-neutral-300">
+                <ul className="text-xs text-text-dim">
                   {addedThisSession.map((e) => (
                     <li key={e.id}>{e.name}</li>
                   ))}
@@ -431,7 +431,7 @@ function AssignContent() {
                 type="button"
                 onClick={submitNewExercise}
                 disabled={addSubmitting}
-                className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+                className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
               >
                 {addSubmitting ? "Saving..." : "Save exercise"}
               </button>
@@ -443,7 +443,7 @@ function AssignContent() {
                   setAddError(null);
                 }}
                 disabled={addSubmitting}
-                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
+                className="rounded-lg border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
               >
                 Done
               </button>
@@ -456,14 +456,14 @@ function AssignContent() {
         {exercises.map((exercise) => (
           <div
             key={exercise.id}
-            className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-2"
+            className="rounded-lg border border-border bg-surface/60 p-2"
           >
-            <label className="flex items-center gap-2 text-sm text-neutral-300">
+            <label className="flex items-center gap-2 text-sm text-text-dim">
               <input
                 type="checkbox"
                 checked={selected.has(exercise.id)}
                 onChange={() => toggle(exercise.id)}
-                className="h-4 w-4 rounded border-neutral-700 bg-neutral-900"
+                className="h-4 w-4 rounded border-border-strong bg-surface"
               />
               <span className="inline-flex items-center gap-1">
                 {exercise.name}
@@ -472,7 +472,7 @@ function AssignContent() {
                   instructions={exercise.instructions}
                   contraindications={exercise.contraindications}
                 />
-                <span className="text-xs text-neutral-500">
+                <span className="text-xs text-text-faint">
                   &middot; {exercise.category} &middot; {exercise.difficulty}
                 </span>
               </span>
@@ -498,11 +498,11 @@ function AssignContent() {
         value={note}
         onChange={(e) => setNote(e.target.value)}
         rows={2}
-        className="mb-3 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm outline-none focus:border-neutral-500"
+        className="mb-3 w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
       />
 
       {error && (
-        <p className="mb-3 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+        <p className="mb-3 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
       )}
 
       <div className="flex gap-2">
@@ -510,13 +510,13 @@ function AssignContent() {
           type="button"
           onClick={submit}
           disabled={submitting}
-          className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
         >
           {submitting ? "Saving..." : "Assign"}
         </button>
         <Link
           href={`/coach/singers/${params.singerId}`}
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
         >
           Back
         </Link>

@@ -10,8 +10,8 @@ import { ApiError } from "@/lib/apiClient";
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-neutral-800 p-4">
-      <p className="text-xs text-neutral-500">{label}</p>
+    <div className="rounded-2xl border border-border p-4">
+      <p className="text-xs text-text-faint">{label}</p>
       <p className="text-2xl font-semibold">{value}</p>
     </div>
   );
@@ -35,12 +35,12 @@ function TriStateSelect({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="flex flex-col gap-1 text-xs text-neutral-400">
+    <label className="flex flex-col gap-1 text-xs text-text-dim">
       {label}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+        className="rounded-lg border border-border-strong bg-surface px-2 py-1.5 text-sm text-text outline-none focus:border-accent"
       >
         {["", "true", "false"].map((v) => (
           <option key={v} value={v}>
@@ -91,7 +91,7 @@ function ReportQuery() {
   return (
     <section className="mt-10">
       <h2 className="mb-1 text-lg font-medium tracking-tight">Run a report</h2>
-      <p className="mb-4 text-sm text-neutral-400">
+      <p className="mb-4 text-sm text-text-dim">
         Filter on any combination of fields below — every filter is optional and they combine
         together (AND, not OR).
       </p>
@@ -101,25 +101,25 @@ function ReportQuery() {
           e.preventDefault();
           runReport();
         }}
-        className="mb-6 rounded-2xl border border-neutral-800 p-4"
+        className="mb-6 rounded-2xl border border-border p-4"
       >
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <label className="col-span-2 flex flex-col gap-1 text-xs text-neutral-400 sm:col-span-1">
+          <label className="col-span-2 flex flex-col gap-1 text-xs text-text-dim sm:col-span-1">
             Email contains
             <input
               type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm outline-none focus:border-neutral-500"
+              className="rounded-lg border border-border-strong bg-surface px-2 py-1.5 text-sm outline-none focus:border-accent"
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-xs text-neutral-400">
+          <label className="flex flex-col gap-1 text-xs text-text-dim">
             Account type
             <select
               value={accountType}
               onChange={(e) => setAccountType(e.target.value)}
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+              className="rounded-lg border border-border-strong bg-surface px-2 py-1.5 text-sm text-text outline-none focus:border-accent"
             >
               <option value="">Any</option>
               <option value="singer">Vrotégé</option>
@@ -135,22 +135,22 @@ function ReportQuery() {
             onChange={setOnboardingComplete}
           />
 
-          <label className="flex flex-col gap-1 text-xs text-neutral-400">
+          <label className="flex flex-col gap-1 text-xs text-text-dim">
             Signed up after
             <input
               type="date"
               value={createdAfter}
               onChange={(e) => setCreatedAfter(e.target.value)}
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+              className="rounded-lg border border-border-strong bg-surface px-2 py-1.5 text-sm text-text outline-none focus:border-accent"
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-neutral-400">
+          <label className="flex flex-col gap-1 text-xs text-text-dim">
             Signed up before
             <input
               type="date"
               value={createdBefore}
               onChange={(e) => setCreatedBefore(e.target.value)}
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+              className="rounded-lg border border-border-strong bg-surface px-2 py-1.5 text-sm text-text outline-none focus:border-accent"
             />
           </label>
         </div>
@@ -158,26 +158,26 @@ function ReportQuery() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-4 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+          className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
         >
           {loading ? "Running..." : "Run report"}
         </button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {results !== null && (
         <>
-          <p className="mb-2 text-xs text-neutral-500">
+          <p className="mb-2 text-xs text-text-faint">
             {results.length} account{results.length === 1 ? "" : "s"} matched (capped at 200).
           </p>
           {results.length === 0 ? (
-            <p className="text-sm text-neutral-500">No matching accounts.</p>
+            <p className="text-sm text-text-faint">No matching accounts.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-neutral-800 text-left text-neutral-400">
+                  <tr className="border-b border-border text-left text-text-dim">
                     <th className="py-2 pr-4">Email</th>
                     <th className="py-2 pr-4">Type</th>
                     <th className="py-2 pr-4">Status</th>
@@ -188,18 +188,18 @@ function ReportQuery() {
                 </thead>
                 <tbody>
                   {results.map((u) => (
-                    <tr key={u.id} className="border-b border-neutral-900">
+                    <tr key={u.id} className="border-b border-border">
                       <td className="py-2 pr-4">
                         <Link
                           href={`/admin/users/${u.id}`}
-                          className="underline hover:text-neutral-200"
+                          className="underline hover:text-text"
                         >
                           {u.email}
                         </Link>
                       </td>
                       <td className="py-2 pr-4">{ACCOUNT_TYPE_LABEL[u.account_type]}</td>
                       <td className="py-2 pr-4">
-                        {u.is_active ? "active" : <span className="text-red-400">deactivated</span>}
+                        {u.is_active ? "active" : <span className="text-danger">deactivated</span>}
                       </td>
                       <td className="py-2 pr-4">{u.is_admin ? "yes" : "—"}</td>
                       <td className="py-2 pr-4">{u.onboarding_complete ? "yes" : "no"}</td>
@@ -230,11 +230,11 @@ function ReportsContent() {
   }, [apiFetch]);
 
   if (error) {
-    return <p className="text-sm text-red-400">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (!summary) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
@@ -262,12 +262,12 @@ export default function AdminReportsPage() {
       <RequireAdmin>
         <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
           <div className="mb-8">
-            <Link href="/admin" className="text-sm underline hover:text-neutral-200">
+            <Link href="/admin" className="text-sm underline hover:text-text">
               ← Back to search
             </Link>
           </div>
           <h1 className="mb-1 text-2xl font-semibold tracking-tight">Reports</h1>
-          <p className="mb-8 text-sm text-neutral-400">
+          <p className="mb-8 text-sm text-text-dim">
             Aggregate, read-only figures over the current data. DAU/WAU are a proxy (distinct
             users with a check-in or recording in the window), not a true session-based metric —
             there&apos;s no login-event table yet.

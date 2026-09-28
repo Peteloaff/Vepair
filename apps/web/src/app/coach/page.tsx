@@ -48,11 +48,11 @@ function CoachDashboardContent() {
   }
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (profile === null || singers === null || invites === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   const pendingInvites = invites.filter((i) => i.status === "pending");
@@ -64,22 +64,22 @@ function CoachDashboardContent() {
           <h1 className="text-2xl font-semibold tracking-tight">
             {profile.display_name}
             {profile.studio_name && (
-              <span className="text-neutral-500"> &middot; {profile.studio_name}</span>
+              <span className="text-text-faint"> &middot; {profile.studio_name}</span>
             )}
           </h1>
-          <p className="mt-1 text-sm text-neutral-400">{user?.email}</p>
+          <p className="mt-1 text-sm text-text-dim">{user?.email}</p>
         </div>
         <div className="flex gap-2">
           <Link
             href="/coach/invite"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
           >
             Invite a Vrotégé
           </Link>
           <button
             type="button"
             onClick={() => logout()}
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
           >
             Log out
           </button>
@@ -87,9 +87,9 @@ function CoachDashboardContent() {
       </div>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-neutral-200">Your Vrotégés</h2>
+        <h2 className="mb-3 text-sm font-medium text-text">Your Vrotégés</h2>
         {singers.length === 0 ? (
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-text-faint">
             No Vrotégés yet — invite one to get started.
           </p>
         ) : (
@@ -98,16 +98,16 @@ function CoachDashboardContent() {
               <Link
                 key={singer.coach_access_id}
                 href={`/coach/singers/${singer.singer_user_id}`}
-                className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 hover:bg-neutral-900"
+                className="flex items-center justify-between rounded-xl border border-border bg-surface/60 p-4 hover:bg-surface"
               >
                 <div>
-                  <p className="text-sm font-medium text-neutral-100">{singer.singer_email}</p>
-                  <p className="mt-1 text-xs text-neutral-500">
+                  <p className="text-sm font-medium text-text">{singer.singer_email}</p>
+                  <p className="mt-1 text-xs text-text-faint">
                     Shared: {singer.granted_categories.join(", ") || "nothing yet"}
                   </p>
                 </div>
                 {singer.unread_message_count > 0 && (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
                     {singer.unread_message_count}
                   </span>
                 )}
@@ -118,24 +118,24 @@ function CoachDashboardContent() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-neutral-200">Invites sent</h2>
+        <h2 className="mb-3 text-sm font-medium text-text">Invites sent</h2>
         {pendingInvites.length === 0 ? (
-          <p className="text-sm text-neutral-500">No pending invites.</p>
+          <p className="text-sm text-text-faint">No pending invites.</p>
         ) : (
           <div className="space-y-2">
             {pendingInvites.map((invite) => (
               <div
                 key={invite.id}
-                className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/60 p-4"
+                className="flex items-center justify-between rounded-xl border border-border bg-surface/60 p-4"
               >
                 <div>
-                  <p className="text-sm text-neutral-200">{invite.singer_email}</p>
-                  <p className="text-xs text-neutral-500">{STATUS_LABEL[invite.status]}</p>
+                  <p className="text-sm text-text">{invite.singer_email}</p>
+                  <p className="text-xs text-text-faint">{STATUS_LABEL[invite.status]}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => cancelInvite(invite.id)}
-                  className="text-xs text-neutral-500 hover:text-red-300"
+                  className="text-xs text-text-faint hover:text-danger"
                 >
                   Cancel
                 </button>

@@ -94,16 +94,16 @@ function ViewAsContent() {
   }
 
   if (error) {
-    return <p className="text-sm text-red-400">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (ended) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-neutral-400">Impersonation session ended.</p>
+        <p className="text-sm text-text-dim">Impersonation session ended.</p>
         <Link
           href={`/admin/users/${params.userId}`}
-          className="text-sm underline hover:text-neutral-200"
+          className="text-sm underline hover:text-text"
         >
           ← Back to account
         </Link>
@@ -112,13 +112,13 @@ function ViewAsContent() {
   }
 
   if (!session) {
-    return <p className="text-sm text-neutral-500">Starting impersonation session...</p>;
+    return <p className="text-sm text-text-faint">Starting impersonation session...</p>;
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-xl border border-amber-800 bg-amber-950/30 px-4 py-3">
-        <p className="text-sm text-amber-300">
+      <div className="flex items-center justify-between rounded-xl border border-warning bg-warning-faint px-4 py-3">
+        <p className="text-sm text-warning">
           Viewing as <span className="font-medium">{session.user_email}</span> as an admin —
           read-only, expires automatically in {Math.round(session.expires_in / 60)} minutes.
         </p>
@@ -126,34 +126,34 @@ function ViewAsContent() {
           type="button"
           onClick={end}
           disabled={ending}
-          className="shrink-0 rounded-lg border border-amber-700 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-950/60 disabled:opacity-50"
+          className="shrink-0 rounded-lg border border-warning px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning-faint disabled:opacity-50"
         >
           {ending ? "Exiting..." : "Exit impersonation"}
         </button>
       </div>
 
-      <p className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-3 py-2 text-xs text-neutral-500">
+      <p className="rounded-lg border border-border bg-surface/40 px-3 py-2 text-xs text-text-faint">
         Account and engagement facts only — nothing about voice health, recovery status, or
         check-in content appears here, on purpose.
       </p>
 
-      <section className="rounded-2xl border border-neutral-800 p-5">
-        <h2 className="mb-3 text-sm font-medium text-neutral-300">Account setup</h2>
+      <section className="rounded-2xl border border-border p-5">
+        <h2 className="mb-3 text-sm font-medium text-text-dim">Account setup</h2>
         {profile ? (
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <dt className="text-neutral-500">Practice frequency</dt>
+            <dt className="text-text-faint">Practice frequency</dt>
             <dd>{profile.practice_frequency ?? "—"}</dd>
-            <dt className="text-neutral-500">Musical style</dt>
+            <dt className="text-text-faint">Musical style</dt>
             <dd>{profile.musical_style ?? "—"}</dd>
           </dl>
         ) : (
-          <p className="text-sm text-neutral-500">Onboarding not completed yet.</p>
+          <p className="text-sm text-text-faint">Onboarding not completed yet.</p>
         )}
       </section>
 
-      <section className="rounded-2xl border border-neutral-800 p-5">
-        <h2 className="mb-3 text-sm font-medium text-neutral-300">Recent engagement</h2>
-        <p className="text-sm text-neutral-300">
+      <section className="rounded-2xl border border-border p-5">
+        <h2 className="mb-3 text-sm font-medium text-text-dim">Recent engagement</h2>
+        <p className="text-sm text-text-dim">
           {checkinCount} check-in{checkinCount === 1 ? "" : "s"} logged in the last 7 days.
         </p>
       </section>
@@ -161,7 +161,7 @@ function ViewAsContent() {
       <div>
         <Link
           href={`/admin/users/${params.userId}`}
-          className="text-sm underline hover:text-neutral-200"
+          className="text-sm underline hover:text-text"
         >
           ← Back to account
         </Link>

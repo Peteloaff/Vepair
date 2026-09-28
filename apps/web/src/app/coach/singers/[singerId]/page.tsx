@@ -61,19 +61,19 @@ function StatTile({
   display: TileDisplay | null;
 }) {
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-4">
-      <p className="text-xs text-neutral-500">{label}</p>
+    <div className="rounded-2xl border border-border bg-surface/60 p-4">
+      <p className="text-xs text-text-faint">{label}</p>
       {!granted ? (
-        <p className="mt-2 text-sm text-neutral-600">Not shared</p>
+        <p className="mt-2 text-sm text-text-faint">Not shared</p>
       ) : display === null ? (
-        <p className="mt-2 text-sm text-neutral-600">Not enough data yet</p>
+        <p className="mt-2 text-sm text-text-faint">Not enough data yet</p>
       ) : (
         <>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-neutral-100">
-            {display.direction && <span className="mr-1 text-neutral-500">{ARROW[display.direction]}</span>}
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-text">
+            {display.direction && <span className="mr-1 text-text-faint">{ARROW[display.direction]}</span>}
             {display.headline}
           </p>
-          {display.sub && <p className="mt-0.5 text-xs text-neutral-500">{display.sub}</p>}
+          {display.sub && <p className="mt-0.5 text-xs text-text-faint">{display.sub}</p>}
         </>
       )}
     </div>
@@ -92,9 +92,9 @@ function ActionButton({
   badgeCount?: number;
 }) {
   const className =
-    "relative flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-center text-sm font-medium text-neutral-200 hover:bg-neutral-800";
+    "relative flex items-center justify-center rounded-xl border border-border bg-surface/60 px-4 py-3 text-center text-sm font-medium text-text hover:bg-surface-2";
   const badge = badgeCount != null && badgeCount > 0 && (
-    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-xs font-semibold text-neutral-950">
+    <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
       {badgeCount}
     </span>
   );
@@ -325,11 +325,11 @@ function SingerDashboardContent() {
   }, [trendHistory, trendDates]);
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (summary === null || history === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   const isOverdue =
@@ -339,25 +339,25 @@ function SingerDashboardContent() {
     <div className="mx-auto w-full max-w-3xl">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">Vrotégé dashboard</p>
+          <p className="text-xs uppercase tracking-wide text-text-faint">Vrotégé dashboard</p>
           <h1 className="text-2xl font-semibold tracking-tight">{summary.singer_email}</h1>
         </div>
-        <div className="flex gap-3 text-xs text-neutral-500">
-          <Link href={`/coach/singers/${params.singerId}/progress`} className="hover:text-neutral-300">
+        <div className="flex gap-3 text-xs text-text-faint">
+          <Link href={`/coach/singers/${params.singerId}/progress`} className="hover:text-text-dim">
             Full trends
           </Link>
           <button
             type="button"
             onClick={removeSinger}
             disabled={removing}
-            className="hover:text-red-300 disabled:opacity-50"
+            className="hover:text-danger disabled:opacity-50"
           >
             {removing ? "Removing..." : "Remove from roster"}
           </button>
         </div>
       </div>
 
-      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">Today</p>
+      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-faint">Today</p>
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatTile label="Range" granted={granted.has("vocal_range")} display={tiles.range} />
         <StatTile label="Stability" granted={granted.has("recovery_trends")} display={tiles.stability} />
@@ -388,15 +388,15 @@ function SingerDashboardContent() {
       </div>
 
       {showAssigned && (
-        <div className="mb-4 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-          <h2 className="mb-3 text-sm font-medium text-neutral-200">Assigned exercises</h2>
+        <div className="mb-4 rounded-2xl border border-border bg-surface/60 p-5">
+          <h2 className="mb-3 text-sm font-medium text-text">Assigned exercises</h2>
           {granted.has("exercise_history") && summary.todays_routine ? (
             summary.todays_routine.items.length === 0 ? (
-              <p className="text-sm text-neutral-500">Nothing in today&apos;s routine.</p>
+              <p className="text-sm text-text-faint">Nothing in today&apos;s routine.</p>
             ) : (
               <ul className="space-y-1.5 text-sm">
                 {summary.todays_routine.items.map((item) => (
-                  <li key={item.id} className="flex items-center gap-2 text-neutral-300">
+                  <li key={item.id} className="flex items-center gap-2 text-text-dim">
                     {item.name}
                     <ExerciseInfoButton
                       purpose={item.purpose}
@@ -404,7 +404,7 @@ function SingerDashboardContent() {
                       contraindications={item.contraindications}
                     />
                     {summary.todays_routine!.assigned_exercise_ids.includes(item.id) && (
-                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300">
+                      <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent">
                         assigned
                       </span>
                     )}
@@ -413,20 +413,20 @@ function SingerDashboardContent() {
               </ul>
             )
           ) : (
-            <p className="text-sm text-neutral-500">Not shared: exercise routine & completion history.</p>
+            <p className="text-sm text-text-faint">Not shared: exercise routine & completion history.</p>
           )}
         </div>
       )}
 
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
+      <div className="rounded-2xl border border-border bg-surface/60 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-medium text-neutral-200">Schedule reassessment</h2>
-            <p className="mt-1 text-xs text-neutral-500">
+            <h2 className="text-sm font-medium text-text">Schedule reassessment</h2>
+            <p className="mt-1 text-xs text-text-faint">
               {summary.next_reassessment_date ? (
                 <>
                   Next due{" "}
-                  <span className={isOverdue ? "text-amber-400" : "text-neutral-300"}>
+                  <span className={isOverdue ? "text-warning" : "text-text-dim"}>
                     {formatLocalDate(summary.next_reassessment_date)}
                   </span>
                   {isOverdue && " (overdue)"}
@@ -439,7 +439,7 @@ function SingerDashboardContent() {
           <button
             type="button"
             onClick={() => setShowReassessment((s) => !s)}
-            className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-2"
           >
             {showReassessment ? "Close" : summary.next_reassessment_date ? "Change date" : "Schedule"}
           </button>
@@ -451,13 +451,13 @@ function SingerDashboardContent() {
               type="date"
               value={reassessmentInput}
               onChange={(e) => setReassessmentInput(e.target.value)}
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-200 outline-none focus:border-neutral-500"
+              className="rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-sm text-text outline-none focus:border-accent"
             />
             <button
               type="button"
               onClick={() => saveReassessment(reassessmentInput || null)}
               disabled={savingReassessment || !reassessmentInput}
-              className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+              className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
             >
               {savingReassessment ? "Saving..." : "Save"}
             </button>
@@ -466,20 +466,20 @@ function SingerDashboardContent() {
                 type="button"
                 onClick={() => saveReassessment(null)}
                 disabled={savingReassessment}
-                className="rounded-lg border border-neutral-700 px-3 py-1.5 text-xs hover:bg-neutral-800 disabled:opacity-50"
+                className="rounded-lg border border-border-strong px-3 py-1.5 text-xs hover:bg-surface-2 disabled:opacity-50"
               >
                 Clear
               </button>
             )}
           </div>
         )}
-        {reassessmentError && <p className="mt-3 text-xs text-red-300">{reassessmentError}</p>}
+        {reassessmentError && <p className="mt-3 text-xs text-danger">{reassessmentError}</p>}
       </div>
 
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-neutral-500">Progress</h2>
-          <div className="flex gap-1 rounded-lg border border-neutral-800 p-1 text-xs">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-text-faint">Progress</h2>
+          <div className="flex gap-1 rounded-lg border border-border p-1 text-xs">
             {RANGE_OPTIONS.map((opt) => (
               <button
                 key={opt.days}
@@ -487,8 +487,8 @@ function SingerDashboardContent() {
                 onClick={() => setTrendRangeDays(opt.days)}
                 className={`rounded-md px-2.5 py-1 ${
                   trendRangeDays === opt.days
-                    ? "bg-emerald-500 text-neutral-950"
-                    : "text-neutral-400 hover:bg-neutral-800"
+                    ? "bg-accent text-accent-ink"
+                    : "text-text-dim hover:bg-surface-2"
                 }`}
               >
                 {opt.label}
@@ -499,8 +499,8 @@ function SingerDashboardContent() {
               onClick={() => setTrendRangeDays("all")}
               className={`rounded-md px-2.5 py-1 ${
                 trendRangeDays === "all"
-                  ? "bg-emerald-500 text-neutral-950"
-                  : "text-neutral-400 hover:bg-neutral-800"
+                  ? "bg-accent text-accent-ink"
+                  : "text-text-dim hover:bg-surface-2"
               }`}
             >
               All-time
@@ -509,13 +509,13 @@ function SingerDashboardContent() {
         </div>
 
         {!granted.has("recovery_trends") ? (
-          <p className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5 text-sm text-neutral-500">
+          <p className="rounded-2xl border border-border bg-surface/60 p-5 text-sm text-text-faint">
             Not shared: recovery score & trends.
           </p>
         ) : trendError ? (
-          <p className="text-sm text-red-300">{trendError}</p>
+          <p className="text-sm text-danger">{trendError}</p>
         ) : trendHistory === null ? (
-          <p className="text-sm text-neutral-500">Loading...</p>
+          <p className="text-sm text-text-faint">Loading...</p>
         ) : (
           <TrendChart
             title="VepAIr Score"
@@ -529,14 +529,14 @@ function SingerDashboardContent() {
 
         <Link
           href={`/coach/singers/${params.singerId}/progress`}
-          className="mt-4 inline-block rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+          className="mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
         >
           See all progress &rarr;
         </Link>
       </section>
 
       <div className="mt-8">
-        <Link href="/coach" className="text-xs text-neutral-500 hover:text-neutral-300">
+        <Link href="/coach" className="text-xs text-text-faint hover:text-text-dim">
           &larr; Back to your Vrotégés
         </Link>
       </div>

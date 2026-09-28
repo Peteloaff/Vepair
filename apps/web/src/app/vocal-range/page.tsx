@@ -230,17 +230,17 @@ function RangeMappingFlow() {
     return (
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Vocal Range Mapping</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           A quick, comfortable range test — your lowest and highest easy notes, tracked over
           time. Never force a note; stop the moment anything feels strained.
         </p>
         {error && (
-          <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+          <p className="mb-4 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
         )}
         <button
           type="button"
           onClick={startSession}
-          className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+          className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
         >
           Start range test
         </button>
@@ -249,11 +249,11 @@ function RangeMappingFlow() {
   }
 
   if (phase === "loading") {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   if (phase === "requesting-permission") {
-    return <p className="text-sm text-neutral-500">Requesting microphone access...</p>;
+    return <p className="text-sm text-text-faint">Requesting microphone access...</p>;
   }
 
   if (phase === "permission-denied" || phase === "no-microphone") {
@@ -262,7 +262,7 @@ function RangeMappingFlow() {
         <h1 className="mb-2 text-xl font-semibold">
           {phase === "permission-denied" ? "Microphone access needed" : "No microphone found"}
         </h1>
-        <p className="mb-4 text-neutral-400">
+        <p className="mb-4 text-text-dim">
           {phase === "permission-denied"
             ? "VepAIr needs microphone access for the range test. Check your browser's site settings and allow the microphone, then try again."
             : "VepAIr couldn't find a microphone on this device. Connect one and try again."}
@@ -270,7 +270,7 @@ function RangeMappingFlow() {
         <button
           type="button"
           onClick={startSession}
-          className="rounded-lg border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 hover:bg-surface-2"
         >
           Try again
         </button>
@@ -279,7 +279,7 @@ function RangeMappingFlow() {
   }
 
   if (phase === "submitting") {
-    return <p className="text-sm text-neutral-500">Saving your range test...</p>;
+    return <p className="text-sm text-text-faint">Saving your range test...</p>;
   }
 
   if (phase === "summary") {
@@ -287,7 +287,7 @@ function RangeMappingFlow() {
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-4 text-2xl font-semibold tracking-tight">Your vocal range</h1>
         {error && (
-          <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+          <p className="mb-4 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
         )}
         {summary && (
           <>
@@ -300,22 +300,22 @@ function RangeMappingFlow() {
             />
             <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
               <div>
-                <dt className="text-xs text-neutral-500">Current comfortable range</dt>
-                <dd className="text-neutral-200">
+                <dt className="text-xs text-text-faint">Current comfortable range</dt>
+                <dd className="text-text">
                   {summary.current_low_note ?? "—"} to {summary.current_high_note ?? "—"}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-neutral-500">Historical best</dt>
-                <dd className="text-neutral-200">
+                <dt className="text-xs text-text-faint">Historical best</dt>
+                <dd className="text-text">
                   {summary.historical_best_low_note ?? "—"} to{" "}
                   {summary.historical_best_high_note ?? "—"}
                 </dd>
               </div>
               {summary.change_30d_high.semitones !== null && (
                 <div>
-                  <dt className="text-xs text-neutral-500">30-day change (high note)</dt>
-                  <dd className="text-neutral-200">
+                  <dt className="text-xs text-text-faint">30-day change (high note)</dt>
+                  <dd className="text-text">
                     {summary.change_30d_high.semitones >= 0 ? "+" : ""}
                     {summary.change_30d_high.semitones} semitones
                   </dd>
@@ -323,8 +323,8 @@ function RangeMappingFlow() {
               )}
               {summary.change_90d_high.semitones !== null && (
                 <div>
-                  <dt className="text-xs text-neutral-500">90-day change (high note)</dt>
-                  <dd className="text-neutral-200">
+                  <dt className="text-xs text-text-faint">90-day change (high note)</dt>
+                  <dd className="text-text">
                     {summary.change_90d_high.semitones >= 0 ? "+" : ""}
                     {summary.change_90d_high.semitones} semitones
                   </dd>
@@ -332,19 +332,19 @@ function RangeMappingFlow() {
               )}
               {summary.current_falsetto_note && (
                 <div>
-                  <dt className="text-xs text-neutral-500">Falsetto / head voice</dt>
-                  <dd className="text-neutral-200">{summary.current_falsetto_note}</dd>
+                  <dt className="text-xs text-text-faint">Falsetto / head voice</dt>
+                  <dd className="text-text">{summary.current_falsetto_note}</dd>
                 </div>
               )}
             </dl>
             {summary.stretch_target_note && (
-              <p className="mt-4 rounded-lg bg-emerald-950/30 px-3 py-2 text-xs text-emerald-300">
+              <p className="mt-4 rounded-lg bg-accent-faint px-3 py-2 text-xs text-accent">
                 {summary.stretch_target_reason}
               </p>
             )}
           </>
         )}
-        <p className="mt-6 text-xs text-neutral-600">
+        <p className="mt-6 text-xs text-text-faint">
           These numbers describe your own range over time — never a definitive classification of
           your voice type or register. See MEDICAL_SAFETY.md.
         </p>
@@ -357,13 +357,13 @@ function RangeMappingFlow() {
               setError(null);
               void startSession();
             }}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
           >
             Record a new range test
           </button>
           <Link
             href="/"
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
           >
             Back to dashboard
           </Link>
@@ -375,13 +375,13 @@ function RangeMappingFlow() {
   // ready / recording / reviewing / uploading
   return (
     <div className="mx-auto w-full max-w-lg">
-      <p className="mb-1 text-xs text-neutral-500">
+      <p className="mb-1 text-xs text-text-faint">
         Step {stepIndex + 1} of {RANGE_SEQUENCE.length}
       </p>
       <h1 className="mb-2 text-2xl font-semibold tracking-tight">{step.title}</h1>
-      <p className="mb-4 text-sm text-neutral-400">{step.instructions}</p>
+      <p className="mb-4 text-sm text-text-dim">{step.instructions}</p>
 
-      <p className="my-3 text-center font-mono text-2xl tabular-nums text-neutral-200">
+      <p className="my-3 text-center font-mono text-2xl tabular-nums text-text">
         {(elapsedMs / 1000).toFixed(1)}s
       </p>
 
@@ -390,7 +390,7 @@ function RangeMappingFlow() {
           <button
             type="button"
             onClick={beginRecording}
-            className="w-full rounded-lg bg-red-500 px-4 py-3 text-sm font-medium text-neutral-950 hover:bg-red-400"
+            className="w-full rounded-lg bg-danger px-4 py-3 text-sm font-medium text-accent-ink hover:bg-danger"
           >
             Record
           </button>
@@ -398,7 +398,7 @@ function RangeMappingFlow() {
             <button
               type="button"
               onClick={skipOptionalStep}
-              className="w-full rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+              className="w-full rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
             >
               Skip this step
             </button>
@@ -410,7 +410,7 @@ function RangeMappingFlow() {
         <button
           type="button"
           onClick={stopRecording}
-          className="w-full rounded-lg bg-neutral-100 px-4 py-3 text-sm font-medium text-neutral-950 hover:bg-white"
+          className="w-full rounded-lg bg-surface-2 px-4 py-3 text-sm font-medium text-text hover:bg-surface"
         >
           Stop
         </button>
@@ -423,7 +423,7 @@ function RangeMappingFlow() {
           {(lastResult.quality.clipping ||
             lastResult.quality.tooQuiet ||
             lastResult.quality.tooShort) && (
-            <div className="rounded-lg bg-amber-950/40 px-3 py-2 text-xs text-amber-300">
+            <div className="rounded-lg bg-warning-faint px-3 py-2 text-xs text-warning">
               This recording looks like it might have an issue:{" "}
               {[
                 lastResult.quality.clipping && "clipping (too loud)",
@@ -437,21 +437,21 @@ function RangeMappingFlow() {
           )}
 
           {error && (
-            <p className="rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+            <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
           )}
 
           <div className="flex gap-2">
             <button
               type="button"
               onClick={retake}
-              className="flex-1 rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+              className="flex-1 rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
             >
               Retake
             </button>
             <button
               type="button"
               onClick={acceptAndUpload}
-              className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+              className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
             >
               Use this take
             </button>
@@ -460,7 +460,7 @@ function RangeMappingFlow() {
       )}
 
       {phase === "uploading" && (
-        <p className="text-center text-sm text-neutral-500">Uploading...</p>
+        <p className="text-center text-sm text-text-faint">Uploading...</p>
       )}
     </div>
   );

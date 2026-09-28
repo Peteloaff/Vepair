@@ -37,24 +37,24 @@ function PlanView() {
   }, []);
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (view === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   if (view.plan === null) {
     return (
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-2 text-2xl font-semibold tracking-tight">Your vocal plan</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           You don&apos;t have a plan yet. Choose a track on your{" "}
-          <Link href="/onboarding" className="text-emerald-400 hover:text-emerald-300">
+          <Link href="/onboarding" className="text-accent hover:text-accent">
             profile
           </Link>{" "}
           and record a voice sample plus a{" "}
-          <Link href="/vocal-range" className="text-emerald-400 hover:text-emerald-300">
+          <Link href="/vocal-range" className="text-accent hover:text-accent">
             vocal range test
           </Link>{" "}
           — VepAIr builds your 90-day plan from that data as soon as it&apos;s available.
@@ -68,43 +68,43 @@ function PlanView() {
   return (
     <div className="mx-auto w-full max-w-lg">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Your vocal plan</h1>
-      <p className="mb-6 text-sm text-neutral-400">
+      <p className="mb-6 text-sm text-text-dim">
         {TRACK_LABEL[plan.track] ?? plan.track} &middot; started {formatDate(plan.start_date)}
       </p>
 
       {just_graduated && (
-        <p className="mb-6 rounded-lg bg-emerald-950/40 px-3 py-3 text-sm text-emerald-300">
+        <p className="mb-6 rounded-lg bg-accent-faint px-3 py-3 text-sm text-accent">
           Your recent data has been consistently stable, so you&apos;ve moved up to an
           Improvement plan — never a claim that you&apos;re &quot;healed,&quot; just that
           things look steady enough to start stretching a little further.
         </p>
       )}
 
-      <section className="rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-2 text-sm font-medium text-neutral-200">
+      <section className="rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-2 text-sm font-medium text-text">
           {plan.target_milestones.goal === "stability" ? "Stability goal" : "Range goal"}
         </h2>
-        <p className="text-sm text-neutral-300">{plan.target_milestones.description}</p>
+        <p className="text-sm text-text-dim">{plan.target_milestones.description}</p>
         <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
           <div>
-            <dt className="text-xs text-neutral-500">Target date</dt>
-            <dd className="text-neutral-200">{formatDate(plan.target_end_date)}</dd>
+            <dt className="text-xs text-text-faint">Target date</dt>
+            <dd className="text-text">{formatDate(plan.target_end_date)}</dd>
           </div>
           <div>
-            <dt className="text-xs text-neutral-500">Days remaining</dt>
-            <dd className="text-neutral-200">{daysRemaining(plan.target_end_date)}</dd>
+            <dt className="text-xs text-text-faint">Days remaining</dt>
+            <dd className="text-text">{daysRemaining(plan.target_end_date)}</dd>
           </div>
         </dl>
       </section>
 
       {readiness && (
-        <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-          <h2 className="mb-3 text-sm font-medium text-neutral-200">
+        <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+          <h2 className="mb-3 text-sm font-medium text-text">
             {readiness.ready
               ? "Ready to move to Improvement"
               : "Progress toward moving to Improvement"}
           </h2>
-          <ul className="space-y-2 text-xs text-neutral-400">
+          <ul className="space-y-2 text-xs text-text-dim">
             {readiness.reasons.map((reason, i) => (
               <li key={i}>{reason}</li>
             ))}
@@ -112,7 +112,7 @@ function PlanView() {
         </section>
       )}
 
-      <p className="mt-6 text-xs text-neutral-600">
+      <p className="mt-6 text-xs text-text-faint">
         This plan is a self-selected focus based on your own measured data, never a medical
         diagnosis or a guarantee — see MEDICAL_SAFETY.md.
       </p>
@@ -120,7 +120,7 @@ function PlanView() {
       <div className="mt-6">
         <Link
           href="/"
-          className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
         >
           Back to dashboard
         </Link>

@@ -8,15 +8,15 @@ export default function TermsPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Terms of Service</h1>
-      <p className="mb-8 text-sm text-neutral-500">Last updated August 13, 2026.</p>
+      <p className="mb-8 text-sm text-text-faint">Last updated August 13, 2026.</p>
 
-      <div className="space-y-8 text-sm leading-relaxed text-neutral-300">
+      <div className="space-y-8 text-sm leading-relaxed text-text-dim">
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">1. What VepAIr is</h2>
+          <h2 className="mb-2 text-base font-medium text-text">1. What VepAIr is</h2>
           <p>
             VepAIr is a voice conditioning and progress-tracking tool. It measures your voice
             from recordings you provide and shows you how those measurements change over time.
-            <strong className="text-neutral-100"> VepAIr is not a medical device</strong> and does
+            <strong className="text-text"> VepAIr is not a medical device</strong> and does
             not diagnose, treat, or provide medical advice. Nothing in the app is a substitute
             for seeing a doctor, an ENT, or a qualified voice professional — if you have pain,
             sudden voice loss, breathing difficulty, or any other concerning symptom, seek
@@ -25,7 +25,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">2. Your account</h2>
+          <h2 className="mb-2 text-base font-medium text-text">2. Your account</h2>
           <p>
             You&apos;re responsible for keeping your password secure and for anything that
             happens under your account. Create separate accounts if you use VepAIr both as a
@@ -34,7 +34,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">
+          <h2 className="mb-2 text-base font-medium text-text">
             3. Your voice recordings
           </h2>
           <p className="mb-3">
@@ -44,7 +44,7 @@ export default function TermsPage() {
             derived from it, from our systems.
           </p>
           <p className="mb-3">
-            <strong className="text-neutral-100">
+            <strong className="text-text">
               We do not hold your voice recordings for coaches or any other third party.
             </strong>{" "}
             If you choose to connect with a coach and explicitly share the &quot;recordings&quot;
@@ -62,7 +62,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">
+          <h2 className="mb-2 text-base font-medium text-text">
             4. Coach connections
           </h2>
           <p>
@@ -74,12 +74,12 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">
+          <h2 className="mb-2 text-base font-medium text-text">
             5. Deleting your account
           </h2>
           <p>
             You can permanently delete your account at any time from{" "}
-            <Link href="/settings" className="underline hover:text-neutral-100">
+            <Link href="/settings" className="underline hover:text-text">
               Settings
             </Link>
             . Deleting your account is permanent and cannot be undone. It removes your account,
@@ -91,7 +91,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">
+          <h2 className="mb-2 text-base font-medium text-text">
             6. Disclaimers and limits
           </h2>
           <p>
@@ -103,7 +103,7 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">7. Changes</h2>
+          <h2 className="mb-2 text-base font-medium text-text">7. Changes</h2>
           <p>
             We may update these terms as VepAIr changes. If we make a material change, we&apos;ll
             update the date at the top of this page.
@@ -111,10 +111,10 @@ export default function TermsPage() {
         </section>
 
         <section>
-          <h2 className="mb-2 text-base font-medium text-neutral-100">8. Contact</h2>
+          <h2 className="mb-2 text-base font-medium text-text">8. Contact</h2>
           <p>
             Questions about these terms or your data can be sent to{" "}
-            <a href="mailto:support@vepair.com" className="underline hover:text-neutral-100">
+            <a href="mailto:support@vepair.com" className="underline hover:text-text">
               support@vepair.com
             </a>
             .

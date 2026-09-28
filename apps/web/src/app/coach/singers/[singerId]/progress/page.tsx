@@ -20,7 +20,7 @@ import {
 import type { CoachSingerHistory } from "@/lib/types";
 
 function NotShared({ label }: { label: string }) {
-  return <p className="text-sm text-neutral-500">Not shared: {label}.</p>;
+  return <p className="text-sm text-text-faint">Not shared: {label}.</p>;
 }
 
 function SingerProgressContent() {
@@ -67,11 +67,11 @@ function SingerProgressContent() {
   );
 
   if (error) {
-    return <p className="text-sm text-red-300">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
 
   if (history === null) {
-    return <p className="text-sm text-neutral-500">Loading...</p>;
+    return <p className="text-sm text-text-faint">Loading...</p>;
   }
 
   return (
@@ -79,19 +79,19 @@ function SingerProgressContent() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Progress</h1>
-          <p className="mt-1 text-sm text-neutral-400">
+          <p className="mt-1 text-sm text-text-dim">
             Long-range trends, compared only against this Vrotégé&apos;s own history.
           </p>
         </div>
         <Link
           href={`/coach/singers/${params.singerId}`}
-          className="shrink-0 rounded-lg border border-neutral-700 px-4 py-2 text-sm font-medium hover:bg-neutral-800"
+          className="shrink-0 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
         >
           Back to dashboard
         </Link>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-1 rounded-lg border border-neutral-800 p-1 text-xs">
+      <div className="mt-6 flex flex-wrap gap-1 rounded-lg border border-border p-1 text-xs">
         {RANGE_OPTIONS.map((opt) => (
           <button
             key={opt.days}
@@ -99,8 +99,8 @@ function SingerProgressContent() {
             onClick={() => setRangeDays(opt.days)}
             className={`rounded-md px-2.5 py-1 ${
               rangeDays === opt.days
-                ? "bg-emerald-500 text-neutral-950"
-                : "text-neutral-400 hover:bg-neutral-800"
+                ? "bg-accent text-accent-ink"
+                : "text-text-dim hover:bg-surface-2"
             }`}
           >
             {opt.label}
@@ -111,16 +111,16 @@ function SingerProgressContent() {
           onClick={() => setRangeDays("all")}
           className={`rounded-md px-2.5 py-1 ${
             rangeDays === "all"
-              ? "bg-emerald-500 text-neutral-950"
-              : "text-neutral-400 hover:bg-neutral-800"
+              ? "bg-accent text-accent-ink"
+              : "text-text-dim hover:bg-surface-2"
           }`}
         >
           All-time
         </button>
       </div>
 
-      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">VepAIr Score</h2>
+      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-text">VepAIr Score</h2>
         {granted.has("recovery_trends") && history.score_history ? (
           <TrendChart
             title="VepAIr Score"
@@ -177,28 +177,28 @@ function SingerProgressContent() {
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Training consistency</h2>
+      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-text">Training consistency</h2>
         {granted.has("exercise_history") && history.training_consistency ? (
           <>
             <div className="mb-4 grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-3xl font-bold text-neutral-50">
+                <p className="text-3xl font-bold text-text">
                   {history.training_consistency.current_streak_days}
                 </p>
-                <p className="mt-1 text-xs text-neutral-500">Current streak (days)</p>
+                <p className="mt-1 text-xs text-text-faint">Current streak (days)</p>
               </div>
               <div>
-                <p className="text-3xl font-bold text-neutral-50">
+                <p className="text-3xl font-bold text-text">
                   {history.training_consistency.longest_streak_days}
                 </p>
-                <p className="mt-1 text-xs text-neutral-500">Longest streak (days)</p>
+                <p className="mt-1 text-xs text-text-faint">Longest streak (days)</p>
               </div>
               <div>
-                <p className="text-3xl font-bold text-neutral-50">
+                <p className="text-3xl font-bold text-text">
                   {history.training_consistency.total_sessions_in_range}
                 </p>
-                <p className="mt-1 text-xs text-neutral-500">Sessions in range</p>
+                <p className="mt-1 text-xs text-text-faint">Sessions in range</p>
               </div>
             </div>
             <ConsistencyGrid consistency={history.training_consistency} />
@@ -208,19 +208,19 @@ function SingerProgressContent() {
         )}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-neutral-200">Exercise trends</h2>
+      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
+        <h2 className="mb-4 text-sm font-medium text-text">Exercise trends</h2>
         {granted.has("exercise_history") && history.exercise_trends ? (
           sortedTrends.length === 0 ? (
-            <p className="text-sm text-neutral-500">Not enough data yet.</p>
+            <p className="text-sm text-text-faint">Not enough data yet.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {sortedTrends.map((t) => (
                 <li
                   key={t.exercise_id}
-                  className="flex items-center justify-between rounded-lg border border-neutral-800 px-3 py-2"
+                  className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
                 >
-                  <span className="text-neutral-300">{t.exercise_name}</span>
+                  <span className="text-text-dim">{t.exercise_name}</span>
                   <span className={`text-xs font-medium ${TREND_COLOR[t.direction]}`}>
                     {TREND_LABEL[t.direction]}
                     {t.direction !== "insufficient_data" && ` · ${t.attempt_count} attempts`}
@@ -234,7 +234,7 @@ function SingerProgressContent() {
         )}
       </section>
 
-      <p className="mt-6 text-xs text-neutral-600">
+      <p className="mt-6 text-xs text-text-faint">
         Every trend here is compared only against this Vrotégé&apos;s own history, never a
         population norm — see MEDICAL_SAFETY.md.
       </p>

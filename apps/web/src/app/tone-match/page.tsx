@@ -385,19 +385,19 @@ function ToneMatchFlow() {
     return (
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Tone Match</h1>
-        <p className="mb-6 text-sm text-neutral-400">
+        <p className="mb-6 text-sm text-text-dim">
           Tap a note to hear it, then sing it back as closely as you can. A quick, ungraded-
           for-the-record practice tool — nothing here is saved or tracked over time.
         </p>
 
         {error && (
-          <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p>
+          <p className="mb-4 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>
         )}
 
         <button
           type="button"
           onClick={startPracticing}
-          className="w-full rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+          className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
         >
           Start practicing
         </button>
@@ -406,14 +406,14 @@ function ToneMatchFlow() {
   }
 
   if (phase === "requesting-permission") {
-    return <p className="text-sm text-neutral-500">Requesting microphone access...</p>;
+    return <p className="text-sm text-text-faint">Requesting microphone access...</p>;
   }
 
   if (phase === "permission-denied") {
     return (
       <div className="mx-auto w-full max-w-lg text-sm">
         <h1 className="mb-2 text-xl font-semibold">Microphone access needed</h1>
-        <p className="mb-4 text-neutral-400">
+        <p className="mb-4 text-text-dim">
           VepAIr needs microphone access to grade a tone match. You denied (or previously
           denied) permission. Check your browser&apos;s site settings for this page and allow
           the microphone, then try again.
@@ -421,7 +421,7 @@ function ToneMatchFlow() {
         <button
           type="button"
           onClick={startPracticing}
-          className="rounded-lg border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 hover:bg-surface-2"
         >
           Try again
         </button>
@@ -433,13 +433,13 @@ function ToneMatchFlow() {
     return (
       <div className="mx-auto w-full max-w-lg text-sm">
         <h1 className="mb-2 text-xl font-semibold">No microphone found</h1>
-        <p className="mb-4 text-neutral-400">
+        <p className="mb-4 text-text-dim">
           VepAIr couldn&apos;t find a microphone on this device. Connect one and try again.
         </p>
         <button
           type="button"
           onClick={startPracticing}
-          className="rounded-lg border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+          className="rounded-lg border border-border-strong px-4 py-2 hover:bg-surface-2"
         >
           Try again
         </button>
@@ -451,22 +451,22 @@ function ToneMatchFlow() {
     return (
       <div className="mx-auto w-full max-w-lg">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Tone Match</h1>
-        <p className="mb-6 text-sm text-neutral-400">Tap a note to hear it, then sing it back.</p>
+        <p className="mb-6 text-sm text-text-dim">Tap a note to hear it, then sing it back.</p>
 
-        <div className="mb-8 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-5">
-          <h2 className="mb-2 text-sm font-medium text-neutral-200">5-Tone Challenge</h2>
-          <p className="mb-4 text-sm text-neutral-400">
+        <div className="mb-8 rounded-2xl border border-border bg-surface/60 p-5">
+          <h2 className="mb-2 text-sm font-medium text-text">5-Tone Challenge</h2>
+          <p className="mb-4 text-sm text-text-dim">
             5 tones from your own vocal range, scored on accuracy, hold, and reaction &mdash;
             about 30 seconds.
           </p>
           <button
             type="button"
             onClick={startGame}
-            className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-violet-400"
+            className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-accent-ink hover:bg-violet-400"
           >
             Start the challenge
           </button>
-          {gameError && <p className="mt-3 text-xs text-red-300">{gameError}</p>}
+          {gameError && <p className="mt-3 text-xs text-danger">{gameError}</p>}
         </div>
 
         <div className="mb-8">
@@ -483,7 +483,7 @@ function ToneMatchFlow() {
               key={note.label}
               type="button"
               onClick={() => attemptNote(note)}
-              className="rounded-lg border border-neutral-700 px-2 py-3 text-sm font-medium text-neutral-200 hover:bg-neutral-800"
+              className="rounded-lg border border-border-strong px-2 py-3 text-sm font-medium text-text hover:bg-surface-2"
             >
               {note.label}
             </button>
@@ -496,8 +496,8 @@ function ToneMatchFlow() {
   if (phase === "tone-playing" && selectedNote) {
     return (
       <div className="mx-auto w-full max-w-lg text-center">
-        <p className="mb-2 text-sm text-neutral-400">Listen for the note...</p>
-        <p className="text-6xl font-bold tracking-tight text-neutral-100">{selectedNote.label}</p>
+        <p className="mb-2 text-sm text-text-dim">Listen for the note...</p>
+        <p className="text-6xl font-bold tracking-tight text-text">{selectedNote.label}</p>
       </div>
     );
   }
@@ -505,15 +505,15 @@ function ToneMatchFlow() {
   if (phase === "listening" && selectedNote) {
     return (
       <div className="mx-auto w-full max-w-lg text-center">
-        <p className="mb-1 text-sm text-neutral-400">Now sing it back &mdash; target:</p>
-        <p className="mb-4 text-4xl font-bold tracking-tight text-neutral-100">
+        <p className="mb-1 text-sm text-text-dim">Now sing it back &mdash; target:</p>
+        <p className="mb-4 text-4xl font-bold tracking-tight text-text">
           {selectedNote.label}
         </p>
         <Waveform ref={waveformRef} active={true} />
         <div className="mx-auto mt-4 max-w-xs text-left">
           <PitchMeter liveHz={liveHz} goalHz={selectedNote.frequencyHz} />
         </div>
-        <p className="mt-3 font-mono text-2xl tabular-nums text-neutral-200">
+        <p className="mt-3 font-mono text-2xl tabular-nums text-text">
           {remainingSeconds}s
         </p>
       </div>
@@ -525,7 +525,7 @@ function ToneMatchFlow() {
       <div className="mx-auto w-full max-w-lg">
         <div className="flex justify-center">
           <div
-            className="overflow-hidden rounded-2xl border border-neutral-800"
+            className="overflow-hidden rounded-2xl border border-border"
             style={{
               width: CARD_WIDTH * (PREVIEW_WIDTH / CARD_WIDTH),
               height: CARD_HEIGHT * (PREVIEW_WIDTH / CARD_WIDTH),
@@ -552,7 +552,7 @@ function ToneMatchFlow() {
         </div>
 
         {shareError && (
-          <p className="mt-4 rounded-lg bg-red-950/50 px-3 py-2 text-center text-xs text-red-300">
+          <p className="mt-4 rounded-lg bg-danger-faint px-3 py-2 text-center text-xs text-danger">
             {shareError}
           </p>
         )}
@@ -562,7 +562,7 @@ function ToneMatchFlow() {
             type="button"
             onClick={handleShare}
             disabled={shareBusy !== null}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
           >
             {shareBusy === "share" ? "Preparing..." : "Share"}
           </button>
@@ -570,7 +570,7 @@ function ToneMatchFlow() {
             type="button"
             onClick={handleSave}
             disabled={shareBusy !== null}
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
           >
             {shareBusy === "save" ? "Saving..." : "Save"}
           </button>
@@ -578,14 +578,14 @@ function ToneMatchFlow() {
             type="button"
             onClick={pickAnotherNote}
             disabled={shareBusy !== null}
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
           >
             Try another note
           </button>
         </div>
 
         <div className="mt-8 text-center">
-          <Link href="/" className="text-xs text-neutral-500 hover:text-neutral-300">
+          <Link href="/" className="text-xs text-text-faint hover:text-text-dim">
             Close
           </Link>
         </div>
@@ -594,28 +594,28 @@ function ToneMatchFlow() {
   }
 
   if (phase === "game-checking-range") {
-    return <p className="text-sm text-neutral-500">Checking your vocal range...</p>;
+    return <p className="text-sm text-text-faint">Checking your vocal range...</p>;
   }
 
   if (phase === "game-no-range") {
     return (
       <div className="mx-auto w-full max-w-lg text-sm">
         <h1 className="mb-2 text-xl font-semibold">Vocal range needed</h1>
-        <p className="mb-4 text-neutral-400">
+        <p className="mb-4 text-text-dim">
           The 5-Tone Challenge picks its notes from your own measured vocal range. Record one
           first, then come back and try again.
         </p>
         <div className="flex gap-2">
           <Link
             href="/vocal-range"
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
           >
             Go to vocal range test
           </Link>
           <button
             type="button"
             onClick={() => setPhase("ready")}
-            className="rounded-lg border border-neutral-700 px-4 py-2 hover:bg-neutral-800"
+            className="rounded-lg border border-border-strong px-4 py-2 hover:bg-surface-2"
           >
             Back
           </button>
@@ -627,10 +627,10 @@ function ToneMatchFlow() {
   if (phase === "game-tone-playing" && gameTargets[gameIndex]) {
     return (
       <div className="mx-auto w-full max-w-lg text-center">
-        <p className="mb-2 text-sm text-neutral-400">
+        <p className="mb-2 text-sm text-text-dim">
           5-Tone Challenge &middot; Note {gameIndex + 1} of {gameTargets.length}
         </p>
-        <p className="text-6xl font-bold tracking-tight text-neutral-100">
+        <p className="text-6xl font-bold tracking-tight text-text">
           {gameTargets[gameIndex].label}
         </p>
       </div>
@@ -641,15 +641,15 @@ function ToneMatchFlow() {
     const note = gameTargets[gameIndex];
     return (
       <div className="mx-auto w-full max-w-lg text-center">
-        <p className="mb-1 text-sm text-neutral-400">
+        <p className="mb-1 text-sm text-text-dim">
           Note {gameIndex + 1} of {gameTargets.length} &mdash; target:
         </p>
-        <p className="mb-4 text-4xl font-bold tracking-tight text-neutral-100">{note.label}</p>
+        <p className="mb-4 text-4xl font-bold tracking-tight text-text">{note.label}</p>
         <Waveform ref={waveformRef} active={true} />
         <div className="mx-auto mt-4 max-w-xs text-left">
           <PitchMeter liveHz={liveHz} goalHz={note.frequencyHz} />
         </div>
-        <p className="mt-3 font-mono text-2xl tabular-nums text-neutral-200">
+        <p className="mt-3 font-mono text-2xl tabular-nums text-text">
           {remainingSeconds}s
         </p>
       </div>
@@ -673,17 +673,17 @@ function ToneMatchFlow() {
     return (
       <div className="mx-auto w-full max-w-lg">
         {gameSubmitting && (
-          <p className="mb-4 text-center text-sm text-neutral-500">Saving your score...</p>
+          <p className="mb-4 text-center text-sm text-text-faint">Saving your score...</p>
         )}
         {gameSaveError && (
-          <p className="mb-4 rounded-lg bg-red-950/50 px-3 py-2 text-center text-xs text-red-300">
+          <p className="mb-4 rounded-lg bg-danger-faint px-3 py-2 text-center text-xs text-danger">
             {gameSaveError}
           </p>
         )}
 
         <div className="flex justify-center">
           <div
-            className="overflow-hidden rounded-2xl border border-neutral-800"
+            className="overflow-hidden rounded-2xl border border-border"
             style={{
               width: CARD_WIDTH * (PREVIEW_WIDTH / CARD_WIDTH),
               height: CARD_HEIGHT * (PREVIEW_WIDTH / CARD_WIDTH),
@@ -711,7 +711,7 @@ function ToneMatchFlow() {
         </div>
 
         {gameShareError && (
-          <p className="mt-4 rounded-lg bg-red-950/50 px-3 py-2 text-center text-xs text-red-300">
+          <p className="mt-4 rounded-lg bg-danger-faint px-3 py-2 text-center text-xs text-danger">
             {gameShareError}
           </p>
         )}
@@ -721,7 +721,7 @@ function ToneMatchFlow() {
             type="button"
             onClick={handleGameShare}
             disabled={gameShareBusy !== null}
-            className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-emerald-400 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong disabled:opacity-50"
           >
             {gameShareBusy === "share" ? "Preparing..." : "Share"}
           </button>
@@ -729,7 +729,7 @@ function ToneMatchFlow() {
             type="button"
             onClick={handleGameSave}
             disabled={gameShareBusy !== null}
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
           >
             {gameShareBusy === "save" ? "Saving..." : "Save"}
           </button>
@@ -737,14 +737,14 @@ function ToneMatchFlow() {
             type="button"
             onClick={playGameAgain}
             disabled={gameShareBusy !== null}
-            className="rounded-lg border border-neutral-700 px-4 py-2 text-sm hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
           >
             Play again
           </button>
         </div>
 
         <div className="mt-8 text-center">
-          <Link href="/" className="text-xs text-neutral-500 hover:text-neutral-300">
+          <Link href="/" className="text-xs text-text-faint hover:text-text-dim">
             Close
           </Link>
         </div>

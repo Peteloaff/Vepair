@@ -77,7 +77,7 @@ export const Waveform = forwardRef<WaveformHandle, { active: boolean }>(function
       ref={canvasRef}
       width={600}
       height={80}
-      className="w-full rounded-lg bg-neutral-950"
+      className="w-full rounded-lg bg-canvas"
       aria-hidden
     />
   );
