@@ -147,6 +147,15 @@ class CoachSingerListItemOut(BaseModel):
     # Count of singer-sent CoachMessage rows with read_at still null on this connection --
     # powers the badge on the coach's roster. 0 for a connection with no messages, never None.
     unread_message_count: int = 0
+    # At-a-glance roster data. Each field comes from a category the singer controls, so each is
+    # null (never a stand-in value) when that category isn't shared:
+    #   recovery_trends  -> score_value / score_status / score_trend
+    #   exercise_history -> last_practice_date / current_streak_days
+    score_value: float | None = None
+    score_status: str | None = None
+    score_trend: list[float] | None = None  # up to the last 7 stored scores, oldest first
+    last_practice_date: date | None = None
+    current_streak_days: int | None = None
 
 
 class CoachAssignmentCreate(BaseModel):

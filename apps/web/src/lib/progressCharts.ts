@@ -41,10 +41,17 @@ export const TREND_LABEL: Record<ExerciseTrend["direction"], string> = {
 };
 
 export const TREND_COLOR: Record<ExerciseTrend["direction"], string> = {
-  improving: "text-emerald-400",
-  declining: "text-amber-400",
-  stable: "text-neutral-400",
-  insufficient_data: "text-neutral-600",
+  improving: "text-ok",
+  declining: "text-warning",
+  stable: "text-text-dim",
+  insufficient_data: "text-text-faint",
+};
+
+export const TREND_CHIP: Record<ExerciseTrend["direction"], string> = {
+  improving: "bg-ok-faint text-ok",
+  declining: "bg-warning-faint text-warning",
+  stable: "bg-surface-2 text-text-dim",
+  insufficient_data: "bg-surface-2 text-text-faint",
 };
 
 export function sortTrends(trends: ExerciseTrend[]): ExerciseTrend[] {

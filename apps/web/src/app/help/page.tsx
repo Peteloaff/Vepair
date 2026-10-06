@@ -60,15 +60,15 @@ function AdaptiveLoopDiagram() {
   return (
     <figure className="my-1">
       <style>{`
-        .loopdiag-circle { fill: #1b1b1b; stroke: #2a2a2a; stroke-width: 2; }
-        .loopdiag-circle.is-hub { fill: #143d2e; stroke: #34d399; }
-        .loopdiag-num { font-size: 16px; fill: #78786f; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
-        .loopdiag-num.is-hub { fill: #34d399; }
-        .loopdiag-title { font-weight: 600; font-size: 19px; fill: #f2f2f0; }
-        .loopdiag-line { fill: none; stroke: #78786f; stroke-width: 1.6; }
-        .loopdiag-label { font-size: 12.5px; fill: #a3a39e; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
-        .loopdiag-label-bg { fill: #0a0a0a; }
-        .loopdiag-center { font-size: 12px; letter-spacing: 0.08em; fill: #78786f; text-transform: uppercase; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+        .loopdiag-circle { fill: var(--color-surface-2); stroke: var(--color-border-strong); stroke-width: 2; }
+        .loopdiag-circle.is-hub { fill: var(--color-accent-faint); stroke: var(--color-accent); }
+        .loopdiag-num { font-size: 16px; fill: var(--color-text-faint); font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+        .loopdiag-num.is-hub { fill: var(--color-accent); }
+        .loopdiag-title { font-weight: 600; font-size: 19px; fill: var(--color-text); }
+        .loopdiag-line { fill: none; stroke: var(--color-text-faint); stroke-width: 1.6; }
+        .loopdiag-label { font-size: 12.5px; fill: var(--color-text-dim); font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+        .loopdiag-label-bg { fill: var(--color-surface); }
+        .loopdiag-center { font-size: 12px; letter-spacing: 0.08em; fill: var(--color-text-faint); text-transform: uppercase; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
       `}</style>
       <svg
         viewBox="0 0 900 900"
@@ -78,7 +78,7 @@ function AdaptiveLoopDiagram() {
       >
         <defs>
           <marker id="loopdiag-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M0,0 L10,5 L0,10 z" fill="#78786f" />
+            <path d="M0,0 L10,5 L0,10 z" style={{ fill: "var(--color-text-faint)" }} />
           </marker>
         </defs>
 
@@ -331,7 +331,7 @@ export default function HelpPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-violet-400">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-violet">
             For coaches
           </h2>
           <div className="space-y-3">

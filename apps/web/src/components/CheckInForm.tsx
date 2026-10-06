@@ -66,7 +66,7 @@ function ScaleInput({
           max={max}
           value={value ?? min - 1}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full accent-emerald-500"
+          className="w-full accent-accent"
         />
         {value !== undefined && value !== null && (
           <button

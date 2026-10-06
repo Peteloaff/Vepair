@@ -7,15 +7,15 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
 <title>VepAIr User Guide</title>
 <style>
   :root {
-    --ink: #0a0a0a; --surface: #141414; --surface-2: #1b1b1b; --line: #272727;
-    --text: #ededed; --text-dim: #a3a3a3; --text-faint: #6f6f6f;
-    --accent: #f2b134; --accent-strong: #d99a1f; --accent-ink: #241a02;
-    --accent-soft-bg: rgba(242, 177, 52, 0.1);
+    --ink: #07111d; --surface: #0e2033; --surface-2: #132b43; --line: rgba(140, 190, 255, 0.16);
+    --text: #eaf3fc; --text-dim: #a2b8cf; --text-faint: #7088a0;
+    --accent: #2dd4ee; --accent-strong: #67e1f3; --accent-ink: #04121f;
+    --accent-soft-bg: rgba(45, 212, 238, 0.12);
     --danger: #f87171; --danger-strong: #ef4444; --danger-soft-bg: rgba(248, 113, 113, 0.1);
     --ok: #34d399; --ok-soft-bg: rgba(52, 211, 153, 0.1);
-    --coach: #a78bfa; --coach-soft-bg: rgba(167, 139, 250, 0.1);
+    --coach: #8b5cf6; --coach-soft-bg: rgba(139, 92, 246, 0.16);
   }
-  /* Always dark -- matches the rest of the VepAIr app, which has no theme toggle. */
+  /* Always dark; the surrounding app has its own light/dark toggle, this embedded doc does not. */
 
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -212,8 +212,8 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
     :root {
       --ink: #ffffff; --surface: #ffffff; --surface-2: #f5f4f2; --line: #e0ddd8;
       --text: #171717; --text-dim: #52525b; --text-faint: #7a7a75;
-      --accent: #935f07; --accent-strong: #7a4e06; --accent-ink: #fff7e6;
-      --accent-soft-bg: #f7ecd6;
+      --accent: #0e7490; --accent-strong: #0b5f78; --accent-ink: #ffffff;
+      --accent-soft-bg: #d9eef3;
       --danger: #b91c1c; --danger-soft-bg: #fbe7e7;
       --ok: #047857; --ok-soft-bg: #e3f6ee;
       --coach: #6d28d9; --coach-soft-bg: #efe7fc;

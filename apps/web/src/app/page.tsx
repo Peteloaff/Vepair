@@ -1,9 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Card } from "@/components/Card";
 import { CheckInForm } from "@/components/CheckInForm";
+import { Icon, IconTile, type IconName, type TileColor } from "@/components/icons";
 import { GoalTonesCard } from "@/components/GoalTonesCard";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
 import { ToneGameTrendCard } from "@/components/ToneGameTrendCard";
@@ -50,6 +51,86 @@ function buildSeries(history: CheckIn[], dates: string[], metric: keyof CheckIn)
   });
 }
 
+function greetingFor(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function PlanRow({
+  href,
+  icon,
+  color,
+  title,
+  subtitle,
+  tag,
+}: {
+  href: string;
+  icon: IconName;
+  color: TileColor;
+  title: string;
+  subtitle: string;
+  tag?: React.ReactNode;
+}) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className="flex items-center gap-3.5 rounded-2xl border border-border bg-surface-2 px-3.5 py-3 transition-colors hover:border-border-strong"
+      >
+        <IconTile name={icon} color={color} />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">{title}</span>
+          <span className="block truncate text-xs text-text-faint">{subtitle}</span>
+        </span>
+        {tag}
+        <Icon name="chev" className="h-5 w-5 text-text-faint" />
+      </Link>
+    </li>
+  );
+}
+
+function ScoreSnapshot({
+  label,
+  score,
+  tone,
+}: {
+  label: string;
+  score: RecoveryScoreData | null;
+  tone: "ok" | "warning";
+}) {
+  const factors = score?.factors.slice(0, 3) ?? [];
+  return (
+    <div className="rounded-2xl border border-border bg-surface-2 p-4">
+      <p
+        className={`text-xs font-semibold uppercase tracking-wider ${
+          tone === "ok" ? "text-ok" : "text-warning"
+        }`}
+      >
+        {label}
+      </p>
+      <p className="font-display mt-1 text-4xl leading-tight tracking-tight tabular-nums">
+        {score?.score_value ?? "—"}
+      </p>
+      <p className="mb-3 text-xs text-text-faint">{score?.status_label ?? "No score"}</p>
+      <ul className="space-y-2 text-sm text-text-dim">
+        {factors.length === 0 && <li className="text-text-faint">Nothing to compare yet.</li>}
+        {factors.map((f) => (
+          <li key={f.text} className="flex items-start gap-2">
+            <Icon
+              name={f.direction === "positive" ? "check" : "alert"}
+              className={`mt-0.5 h-4 w-4 ${
+                f.direction === "positive" ? "text-ok" : "text-warning"
+              }`}
+            />
+            <span>{f.text}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function Dashboard({
   isCoachView = false,
   showCoachPortalLink = false,
@@ -63,6 +144,7 @@ function Dashboard({
   const [baselineError, setBaselineError] = useState(false);
   const [recoveryScore, setRecoveryScore] = useState<RecoveryScoreData | null>(null);
   const [recoveryScoreError, setRecoveryScoreError] = useState(false);
+  const [yesterdayScore, setYesterdayScore] = useState<RecoveryScoreData | null>(null);
   const [planView, setPlanView] = useState<VocalPlanView | null>(null);
   const [planError, setPlanError] = useState(false);
   const [goal, setGoal] = useState<VocalGoal | null>(null);
@@ -112,6 +194,13 @@ function Dashboard({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHistory();
     loadRecoveryScore();
+    apiFetch<RecoveryScoreData>("/api/v1/recovery-score", {
+      searchParams: { date: daysAgoLocalDate(1) },
+    })
+      .then(setYesterdayScore)
+      .catch(() => {
+        // Best-effort -- the comparison card just shows today on its own.
+      });
     apiFetch<Profile>("/api/v1/profile").catch((err) => {
       if (err instanceof ApiError && err.code === "profile_not_found") {
         setProfileMissing(true);
@@ -217,87 +306,42 @@ function Dashboard({
     );
   }
 
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+  const coachAccessBadge = pendingInviteCount + unreadMessageCount;
+  const tileLinkClass =
+    "flex flex-col gap-3 rounded-[18px] border border-border bg-surface p-4 text-sm font-semibold transition-colors hover:border-border-strong hover:bg-surface-2";
+
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">VepAIr</h1>
-          <p className="mt-1 text-sm text-text-dim">Today&apos;s Vocal Check-In</p>
+          <h1 className="text-3xl font-normal tracking-tight sm:text-4xl">
+            {greetingFor(now.getHours())}
+            {user?.username ? `, ${user.username}` : ""}
+          </h1>
+          <p className="mt-1 text-sm text-text-dim">
+            {dateLabel}
+            {todaysCheckIn ? " · Check-in saved" : " · No check-in yet today"}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
-          <Link
-            href="/progress"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-          >
-            Progress
-          </Link>
-          <Link
-            href="/vocal-plan"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-          >
-            Vocal plan
-          </Link>
-          <Link
-            href="/vocal-range"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-          >
-            Vocal range
-          </Link>
+        <div className="flex flex-wrap gap-2">
           <Link
             href="/exercises"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
+            className="inline-flex items-center gap-2 rounded-xl border border-border-strong px-4 py-2.5 text-sm font-semibold hover:bg-surface-2"
           >
-            Voice exercises
+            <Icon name="wave" className="h-4 w-4" />
+            Today&apos;s routine
           </Link>
-          <Link
-            href="/quick-routine/warm_up"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-          >
-            Warm Up
-          </Link>
-          <Link
-            href="/quick-routine/cool_down"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-          >
-            Cool Down
-          </Link>
-          <Link
-            href="/tone-match"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-          >
-            Tone Match
-          </Link>
-          <Link
-            href="/recordings"
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-          >
-            Recordings
-          </Link>
-          {showCoachPortalLink && (
-            <Link
-              href="/coach"
-              className="rounded-lg border border-violet-800 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-950/40"
-            >
-              Coach Portal
-            </Link>
-          )}
-          {(pendingInviteCount > 0 || hasCoachConnection) && (
-            <Link
-              href="/coach-access"
-              className="relative rounded-lg border border-border-strong px-4 py-2 text-sm font-medium hover:bg-surface-2"
-            >
-              Coach Access
-              {pendingInviteCount + unreadMessageCount > 0 && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
-                  {pendingInviteCount + unreadMessageCount}
-                </span>
-              )}
-            </Link>
-          )}
           <Link
             href="/record"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
+            className="inline-flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink"
           >
+            <Icon name="mic" className="h-4 w-4" />
             Record voice sample
           </Link>
         </div>
@@ -306,189 +350,257 @@ function Dashboard({
       {profileMissing && (
         <Link
           href="/onboarding"
-          className="mt-4 block rounded-xl border border-accent bg-accent-faint px-4 py-3 text-sm text-accent hover:bg-accent-faint"
+          className="mb-4 block rounded-2xl border border-accent bg-accent-faint px-4 py-3 text-sm text-accent"
         >
           Finish setting up your profile &rarr;
         </Link>
       )}
 
       {restCheck?.rest_day_recommended && (
-        <div className="mt-4 rounded-xl bg-danger-faint px-4 py-3 text-sm text-danger">
+        <div className="mb-4 rounded-2xl bg-danger-faint px-4 py-3 text-sm text-danger">
           {restCheck.rest_day_reason}
         </div>
       )}
 
       {loadError && (
-        <p className="mt-4 rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">
-          {loadError}
-        </p>
+        <p className="mb-4 rounded-xl bg-danger-faint px-3 py-2 text-xs text-danger">{loadError}</p>
       )}
 
-      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-text">VepAIr Score</h2>
-        {recoveryScoreError ? (
-          <p className="text-sm text-text-faint">Could not load today&apos;s score.</p>
-        ) : (
-          <RecoveryScoreCard score={recoveryScore} />
-        )}
-      </section>
+      <div className="grid gap-4 lg:grid-cols-12">
+        <Card title="VepAIr Score" className="lg:col-span-5">
+          {recoveryScoreError ? (
+            <p className="text-sm text-text-faint">Could not load today&apos;s score.</p>
+          ) : (
+            <RecoveryScoreCard score={recoveryScore} />
+          )}
+        </Card>
 
-      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-text">Your Plan</h2>
-        {planError ? (
-          <p className="text-sm text-text-faint">Could not load your vocal plan.</p>
-        ) : planView === null ? (
-          <p className="text-sm text-text-faint">Loading...</p>
-        ) : planView.plan ? (
-          <div>
-            <p className="text-sm text-text-dim">
-              {TRACK_LABEL[planView.plan.track] ?? planView.plan.track} &middot;{" "}
-              {planView.plan.target_milestones.description}
-            </p>
-            <p className="mt-1 text-xs text-text-faint">
-              {daysRemaining(planView.plan.target_end_date)} days left in this 90-day plan
-            </p>
-            <Link
-              href="/exercises"
-              className="mt-3 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
-            >
-              Start today&apos;s routine &rarr;
-            </Link>
+        <Card title="Yesterday and today" meta="vs. your own baseline" className="lg:col-span-7">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ScoreSnapshot label="Yesterday" score={yesterdayScore} tone="ok" />
+            <ScoreSnapshot label="Today" score={recoveryScore} tone="warning" />
           </div>
-        ) : (
-          <p className="text-sm text-text-faint">
-            Complete your profile and record a voice sample plus a{" "}
-            <Link href="/vocal-range" className="text-accent hover:text-accent">
-              vocal range test
-            </Link>{" "}
-            to get your custom 90-day plan.{" "}
-            <Link href="/onboarding" className="text-accent hover:text-accent">
-              Get started &rarr;
-            </Link>
-          </p>
-        )}
-      </section>
+        </Card>
 
-      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
-        {history === null ? (
-          <p className="text-sm text-text-faint">Loading...</p>
-        ) : todaysCheckIn && !editingToday ? (
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-text">
-                You&apos;ve checked in today
-              </h2>
-              <button
-                type="button"
-                onClick={() => setEditingToday(true)}
-                className="text-xs text-accent hover:text-accent"
-              >
-                Edit
-              </button>
+        <Card title="Today's plan" className="lg:col-span-7">
+          {planError ? (
+            <p className="text-sm text-text-faint">Could not load your vocal plan.</p>
+          ) : planView === null ? (
+            <p className="text-sm text-text-faint">Loading...</p>
+          ) : (
+            <>
+              {planView.plan ? (
+                <p className="mb-4 text-sm text-text-dim">
+                  {TRACK_LABEL[planView.plan.track] ?? planView.plan.track} &middot;{" "}
+                  {planView.plan.target_milestones.description} &middot;{" "}
+                  {daysRemaining(planView.plan.target_end_date)} days left in this 90-day plan
+                </p>
+              ) : (
+                <p className="mb-4 text-sm text-text-faint">
+                  Complete your profile and record a voice sample plus a{" "}
+                  <Link href="/vocal-range" className="text-accent hover:text-accent-strong">
+                    vocal range test
+                  </Link>{" "}
+                  to get your custom 90-day plan.{" "}
+                  <Link href="/onboarding" className="text-accent hover:text-accent-strong">
+                    Get started &rarr;
+                  </Link>
+                </p>
+              )}
+              <ul className="space-y-2.5">
+                <PlanRow
+                  href="/quick-routine/warm_up"
+                  icon="wave"
+                  color="cyan"
+                  title="Warm Up"
+                  subtitle="Breathing, humming and straw · about 4 min"
+                  tag={
+                    <span className="hidden items-center gap-1.5 rounded-full bg-accent-faint px-2.5 py-1 text-xs font-semibold text-accent sm:inline-flex">
+                      <Icon name="straw" className="h-3.5 w-3.5" />
+                      Needs a straw
+                    </span>
+                  }
+                />
+                <PlanRow
+                  href="/exercises"
+                  icon="mic"
+                  color="violet"
+                  title="Today's routine"
+                  subtitle="Built from your check-in and recovery · 5 to 20 min"
+                />
+                <PlanRow
+                  href="/vocal-range"
+                  icon="note"
+                  color="teal"
+                  title="Vocal range check"
+                  subtitle="Map today's comfortable notes"
+                />
+                <PlanRow
+                  href="/quick-routine/cool_down"
+                  icon="lotus"
+                  color="amber"
+                  title="Cool Down"
+                  subtitle="An easy finish after singing · about 1 min"
+                />
+              </ul>
+            </>
+          )}
+        </Card>
+
+        <Card className="lg:col-span-5">
+          {history === null ? (
+            <p className="text-sm text-text-faint">Loading...</p>
+          ) : todaysCheckIn && !editingToday ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-medium tracking-tight">You&apos;ve checked in today</h2>
+                <button
+                  type="button"
+                  onClick={() => setEditingToday(true)}
+                  className="text-xs text-accent hover:text-accent-strong"
+                >
+                  Edit
+                </button>
+              </div>
+              <dl className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <dt className="text-xs text-text-faint">Voice quality</dt>
+                  <dd className="font-display text-2xl">{todaysCheckIn.voice_quality ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-faint">Fatigue</dt>
+                  <dd className="font-display text-2xl">{todaysCheckIn.fatigue ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-faint">Throat discomfort</dt>
+                  <dd className="font-display text-2xl">
+                    {todaysCheckIn.throat_discomfort ?? "—"}
+                  </dd>
+                </div>
+              </dl>
             </div>
-            <dl className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <dt className="text-xs text-text-faint">Voice quality</dt>
-                <dd className="text-text">{todaysCheckIn.voice_quality ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-text-faint">Fatigue</dt>
-                <dd className="text-text">{todaysCheckIn.fatigue ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-text-faint">Throat discomfort</dt>
-                <dd className="text-text">{todaysCheckIn.throat_discomfort ?? "—"}</dd>
-              </div>
-            </dl>
+          ) : (
+            <>
+              <h2 className="mb-4 text-lg font-medium tracking-tight">
+                {todaysCheckIn ? "Edit today's check-in" : "How's your voice today?"}
+              </h2>
+              <CheckInForm
+                initial={todaysCheckIn}
+                onSubmit={todaysCheckIn ? handleUpdate : handleCreate}
+                submitLabel={todaysCheckIn ? "Save changes" : "Save today's check-in"}
+              />
+            </>
+          )}
+        </Card>
+
+        <Card title="Your vocal baseline" className="lg:col-span-6">
+          {baselineError ? (
+            <p className="text-sm text-text-faint">Could not load your vocal baseline.</p>
+          ) : (
+            <VocalBaseline summary={baseline} />
+          )}
+        </Card>
+
+        <Card title="Your target range" className="lg:col-span-6">
+          {goalError ? (
+            <p className="text-sm text-text-faint">Could not load your target tones.</p>
+          ) : (
+            <GoalTonesCard goal={goal} />
+          )}
+        </Card>
+
+        <Card className="lg:col-span-12">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-medium tracking-tight">Trend</h2>
+            <div className="flex gap-1 rounded-xl border border-border p-1 text-xs">
+              {RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.days}
+                  type="button"
+                  onClick={() => setRangeDays(opt.days)}
+                  className={`rounded-lg px-3 py-1.5 font-semibold ${
+                    rangeDays === opt.days
+                      ? "bg-accent text-accent-ink"
+                      : "text-text-dim hover:bg-surface-2"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <>
-            <h2 className="mb-4 text-sm font-medium text-text">
-              {todaysCheckIn ? "Edit today's check-in" : "How's your voice today?"}
-            </h2>
-            <CheckInForm
-              initial={todaysCheckIn}
-              onSubmit={todaysCheckIn ? handleUpdate : handleCreate}
-              submitLabel={todaysCheckIn ? "Save changes" : "Save today's check-in"}
-            />
-          </>
-        )}
-      </section>
+          <TrendChart
+            title="Voice quality"
+            variant="bare"
+            color="var(--color-accent)"
+            points={buildSeries(filteredHistory, dates, "voice_quality")}
+            yMin={1}
+            yMax={10}
+            yTicks={[1, 5, 10]}
+          />
+          <p className="mt-3 text-xs text-text-faint">
+            Fatigue, throat discomfort, sleep, and longer ranges live on{" "}
+            <Link href="/progress" className="text-accent hover:text-accent-strong">
+              Progress
+            </Link>
+            .
+          </p>
+        </Card>
+      </div>
 
-      <section className="mt-10 rounded-2xl border border-border bg-surface/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-text">Your vocal baseline</h2>
-        {baselineError ? (
-          <p className="text-sm text-text-faint">Could not load your vocal baseline.</p>
-        ) : (
-          <VocalBaseline summary={baseline} />
-        )}
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-border bg-surface/60 p-5">
-        <h2 className="mb-4 text-sm font-medium text-text">Your target range</h2>
-        {goalError ? (
-          <p className="text-sm text-text-faint">Could not load your target tones.</p>
-        ) : (
-          <GoalTonesCard goal={goal} />
-        )}
-      </section>
-
-      <section className="mt-10">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium tracking-tight">Trend</h2>
-          <div className="flex gap-1 rounded-lg border border-border p-1 text-xs">
-            {RANGE_OPTIONS.map((opt) => (
-              <button
-                key={opt.days}
-                type="button"
-                onClick={() => setRangeDays(opt.days)}
-                className={`rounded-md px-2.5 py-1 ${
-                  rangeDays === opt.days
-                    ? "bg-accent text-accent-ink"
-                    : "text-text-dim hover:bg-surface-2"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <TrendChart
-          title="Voice quality"
-          color="#34d399"
-          points={buildSeries(filteredHistory, dates, "voice_quality")}
-          yMin={1}
-          yMax={10}
-          yTicks={[1, 5, 10]}
-        />
-        <p className="mt-3 text-xs text-text-faint">
-          Fatigue, throat discomfort, sleep, and longer ranges live on{" "}
-          <Link href="/progress" className="text-accent hover:text-accent">
-            Progress
+      <nav
+        aria-label="Shortcuts"
+        className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+      >
+        {(
+          [
+            { href: "/progress", label: "Progress", icon: "chart", color: "blue" },
+            { href: "/vocal-plan", label: "Vocal plan", icon: "plan", color: "violet" },
+            { href: "/vocal-range", label: "Vocal range", icon: "range", color: "teal" },
+            { href: "/tone-match", label: "Tone Match", icon: "game", color: "amber" },
+            { href: "/recordings", label: "Recordings", icon: "rec", color: "cyan" },
+          ] as { href: string; label: string; icon: IconName; color: TileColor }[]
+        ).map((q) => (
+          <Link key={q.href} href={q.href} className={tileLinkClass}>
+            <IconTile name={q.icon} color={q.color} size="sm" />
+            {q.label}
           </Link>
-          .
-        </p>
-      </section>
+        ))}
+        {showCoachPortalLink && (
+          <Link href="/coach" className={tileLinkClass}>
+            <IconTile name="users" color="violet" size="sm" />
+            Coach Portal
+          </Link>
+        )}
+        {(pendingInviteCount > 0 || hasCoachConnection) && (
+          <Link href="/coach-access" className={`relative ${tileLinkClass}`}>
+            <IconTile name="users" color="violet" size="sm" />
+            Coach Access
+            {coachAccessBadge > 0 && (
+              <span className="absolute right-3 top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
+                {coachAccessBadge}
+              </span>
+            )}
+          </Link>
+        )}
+      </nav>
 
-      <ToneGameTrendCard />
+      <div className="mt-4">
+        <ToneGameTrendCard />
+      </div>
     </main>
   );
 }
+
 
 function LandingChooser() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-2xl text-center">
-        <Image
-          src="/brand/vepair-logo.png"
-          alt=""
-          width={64}
-          height={64}
-          className="mx-auto mb-6"
-          priority
-        />
-        <h1 className="text-3xl font-semibold tracking-tight">Welcome to VepAIr</h1>
+        <p className="font-display mb-4 text-6xl font-medium tracking-tight sm:text-7xl">
+          Vep<span className="text-brand">AIr</span>
+        </p>
+        <h1 className="text-2xl font-normal tracking-tight sm:text-3xl">Welcome to VepAIr</h1>
         <p className="mt-2 text-sm text-text-dim">
           AI-assisted vocal recovery, conditioning, and performance &mdash; for Vrotégés and the
           coaches who train them.
@@ -497,7 +609,7 @@ function LandingChooser() {
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/signup"
-            className="group rounded-2xl border border-border bg-surface/60 p-8 text-left transition hover:border-accent hover:bg-surface"
+            className="group rounded-[20px] border border-border bg-surface p-8 text-left shadow-card transition hover:border-accent"
           >
             <p className="text-lg font-semibold text-text">I&apos;m a Vrotégé</p>
             <p className="mt-2 text-sm text-text-dim">
@@ -510,7 +622,7 @@ function LandingChooser() {
 
           <Link
             href="/coach-signup"
-            className="group rounded-2xl border border-border bg-surface/60 p-8 text-left transition hover:border-accent hover:bg-surface"
+            className="group rounded-[20px] border border-border bg-surface p-8 text-left shadow-card transition hover:border-accent"
           >
             <p className="text-lg font-semibold text-text">I&apos;m a Coach</p>
             <p className="mt-2 text-sm text-text-dim">

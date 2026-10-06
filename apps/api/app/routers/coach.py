@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -228,17 +228,49 @@ def list_my_singers(
         .where(CoachAccess.coach_id == coach.id, CoachAccess.status == "active")
         .order_by(CoachAccess.granted_at.desc())
     ).all()
-    return [
-        CoachSingerListItemOut(
-            singer_user_id=access.singer_user_id,
-            singer_email=email,
-            coach_access_id=access.id,
-            granted_categories=sorted(_granted_categories(db, access)),
-            granted_at=access.granted_at,
-            unread_message_count=_unread_message_count(db, access.id, from_sender="singer"),
+    today = date.today()
+    items = []
+    for access, email in rows:
+        granted = _granted_categories(db, access)
+        items.append(
+            CoachSingerListItemOut(
+                singer_user_id=access.singer_user_id,
+                singer_email=email,
+                coach_access_id=access.id,
+                granted_categories=sorted(granted),
+                granted_at=access.granted_at,
+                unread_message_count=_unread_message_count(db, access.id, from_sender="singer"),
+                **_roster_glance(db, access.singer_user_id, granted, today),
+            )
         )
-        for access, email in rows
-    ]
+    return items
+
+
+def _roster_glance(
+    db: Session, singer_user_id: uuid.UUID, granted: set[str], today: date
+) -> dict:
+    """The roster's per-singer snapshot, built from the same functions the singer's own pages
+    use (fetch_score_history, build_training_consistency) and gated per category exactly like the
+    summary/history endpoints: a category the singer hasn't shared contributes nothing."""
+    glance: dict = {}
+    if "recovery_trends" in granted:
+        history = [
+            p
+            for p in fetch_score_history(db, singer_user_id, today - timedelta(days=13), today)
+            if p.score_value is not None
+        ]
+        if history:
+            glance["score_value"] = history[-1].score_value
+            glance["score_status"] = history[-1].status
+            glance["score_trend"] = [p.score_value for p in history[-7:]]
+    if "exercise_history" in granted:
+        consistency = build_training_consistency(
+            db, singer_user_id, today - timedelta(days=29), today, today
+        )
+        practiced = [d.for_date for d in consistency.days if d.sessions_completed > 0]
+        glance["last_practice_date"] = practiced[-1] if practiced else None
+        glance["current_streak_days"] = consistency.current_streak_days
+    return glance
 
 
 def _unread_message_count(db: Session, coach_access_id: uuid.UUID, *, from_sender: str) -> int:

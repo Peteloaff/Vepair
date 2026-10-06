@@ -11,10 +11,10 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
 <style>
   /* Always dark -- matches the rest of the VepAIr app, which has no theme toggle. */
   :root {
-    --ink: #0a0e13; --surface: #121922; --surface-2: #1a2430; --line: #29394a;
-    --text: #e6edf4; --text-dim: #9fb1c2; --text-faint: #61748a;
-    --accent: #4fd1c5; --accent-strong: #7ee0d6; --accent-ink: #04211d;
-    --accent-soft-bg: rgba(79, 209, 197, 0.12);
+    --ink: #07111d; --surface: #0e2033; --surface-2: #132b43; --line: rgba(140, 190, 255, 0.16);
+    --text: #eaf3fc; --text-dim: #a2b8cf; --text-faint: #7088a0;
+    --accent: #2dd4ee; --accent-strong: #67e1f3; --accent-ink: #04121f;
+    --accent-soft-bg: rgba(45, 212, 238, 0.12);
     --danger: #f87171; --danger-soft-bg: rgba(248, 113, 113, 0.1);
     --ok: #34d399; --ok-soft-bg: rgba(52, 211, 153, 0.1);
     --warn: #f2b134; --warn-soft-bg: rgba(242, 177, 52, 0.1);
@@ -324,7 +324,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           — see <a href="#auth">Auth & accounts</a> for the swap point that keeps a later migration cheap. Nothing
           in this table is final; a change here must be documented with a rationale, not swapped silently.</p>
           <p><b>Theming</b> is Tailwind v4's CSS-only config — no <code class="path">tailwind.config.js</code>.
-          <code class="path">globals.css</code> defines OKLCH semantic tokens (canvas/surface/border/text tiers,
+          <code class="path">globals.css</code> defines the navy / cyan / violet semantic tokens (canvas/surface/border/text tiers,
           accent, and status colors, each with a <code>-faint</code> background variant) once in <code>:root</code>
           for light and again under <code>.dark</code>, re-exposed through <code>@theme inline</code> so ordinary
           utilities like <code>bg-surface</code> or <code>text-text-dim</code> resolve at runtime and react to the

@@ -519,7 +519,7 @@ function SingerDashboardContent() {
         ) : (
           <TrendChart
             title="VepAIr Score"
-            color="#34d399"
+            color="var(--color-accent)"
             points={trendPoints}
             yMin={0}
             yMax={100}
