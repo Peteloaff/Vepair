@@ -859,6 +859,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Public API (personal access tokens, read-only, admin-configurable kill switch — §17)</li>
                 <li>App-wide light/dark theme, system-preference default</li>
                 <li>On-demand Warm Up / Cool Down routines, and 4 new SLP-sourced breathing exercises</li>
+                <li>"Get what you need" equipment prompts before exercises that use a straw, water, or reading material</li>
               </ul>
             </div>
             <div>
