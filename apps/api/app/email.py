@@ -10,8 +10,10 @@ retiring Basic Auth for SMTP AUTH and a client-credentials app registration is t
 Microsoft-recommended path for an app sending as a fixed mailbox (e.g. noreply@vepair.com).
 """
 
+import html
 import logging
 import time
+from urllib.parse import urlencode
 
 import httpx
 
@@ -139,6 +141,56 @@ def send_checkin_reminder_email(to_email: str) -> None:
         f'<p><a href="{checkin_url}">Check in now</a></p>'
         "<p>You're getting this because you opted into practice reminders — turn them off any "
         "time from your Profile page.</p>"
+    )
+    _send(to_email, subject, html_body, text_body)
+
+
+def send_coach_invite_email(
+    to_email: str,
+    coach_name: str,
+    studio_name: str | None,
+    message: str | None,
+    has_account: bool,
+) -> None:
+    """Sent when a coach invites someone. Two variants: an existing VepAIr user is sent to review
+    the invite in their Coach Access page; someone without an account is sent to sign up (with
+    their email prefilled), after which the invite is already waiting for them. Either way the
+    invitee still has to accept and choose what to share -- the email only gets them there. A
+    failure here must never fail the invite itself (see _send's own try/except)."""
+    who = f"{coach_name} ({studio_name})" if studio_name else coach_name
+    if has_account:
+        url = f"{settings.frontend_base_url}/coach-access"
+        subject = f"{coach_name} invited you to share your voice progress on VepAIr"
+        action = "Review the invite"
+        intro = f"{who} invited you to connect on VepAIr as your voice coach."
+    else:
+        query = urlencode({"email": to_email, "invite": "1"})
+        url = f"{settings.frontend_base_url}/signup?{query}"
+        subject = f"{coach_name} invited you to join VepAIr"
+        action = "Create your free account"
+        intro = f"{who} invited you to join VepAIr as their Vrotégé."
+    note = f'\n\n"{message}"' if message else ""
+    text_body = (
+        f"{intro}{note}\n\n{action}: {url}\n\n"
+        + (
+            "Sign up with this email address and the invite will be waiting for you. "
+            if not has_account
+            else ""
+        )
+        + "Nothing is shared with your coach unless you accept, and you choose exactly what to "
+        "share. If you weren't expecting this, you can ignore this email."
+    )
+    safe_message = f"<p><em>&ldquo;{html.escape(message)}&rdquo;</em></p>" if message else ""
+    html_body = (
+        f"<p>{html.escape(intro)}</p>{safe_message}"
+        f'<p><a href="{html.escape(url)}">{action}</a></p>'
+        + (
+            "<p>Sign up with this email address and the invite will be waiting for you.</p>"
+            if not has_account
+            else ""
+        )
+        + "<p>Nothing is shared with your coach unless you accept, and you choose exactly what "
+        "to share. If you weren&rsquo;t expecting this, you can ignore this email.</p>"
     )
     _send(to_email, subject, html_body, text_body)
 

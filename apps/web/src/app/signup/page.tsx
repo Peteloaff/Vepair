@@ -13,6 +13,16 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // True when the visitor arrived from a coach's invitation email (?invite=1&email=...).
+  const [fromInvite, setFromInvite] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invitedEmail = params.get("email");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (invitedEmail) setEmail(invitedEmail);
+    if (params.get("invite") === "1") setFromInvite(true);
+  }, []);
 
   // Guards against a race with the post-signup redirect below: signup() flips `status` to
   // "authenticated" before router.replace("/onboarding") runs, which would otherwise also
@@ -37,7 +47,9 @@ export default function SignupPage() {
       // chains into the guided recording + vocal range steps instead of going straight to the
       // dashboard — a returning user editing their profile later (via the Profile nav link,
       // same /onboarding URL with no marker) isn't forced through that again.
-      router.replace("/onboarding?new=1");
+      // Someone who came from a coach's invitation goes straight to reviewing that invite (where
+      // they choose what to share); their profile setup follows from the dashboard.
+      router.replace(fromInvite ? "/coach-access" : "/onboarding?new=1");
     } catch (err) {
       justSubmittedRef.current = false;
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
@@ -53,6 +65,13 @@ export default function SignupPage() {
         <p className="mb-8 text-sm text-text-dim">
           Start tracking your voice with VepAIr.
         </p>
+
+        {fromInvite && (
+          <div className="mb-6 rounded-2xl bg-accent-faint px-4 py-3 text-sm text-accent">
+            A coach invited you to VepAIr. Create your account with this email address and the
+            invite will be waiting for you. Nothing is shared until you accept.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -48,7 +48,11 @@ decline another):
    **`recovery_trends`** (VepAIr Score + history), **`vocal_range`** (comfortable range summary),
    **`exercise_history`** (routine, exercise trends, training consistency), **`recordings`**
    (uploaded audio + playback) — all unchecked by default, independently toggleable later without
-   a full revoke. One active coach per singer at a time (DB-enforced). Revoking is immediate for
+   a full revoke. A coach can invite an email address that has no account yet; VepAIr then holds
+   that email (and the coach's optional message) on the pending invite, solely to email the
+   invitation and to link it if that person signs up, until the invite is accepted, declined, or
+   cancelled -- nothing about the invitee is shared with the coach either way. One active coach
+   per singer at a time (DB-enforced). Revoking is immediate for
    future access (the coach's next request is rejected) but forward-only for the past — already-
    viewed data isn't retroactively unshown, and the revoke confirmation says so plainly.
    **`recordings` specifically: VepAIr never creates or stores a separate copy of a singer's

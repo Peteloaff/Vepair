@@ -16,6 +16,7 @@ from app.account_deletion import delete_user_and_storage
 from app.admin_audit import log_admin_action
 from app.admin_auth import get_current_admin, require_full_admin
 from app.auth import create_access_token
+from app.coach_invites import attach_pending_invites
 from app.config import get_settings
 from app.database import get_db
 from app.email import send_password_reset_email
@@ -179,6 +180,7 @@ def create_user(
         ) from None
 
     db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
+    attach_pending_invites(db, user)
     if payload.account_type == "coach":
         organization = Organization(name=payload.studio_name)
         activate_coach_pro(organization)

@@ -57,8 +57,9 @@ class TestSendPasswordResetEmailGraphBackend:
         assert sent_message["message"]["toRecipients"][0]["emailAddress"]["address"] == (
             "singer@example.com"
         )
-        assert "https://vepair.com/reset-password?token=abc123" in (
-            sent_message["message"]["body"]["content"]
+        assert (
+            "https://vepair.com/reset-password?token=abc123"
+            in (sent_message["message"]["body"]["content"])
         )
         assert send_call.kwargs["headers"]["Authorization"] == "Bearer fake-token"
 
@@ -96,3 +97,39 @@ class TestSendPasswordResetEmailGraphBackend:
             with caplog.at_level("ERROR", logger="vepair.email"):
                 email_module.send_password_reset_email("singer@example.com", "abc123")
         assert "Failed to send email" in caplog.text
+
+
+def test_coach_invite_email_for_a_new_person_links_to_signup_with_their_email(monkeypatch) -> None:
+    from app import email as email_module
+
+    captured = {}
+    monkeypatch.setattr(
+        email_module,
+        "_send",
+        lambda to, subject, html_body, text_body: captured.update(
+            to=to, subject=subject, html=html_body, text=text_body
+        ),
+    )
+    email_module.send_coach_invite_email(
+        "new.person@example.com", "Alex <Coach>", "Harbor Studio", 'Hi "there"', has_account=False
+    )
+    assert captured["to"] == "new.person@example.com"
+    assert "/signup?email=new.person%40example.com&invite=1" in captured["text"]
+    assert "join VepAIr" in captured["subject"]
+    # Coach-supplied text is escaped in the HTML body.
+    assert "<Coach>" not in captured["html"]
+    assert "&lt;Coach&gt;" in captured["html"]
+
+
+def test_coach_invite_email_for_an_existing_user_links_to_coach_access(monkeypatch) -> None:
+    from app import email as email_module
+
+    captured = {}
+    monkeypatch.setattr(
+        email_module,
+        "_send",
+        lambda to, subject, html_body, text_body: captured.update(text=text_body),
+    )
+    email_module.send_coach_invite_email("a@example.com", "Alex", None, None, has_account=True)
+    assert "/coach-access" in captured["text"]
+    assert "signup" not in captured["text"]
