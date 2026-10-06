@@ -10,7 +10,10 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/login");
+      // Remember where they were headed (e.g. the invite link in a coach's email) so logging in
+      // lands them there instead of on the dashboard.
+      const here = window.location.pathname + window.location.search;
+      router.replace(here === "/" ? "/login" : `/login?next=${encodeURIComponent(here)}`);
     }
   }, [status, router]);
 

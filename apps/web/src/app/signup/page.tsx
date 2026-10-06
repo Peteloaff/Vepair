@@ -129,7 +129,10 @@ export default function SignupPage() {
 
         <div className="mt-6 text-xs text-text-faint">
           Already have an account?{" "}
-          <Link href="/login" className="text-text-dim hover:text-text">
+          <Link
+            href={fromInvite ? "/login?next=%2Fcoach-access" : "/login"}
+            className="text-text-dim hover:text-text"
+          >
             Log in
           </Link>
         </div>
