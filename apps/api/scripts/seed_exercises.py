@@ -9,6 +9,7 @@ this script only needs to be re-run when that file changes:
 """
 
 import sys
+from dataclasses import asdict
 
 from app.database import SessionLocal
 from app.exercise_library import SEED_EXERCISES
@@ -36,6 +37,7 @@ def main() -> None:
             row.contraindications = defn.contraindications
             row.target_measurement = defn.target_measurement
             row.expected_result = defn.expected_result
+            row.equipment = [asdict(item) for item in defn.equipment] or None
             row.is_active = True
         db.commit()
         print(f"seeded {len(SEED_EXERCISES)} exercises ({created} created, {updated} updated)")

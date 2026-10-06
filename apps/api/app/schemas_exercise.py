@@ -4,6 +4,12 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class EquipmentItemOut(BaseModel):
+    name: str
+    description: str
+    how_to_use: str
+
+
 class ExerciseOut(BaseModel):
     id: uuid.UUID
     name: str
@@ -16,6 +22,7 @@ class ExerciseOut(BaseModel):
     contraindications: str | None
     target_measurement: str | None
     expected_result: str
+    equipment: list[EquipmentItemOut] | None = None
 
     model_config = {"from_attributes": True}
 

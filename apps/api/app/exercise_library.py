@@ -45,6 +45,53 @@ CLOSING_CATEGORY = "Vocal cooldown"
 
 
 @dataclass(frozen=True)
+class EquipmentItem:
+    """One physical thing a singer needs to fetch before an exercise starts. Shown on a "get
+    ready" screen before the timer begins, so `description` says what the object is and
+    `how_to_use` says how it's used in the exercise."""
+
+    name: str
+    description: str
+    how_to_use: str
+
+
+DRINKING_STRAW = EquipmentItem(
+    name="A drinking straw",
+    description=(
+        "An ordinary drinking straw. A narrow one (like a coffee stirrer or a thin cocktail "
+        "straw) gives more resistance; a wide smoothie straw gives less. Either works."
+    ),
+    how_to_use=(
+        "Hold one end between your lips and seal gently so no air leaks around it. Breathe in "
+        "through your nose, then hum or sound out through the straw. Keep your jaw and lips "
+        "relaxed, and don't bite down on it."
+    ),
+)
+
+GLASS_OF_WATER = EquipmentItem(
+    name="A glass of water",
+    description=(
+        "A tall glass or cup with a few centimetres (about 1-2 inches) of room-temperature "
+        "water in it - deep enough to cover the end of the straw, no more."
+    ),
+    how_to_use=(
+        "Put the free end of the straw about 1-2 cm (half an inch) under the surface and "
+        "phonate through it so a steady stream of bubbles forms. Shallow is easier and "
+        "gentler; the deeper the straw, the more resistance you'll feel, so start shallow."
+    ),
+)
+
+READING_MATERIAL = EquipmentItem(
+    name="Something to read aloud",
+    description="A book, magazine, article, lyric sheet, or a few lines on your phone.",
+    how_to_use=(
+        "Hold it at a comfortable height so your chin stays level and your neck relaxed, "
+        "then read a short passage out loud in your normal speaking voice."
+    ),
+)
+
+
+@dataclass(frozen=True)
 class ExerciseDef:
     name: str
     category: str
@@ -55,6 +102,7 @@ class ExerciseDef:
     contraindications: str | None
     target_measurement: str | None
     expected_result: str
+    equipment: tuple[EquipmentItem, ...] = ()
 
 
 SEED_EXERCISES: list[ExerciseDef] = [
@@ -276,6 +324,7 @@ SEED_EXERCISES: list[ExerciseDef] = [
         ),
         target_measurement="hnr_db",
         expected_result="A steady tone with a light, easy sensation, not pressure or strain.",
+        equipment=(DRINKING_STRAW,),
     ),
     ExerciseDef(
         name="Straw phonation glide (SOVT)",
@@ -290,6 +339,7 @@ SEED_EXERCISES: list[ExerciseDef] = [
         contraindications="Stop if you feel lightheaded.",
         target_measurement="pitch_stability_semitones",
         expected_result="A smooth glide with even airflow throughout.",
+        equipment=(DRINKING_STRAW,),
     ),
     ExerciseDef(
         name="Straw-in-water phonation",
@@ -304,6 +354,7 @@ SEED_EXERCISES: list[ExerciseDef] = [
         contraindications="Stop if you feel lightheaded.",
         target_measurement="hnr_db",
         expected_result="Even, continuous bubbling with an easy, unforced tone.",
+        equipment=(DRINKING_STRAW, GLASS_OF_WATER),
     ),
     ExerciseDef(
         name="Straw-in-water pitch glide",
@@ -318,6 +369,7 @@ SEED_EXERCISES: list[ExerciseDef] = [
         contraindications="Stop if you feel lightheaded.",
         target_measurement="pitch_stability_semitones",
         expected_result="A smooth glide with continuous, even bubbling.",
+        equipment=(DRINKING_STRAW, GLASS_OF_WATER),
     ),
     ExerciseDef(
         name="Gentle pitch glide",
@@ -439,6 +491,7 @@ SEED_EXERCISES: list[ExerciseDef] = [
         contraindications="Stop if you feel lightheaded.",
         target_measurement=None,
         expected_result="A relaxed, easy feeling in the throat at the end of the routine.",
+        equipment=(DRINKING_STRAW,),
     ),
     ExerciseDef(
         name="Easy conversational reading",
@@ -453,6 +506,7 @@ SEED_EXERCISES: list[ExerciseDef] = [
         contraindications=None,
         target_measurement=None,
         expected_result="Natural, relaxed speech with no strain or excess volume.",
+        equipment=(READING_MATERIAL,),
     ),
     ExerciseDef(
         name="Gentle vocal rest reminder",

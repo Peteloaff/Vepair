@@ -38,6 +38,10 @@ const FEEDBACK_INTERVALS_MS: Record<FeedbackFrequency, number> = {
 
 const LIVE_FEEDBACK_DISPLAY_MS = 4000;
 
+function needsEquipment(exercise: Exercise): boolean {
+  return (exercise.equipment?.length ?? 0) > 0;
+}
+
 /**
  * The step-through engine shared by the daily adaptive routine (exercises/page.tsx) and the
  * standalone quick-routine flow (quick-routine/[kind]/page.tsx): timer, live-coaching wiring,
@@ -76,6 +80,9 @@ export function ExerciseRunner({
   const [liveFeedback, setLiveFeedback] = useState<string | null>(null);
   const [micStatus, setMicStatus] = useState<MicStatus>("unknown");
   const [submitting, setSubmitting] = useState(false);
+  // True once the singer has tapped Next on the current exercise's "get what you need" screen.
+  // Reset on every step; irrelevant for exercises that don't need anything.
+  const [gearReady, setGearReady] = useState(false);
 
   const timerRef = useRef<number | null>(null);
   const feedbackClearRef = useRef<number | null>(null);
@@ -96,6 +103,9 @@ export function ExerciseRunner({
   useEffect(() => {
     if (phase !== "exercise" || startedRef.current || items.length === 0) return;
     startedRef.current = true;
+    // An exercise that needs equipment waits on its "get ready" screen -- the timer and mic
+    // only start once the singer taps Next (confirmGearReady).
+    if (needsEquipment(items[0])) return;
     startTimer(items[0].duration_seconds);
     void startCoachingFor(items[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,8 +221,12 @@ export function ExerciseRunner({
     const nextIndex = stepIndex + 1;
     if (nextIndex < items.length) {
       setStepIndex(nextIndex);
-      startTimer(items[nextIndex].duration_seconds);
-      void startCoachingFor(items[nextIndex]);
+      setGearReady(false);
+      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+      if (!needsEquipment(items[nextIndex])) {
+        startTimer(items[nextIndex].duration_seconds);
+        void startCoachingFor(items[nextIndex]);
+      }
     } else {
       if (timerRef.current !== null) window.clearInterval(timerRef.current);
       coachRef.current?.release();
@@ -250,6 +264,60 @@ export function ExerciseRunner({
   const exercise = items[stepIndex];
   if (!exercise) return null;
   const profile = coachingProfileForCategory(exercise.category);
+
+  function confirmGearReady() {
+    if (gearReady) return;
+    setGearReady(true);
+    startTimer(exercise.duration_seconds);
+    void startCoachingFor(exercise);
+  }
+
+  if (needsEquipment(exercise) && !gearReady) {
+    return (
+      <div className="mx-auto w-full max-w-lg">
+        <p className="mb-1 text-xs text-text-faint">
+          Exercise {stepIndex + 1} of {items.length}
+        </p>
+        <h1 className="mb-1 text-2xl font-semibold tracking-tight">Get what you need</h1>
+        <p className="mb-4 text-sm text-text-dim">
+          <span className="text-text">{exercise.name}</span> needs{" "}
+          {exercise.equipment!.length === 1 ? "one thing" : "a couple of things"}. Go grab{" "}
+          {exercise.equipment!.length === 1 ? "it" : "them"}, then tap Next — your timer
+          won&apos;t start until you do.
+        </p>
+
+        <ul className="mb-6 space-y-3">
+          {exercise.equipment!.map((item) => (
+            <li key={item.name} className="rounded-lg border border-border bg-surface/60 p-4 text-sm">
+              <p className="mb-2 font-medium text-text">{item.name}</p>
+              <p className="mb-1 text-xs uppercase tracking-wide text-text-faint">What it is</p>
+              <p className="mb-3 text-text-dim">{item.description}</p>
+              <p className="mb-1 text-xs uppercase tracking-wide text-text-faint">How to use it</p>
+              <p className="text-text-dim">{item.how_to_use}</p>
+            </li>
+          ))}
+        </ul>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => logCurrentExercise(false, null)}
+            disabled={submitting}
+            className="flex-1 rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Skip this exercise
+          </button>
+          <button
+            type="button"
+            onClick={confirmGearReady}
+            className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink hover:bg-accent-strong"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-lg">

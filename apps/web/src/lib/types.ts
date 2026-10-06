@@ -184,6 +184,12 @@ export interface RecoveryScore {
   factors: RecoveryScoreFactor[];
 }
 
+export interface EquipmentItem {
+  name: string;
+  description: string;
+  how_to_use: string;
+}
+
 export interface Exercise {
   id: string;
   name: string;
@@ -196,6 +202,7 @@ export interface Exercise {
   contraindications: string | null;
   target_measurement: string | null;
   expected_result: string;
+  equipment: EquipmentItem[] | null;
 }
 
 export const ROUTINE_LENGTHS_MINUTES = [5, 10, 15, 20] as const;
