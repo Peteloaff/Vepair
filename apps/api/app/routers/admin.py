@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -33,6 +33,7 @@ from app.models import (
 )
 from app.organizations import invites_used_this_period
 from app.schemas_admin import (
+    AdminBulkDeleteResultOut,
     AdminBulkResultOut,
     AdminBulkUserIdsIn,
     AdminCreateUserIn,
@@ -115,13 +116,35 @@ def get_admin_profile(admin: User = Depends(get_current_admin)) -> User:
     return admin
 
 
+# What the admin user list can be sorted by. account_type and onboarding_complete aren't columns
+# on User -- they're "does a CoachProfile / UserProfile row exist" -- so they sort on that
+# existence check, the same definition _account_type/_onboarding_complete use per row.
+USER_SORT_COLUMNS = {
+    "created_at": lambda: User.created_at,
+    "email": lambda: func.lower(User.email),
+    "is_active": lambda: User.is_active,
+    "account_type": lambda: case((User.id.in_(select(CoachProfile.user_id)), 1), else_=0),
+    "onboarding_complete": lambda: case((User.id.in_(select(UserProfile.user_id)), 1), else_=0),
+}
+
+
 @router.get("/users", response_model=list[AdminUserListItemOut])
 def search_users(
     query: str | None = Query(default=None),
+    sort_by: str = Query(
+        default="created_at",
+        pattern="^(created_at|email|is_active|account_type|onboarding_complete)$",
+    ),
+    direction: str = Query(default="desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ) -> list[AdminUserListItemOut]:
-    stmt = select(User).order_by(User.created_at.desc()).limit(100)
+    # Sorting happens in the query, before the 100-row cap, so "sort by email" means the first
+    # 100 emails overall, not a re-ordering of whichever 100 signed up most recently. Ties fall
+    # back to newest-first so the order is stable.
+    sort_expr = USER_SORT_COLUMNS[sort_by]()
+    primary = sort_expr.asc() if direction == "asc" else sort_expr.desc()
+    stmt = select(User).order_by(primary, User.created_at.desc()).limit(100)
     if query:
         stmt = stmt.where(User.email.ilike(f"%{query}%"))
     users = db.scalars(stmt).all()
@@ -482,9 +505,7 @@ def _organization_not_found() -> HTTPException:
 
 
 def _organization_to_out(db: Session, organization: Organization) -> AdminOrganizationOut:
-    coach = db.scalar(
-        select(CoachProfile).where(CoachProfile.organization_id == organization.id)
-    )
+    coach = db.scalar(select(CoachProfile).where(CoachProfile.organization_id == organization.id))
     coach_user = db.get(User, coach.user_id) if coach else None
     return AdminOrganizationOut(
         id=organization.id,
@@ -651,30 +672,32 @@ def reports_summary(
     total_users = db.scalar(select(func.count()).select_from(User)) or 0
     coach_count = db.scalar(select(func.count()).select_from(CoachProfile)) or 0
     singer_count = total_users - coach_count
-    active_count = db.scalar(
-        select(func.count()).select_from(User).where(User.is_active.is_(True))
-    ) or 0
+    active_count = (
+        db.scalar(select(func.count()).select_from(User).where(User.is_active.is_(True))) or 0
+    )
     deactivated_count = total_users - active_count
     onboarded_count = db.scalar(select(func.count()).select_from(UserProfile)) or 0
     onboarding_completion_rate = (onboarded_count / total_users) if total_users else 0.0
 
-    signups_7d = db.scalar(
-        select(func.count())
-        .select_from(User)
-        .where(User.created_at >= now - timedelta(days=7))
-    ) or 0
-    signups_90d = db.scalar(
-        select(func.count())
-        .select_from(User)
-        .where(User.created_at >= now - timedelta(days=90))
-    ) or 0
+    signups_7d = (
+        db.scalar(
+            select(func.count()).select_from(User).where(User.created_at >= now - timedelta(days=7))
+        )
+        or 0
+    )
+    signups_90d = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(User.created_at >= now - timedelta(days=90))
+        )
+        or 0
+    )
 
     def _active_user_count(since: datetime) -> int:
         checkin_users = select(DailyCheckIn.user_id).where(DailyCheckIn.created_at >= since)
         recording_users = (
-            select(VoiceSession.user_id)
-            .join(Recording)
-            .where(Recording.created_at >= since)
+            select(VoiceSession.user_id).join(Recording).where(Recording.created_at >= since)
         )
         combined = checkin_users.union(recording_users).subquery()
         return db.scalar(select(func.count()).select_from(combined)) or 0
@@ -839,10 +862,10 @@ def bulk_deactivate_users(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ) -> AdminBulkResultOut:
-    """Bulk scope is deliberately narrow -- deactivate and reactivate only (this endpoint and
-    bulk_reactivate_users below), both already fully reversible single-account actions. Bulk
-    hard-delete and bulk admin-grant stay single-account and high-friction on purpose; a
-    misclick on a multi-select shouldn't be able to do either. Available to a support admin,
+    """Bulk deactivate (and bulk_reactivate_users below) are fully reversible, so a multi-select
+    misclick is cheap to undo. Bulk admin-grant stays single-account on purpose, and bulk
+    hard-delete (bulk_delete_users) is full-admin-only and only touches deactivated accounts.
+    Available to a support admin,
     same as the single-account deactivate endpoint. One log_admin_action row per affected user
     -- not one row for the whole batch -- so the audit trail's shape never depends on how many
     accounts were selected at once. Silently skips the caller's own id and any id that doesn't
@@ -870,6 +893,38 @@ def bulk_deactivate_users(
     return AdminBulkResultOut(updated=updated, not_found=not_found)
 
 
+@router.post("/users/bulk-delete", response_model=AdminBulkDeleteResultOut)
+def bulk_delete_users(
+    payload: AdminBulkUserIdsIn,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> AdminBulkDeleteResultOut:
+    """Permanent deletion of several already-deactivated accounts at once (full admin only).
+    Keeps every guard the single-account delete has: the account must be deactivated first (an
+    active one is skipped and reported, never deleted), an admin can't delete themselves, and
+    each account gets its own audit row. Each deletion commits on its own, so one failure
+    can't undo accounts already removed -- the response says exactly which were deleted."""
+    deleted: list[uuid.UUID] = []
+    not_found: list[uuid.UUID] = []
+    skipped_active: list[uuid.UUID] = []
+    for user_id in payload.user_ids:
+        if user_id == admin.id:
+            continue
+        user = db.get(User, user_id)
+        if user is None:
+            not_found.append(user_id)
+            continue
+        if user.is_active:
+            skipped_active.append(user_id)
+            continue
+        log_admin_action(db, admin.id, "hard_delete_user", user.id, {"email": user.email})
+        delete_user_and_storage(db, user)
+        deleted.append(user_id)
+    return AdminBulkDeleteResultOut(
+        deleted=deleted, not_found=not_found, skipped_active=skipped_active
+    )
+
+
 @router.post("/users/bulk-reactivate", response_model=AdminBulkResultOut)
 def bulk_reactivate_users(
     payload: AdminBulkUserIdsIn,
@@ -888,5 +943,3 @@ def bulk_reactivate_users(
         updated.append(user.id)
     db.commit()
     return AdminBulkResultOut(updated=updated, not_found=not_found)
-
-

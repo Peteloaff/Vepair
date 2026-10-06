@@ -705,9 +705,16 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           tier) covers search, detail, reports, deactivate/reactivate (including bulk), and
           triggering a password-reset email.</p>
           <p><b>Bulk operations</b> (<code class="path">POST /api/v1/admin/users/bulk-deactivate</code>
-          / <code>bulk-reactivate</code>) are deliberately the only two — both already
-          fully-reversible single-account actions before this. One <code>AdminAuditLog</code> row
-          per affected account, not one for the whole batch.</p>
+          / <code>bulk-reactivate</code>) are fully reversible. <code>bulk-delete</code> is not, so it
+          is full-admin-only and keeps every guard of the single-account delete: it only deletes
+          accounts that are already deactivated (active ones come back in <code>skipped_active</code>),
+          never the caller, and each deletion commits on its own. The UI gates it behind a
+          type-<code>DELETE</code> confirmation. One <code>AdminAuditLog</code> row per affected
+          account, not one for the whole batch.</p>
+          <p><b>Sorting.</b> <code>GET /api/v1/admin/users</code> takes <code>sort_by</code>
+          (<code>created_at</code>, <code>email</code>, <code>is_active</code>, <code>account_type</code>,
+          <code>onboarding_complete</code>) and <code>direction</code>; the order is applied in the
+          query before the 100-row cap, with newest-first as the tiebreaker.</p>
           <p><b>Impersonation</b> (<code class="path">POST /api/v1/admin/users/{"{"}id{"}"}/impersonate</code>,
           full-admin-only) issues a JWT with <code>type: "impersonation"</code> and an
           <code>impersonated_by</code> claim instead of <code>type: "access"</code> — same expiry
@@ -851,7 +858,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Full singer product through Progress Dashboard</li>
                 <li>Coach Portal (roster, invites, assign, notes, messaging, custom exercises)</li>
                 <li>Coach Pro billing/gating (manual activation)</li>
-                <li>Backend Admin (users, orgs, reports, audit log, role tiers, bulk ops, impersonation, contact export — §16)</li>
+                <li>Backend Admin (users, orgs, reports, audit log, role tiers, bulk ops including delete, sortable user list, impersonation, contact export — §16)</li>
                 <li>Tone Match Challenge (5-tone game + trend)</li>
                 <li>Practice reminders (Cloud Scheduler-triggered daily email)</li>
                 <li>Data minimization (self-serve delete, per-recording delete, export, retention purge — §13)</li>

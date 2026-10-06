@@ -85,9 +85,8 @@ class AdminUserDetailOut(AdminUserListItemOut):
 
 class AdminBulkUserIdsIn(BaseModel):
     """Shared payload for the bulk-deactivate/bulk-reactivate endpoints -- both fully
-    reversible actions, deliberately the only two bulk operations this app offers (see
-    app/routers/admin.py's bulk endpoints' docstrings for why hard-delete and admin-grant stay
-    single-account)."""
+    reversible actions, the two fully reversible bulk operations (bulk-delete, which is not
+    reversible, takes the same payload but is full-admin-only and skips active accounts)."""
 
     user_ids: list[uuid.UUID] = Field(min_length=1, max_length=200)
 
@@ -95,6 +94,13 @@ class AdminBulkUserIdsIn(BaseModel):
 class AdminBulkResultOut(BaseModel):
     updated: list[uuid.UUID]
     not_found: list[uuid.UUID]
+
+
+class AdminBulkDeleteResultOut(BaseModel):
+    deleted: list[uuid.UUID]
+    not_found: list[uuid.UUID]
+    # Accounts that were still active and therefore left alone -- deactivate them first.
+    skipped_active: list[uuid.UUID]
 
 
 class AdminImpersonateOut(BaseModel):

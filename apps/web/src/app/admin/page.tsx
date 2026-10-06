@@ -5,7 +5,12 @@ import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
 import { useAuth } from "@/lib/auth-context";
-import type { AdminBulkResult, AdminSiteSettings, AdminUserListItem } from "@/lib/types";
+import type {
+  AdminBulkDeleteResult,
+  AdminBulkResult,
+  AdminSiteSettings,
+  AdminUserListItem,
+} from "@/lib/types";
 import { ApiError, API_BASE } from "@/lib/apiClient";
 
 function RetentionInput({
@@ -388,21 +393,72 @@ function ExportContactsButton() {
   );
 }
 
+type SortColumn = "email" | "account_type" | "is_active" | "onboarding_complete" | "created_at";
+type SortDirection = "asc" | "desc";
+
+const DELETE_CONFIRM_PHRASE = "DELETE";
+
+function SortHeader({
+  label,
+  column,
+  sortBy,
+  direction,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sortBy: SortColumn;
+  direction: SortDirection;
+  onSort: (column: SortColumn) => void;
+}) {
+  const active = sortBy === column;
+  return (
+    <th
+      className="py-2 pr-4"
+      aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex items-center gap-1 font-medium hover:text-text ${
+          active ? "text-text" : ""
+        }`}
+      >
+        {label}
+        <span aria-hidden="true" className="w-3 text-xs">
+          {active ? (direction === "asc" ? "▲" : "▼") : ""}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
-  const { apiFetch } = useAuth();
+  const { apiFetch, user: currentUser } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AdminUserListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [sortBy, setSortBy] = useState<SortColumn>("created_at");
+  const [direction, setDirection] = useState<SortDirection>("desc");
+  const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
+  const [confirmText, setConfirmText] = useState("");
 
-  async function runSearch(q: string) {
+  async function runSearch(
+    q: string,
+    sort: SortColumn = sortBy,
+    dir: SortDirection = direction,
+    keepNotice = false
+  ) {
     setLoading(true);
     setError(null);
+    if (!keepNotice) setNotice(null);
     try {
       const rows = await apiFetch<AdminUserListItem[]>("/api/v1/admin/users", {
-        searchParams: q ? { query: q } : undefined,
+        searchParams: { ...(q ? { query: q } : {}), sort_by: sort, direction: dir },
       });
       setResults(rows);
       setSelected(new Set());
@@ -419,6 +475,16 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken]);
 
+  function changeSort(column: SortColumn) {
+    // A new column starts in its natural order (A-Z, oldest signup last); the same column
+    // flips direction.
+    const nextDirection: SortDirection =
+      column === sortBy ? (direction === "asc" ? "desc" : "asc") : column === "created_at" ? "desc" : "asc";
+    setSortBy(column);
+    setDirection(nextDirection);
+    void runSearch(query, column, nextDirection);
+  }
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -428,24 +494,27 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
     });
   }
 
-  async function runBulk(action: "bulk-deactivate" | "bulk-reactivate") {
-    if (selected.size === 0) return;
+  function toggleAll() {
+    const selectable = (results ?? []).filter((u) => u.id !== currentUser?.id).map((u) => u.id);
+    setSelected((prev) => (prev.size === selectable.length ? new Set() : new Set(selectable)));
+  }
+
+  async function runBulk(action: "bulk-deactivate" | "bulk-reactivate", ids: string[]) {
+    if (ids.length === 0) return;
     const emails = (results ?? [])
-      .filter((u) => selected.has(u.id))
+      .filter((u) => ids.includes(u.id))
       .map((u) => u.email)
       .join(", ");
-    const verb = action === "bulk-deactivate" ? "deactivate" : "reactivate";
-    if (!window.confirm(`${verb === "deactivate" ? "Deactivate" : "Reactivate"} ${selected.size} account(s)? ${emails}`)) {
-      return;
-    }
+    const verb = action === "bulk-deactivate" ? "Deactivate" : "Reactivate";
+    if (!window.confirm(`${verb} ${ids.length} account(s)? ${emails}`)) return;
     setBulkBusy(true);
     setError(null);
     try {
       await apiFetch<AdminBulkResult>(`/api/v1/admin/users/${action}`, {
         method: "POST",
-        body: { user_ids: Array.from(selected) },
+        body: { user_ids: ids },
       });
-      await runSearch(query);
+      await runSearch(query, sortBy, direction);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -453,9 +522,39 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
     }
   }
 
+  async function runDelete(ids: string[]) {
+    setBulkBusy(true);
+    setError(null);
+    try {
+      const result = await apiFetch<AdminBulkDeleteResult>("/api/v1/admin/users/bulk-delete", {
+        method: "POST",
+        body: { user_ids: ids },
+      });
+      const parts = [`Permanently deleted ${result.deleted.length} account(s).`];
+      if (result.skipped_active.length > 0) {
+        parts.push(`${result.skipped_active.length} still active, so left alone.`);
+      }
+      setPendingDelete(null);
+      setConfirmText("");
+      await runSearch(query, sortBy, direction, true);
+      setNotice(parts.join(" "));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  const selectedRows = (results ?? []).filter((u) => selected.has(u.id));
+  const deleteRows = (results ?? []).filter((u) => pendingDelete?.includes(u.id));
+  const deleteBlockedCount = deleteRows.filter((u) => u.is_active).length;
+  const selectableCount = (results ?? []).filter((u) => u.id !== currentUser?.id).length;
+  const rowButton =
+    "rounded-lg border px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40";
+
   return (
     <section>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -482,15 +581,80 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
       </div>
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+      {notice && <p className="mb-4 text-sm text-accent">{notice}</p>}
 
-      {selected.size > 0 && (
-        <div className="mb-3 flex items-center justify-between rounded-lg border border-border-strong bg-surface/60 px-3 py-2">
-          <p className="text-xs text-text-dim">{selected.size} selected</p>
+      {pendingDelete && (
+        <div className="mb-4 space-y-3 rounded-2xl border border-danger/60 bg-danger-faint p-4">
+          <h2 className="text-sm font-medium text-danger">
+            Permanently delete {pendingDelete.length} account(s)?
+          </h2>
+          <p className="text-xs text-text-dim">
+            This deletes each account, every recording (the audio files too), and everything
+            derived from them. It cannot be undone. Only deactivated accounts are deleted.
+          </p>
+          <ul className="max-h-32 list-disc overflow-y-auto pl-5 text-xs text-text-dim">
+            {deleteRows.map((u) => (
+              <li key={u.id}>
+                {u.email}
+                {u.is_active && <span className="ml-2 text-warning">(still active, will be skipped)</span>}
+              </li>
+            ))}
+          </ul>
+          {deleteBlockedCount === deleteRows.length ? (
+            <p className="text-xs text-warning">
+              Deactivate these accounts first, then delete them.
+            </p>
+          ) : (
+            <div>
+              <label htmlFor="admin-bulk-delete-confirm" className="mb-1 block text-xs text-text-dim">
+                Type <span className="font-mono text-danger">{DELETE_CONFIRM_PHRASE}</span> to confirm
+              </label>
+              <input
+                id="admin-bulk-delete-confirm"
+                type="text"
+                autoComplete="off"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                className="w-full max-w-xs rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-danger"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             <button
               type="button"
+              disabled={
+                bulkBusy ||
+                deleteBlockedCount === deleteRows.length ||
+                confirmText !== DELETE_CONFIRM_PHRASE
+              }
+              onClick={() => runDelete(pendingDelete)}
+              className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bulkBusy ? "Deleting..." : "Permanently delete"}
+            </button>
+            <button
+              type="button"
               disabled={bulkBusy}
-              onClick={() => runBulk("bulk-deactivate")}
+              onClick={() => {
+                setPendingDelete(null);
+                setConfirmText("");
+              }}
+              className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selected.size > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-strong bg-surface px-3 py-2">
+          <p className="text-xs text-text-dim">{selected.size} selected</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={bulkBusy}
+              onClick={() => runBulk("bulk-deactivate", Array.from(selected))}
               className="rounded-lg border border-danger px-3 py-1 text-xs text-danger hover:bg-danger-faint disabled:opacity-50"
             >
               Deactivate selected
@@ -498,10 +662,26 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
             <button
               type="button"
               disabled={bulkBusy}
-              onClick={() => runBulk("bulk-reactivate")}
+              onClick={() => runBulk("bulk-reactivate", Array.from(selected))}
               className="rounded-lg border border-border-strong px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-50"
             >
               Reactivate selected
+            </button>
+            <button
+              type="button"
+              disabled={bulkBusy || selectedRows.every((u) => u.is_active)}
+              title={
+                selectedRows.every((u) => u.is_active)
+                  ? "Deactivate accounts first — only deactivated accounts can be deleted"
+                  : undefined
+              }
+              onClick={() => {
+                setConfirmText("");
+                setPendingDelete(Array.from(selected));
+              }}
+              className="rounded-lg border border-danger px-3 py-1 text-xs text-danger hover:bg-danger-faint disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Delete selected
             </button>
           </div>
         </div>
@@ -515,48 +695,106 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
       ) : results.length === 0 ? (
         <p className="text-sm text-text-faint">No matching accounts.</p>
       ) : (
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border text-left text-text-dim">
-              <th className="w-8 py-2 pr-2"></th>
-              <th className="py-2 pr-4">Email</th>
-              <th className="py-2 pr-4">Type</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Onboarded</th>
-              <th className="py-2 pr-4">Signed up</th>
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((u) => (
-              <tr key={u.id} className="border-b border-border">
-                <td className="py-2 pr-2">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-text-dim">
+                <th className="w-8 py-2 pr-2">
                   <input
                     type="checkbox"
-                    checked={selected.has(u.id)}
-                    onChange={() => toggle(u.id)}
+                    aria-label="Select all"
+                    checked={selectableCount > 0 && selected.size === selectableCount}
+                    onChange={toggleAll}
                     className="rounded border-border-strong bg-surface"
                   />
-                </td>
-                <td className="py-2 pr-4">
-                  <Link href={`/admin/users/${u.id}`} className="underline hover:text-text">
-                    {u.email}
-                  </Link>
-                  {u.is_admin && (
-                    <span className="ml-2 text-xs text-warning">
-                      (admin{u.admin_role === "support" ? " · support" : ""})
-                    </span>
-                  )}
-                </td>
-                <td className="py-2 pr-4">{ACCOUNT_TYPE_LABEL[u.account_type]}</td>
-                <td className="py-2 pr-4">
-                  {u.is_active ? "active" : <span className="text-danger">deactivated</span>}
-                </td>
-                <td className="py-2 pr-4">{u.onboarding_complete ? "yes" : "no"}</td>
-                <td className="py-2 pr-4">{new Date(u.created_at).toLocaleDateString()}</td>
+                </th>
+                <SortHeader label="Email" column="email" sortBy={sortBy} direction={direction} onSort={changeSort} />
+                <SortHeader label="Type" column="account_type" sortBy={sortBy} direction={direction} onSort={changeSort} />
+                <SortHeader label="Status" column="is_active" sortBy={sortBy} direction={direction} onSort={changeSort} />
+                <SortHeader label="Onboarded" column="onboarding_complete" sortBy={sortBy} direction={direction} onSort={changeSort} />
+                <SortHeader label="Signed up" column="created_at" sortBy={sortBy} direction={direction} onSort={changeSort} />
+                <th className="py-2 text-right font-medium">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {results.map((u) => {
+                const isSelf = u.id === currentUser?.id;
+                return (
+                  <tr key={u.id} className="border-b border-border">
+                    <td className="py-2 pr-2">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${u.email}`}
+                        checked={selected.has(u.id)}
+                        disabled={isSelf}
+                        onChange={() => toggle(u.id)}
+                        className="rounded border-border-strong bg-surface"
+                      />
+                    </td>
+                    <td className="py-2 pr-4">
+                      <Link href={`/admin/users/${u.id}`} className="underline hover:text-text">
+                        {u.email}
+                      </Link>
+                      {u.is_admin && (
+                        <span className="ml-2 text-xs text-warning">
+                          (admin{u.admin_role === "support" ? " · support" : ""})
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-4">{ACCOUNT_TYPE_LABEL[u.account_type]}</td>
+                    <td className="py-2 pr-4">
+                      {u.is_active ? "active" : <span className="text-danger">deactivated</span>}
+                    </td>
+                    <td className="py-2 pr-4">{u.onboarding_complete ? "yes" : "no"}</td>
+                    <td className="py-2 pr-4">{new Date(u.created_at).toLocaleDateString()}</td>
+                    <td className="py-2">
+                      <div className="flex justify-end gap-2">
+                        {u.is_active ? (
+                          <button
+                            type="button"
+                            disabled={bulkBusy || isSelf}
+                            title={isSelf ? "You can't deactivate your own account" : undefined}
+                            onClick={() => runBulk("bulk-deactivate", [u.id])}
+                            className={`${rowButton} border-border-strong hover:bg-surface-2`}
+                          >
+                            Deactivate
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={bulkBusy}
+                            onClick={() => runBulk("bulk-reactivate", [u.id])}
+                            className={`${rowButton} border-border-strong hover:bg-surface-2`}
+                          >
+                            Reactivate
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={bulkBusy || isSelf || u.is_active}
+                          title={
+                            isSelf
+                              ? "You can't delete your own account"
+                              : u.is_active
+                                ? "Deactivate the account first"
+                                : undefined
+                          }
+                          onClick={() => {
+                            setConfirmText("");
+                            setPendingDelete([u.id]);
+                          }}
+                          className={`${rowButton} border-danger text-danger hover:bg-danger-faint`}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );
@@ -568,7 +806,7 @@ export default function AdminPage() {
   return (
     <RequireAuth>
       <RequireAdmin>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6">
           <div className="mb-8 flex items-center justify-between">
             <div>
               <h1 className="mb-1 text-2xl font-semibold tracking-tight">Admin</h1>
