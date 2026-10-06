@@ -415,3 +415,122 @@ def test_export_contact_list_is_audited_with_filters_not_content(
     assert row.details["filters"]["email"] == target_user["email"][:10]
     assert "emails" not in row.details
     assert row.details["row_count"] >= 1
+
+
+# --- sorting and bulk delete ---
+
+
+def _signup(client, prefix: str) -> dict:
+    resp = client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": f"{prefix}-{uuid.uuid4().hex[:6]}@example.com",
+            "password": "correcthorse123",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["user"]
+
+
+def test_user_list_sorts_by_email_in_both_directions(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    marker = uuid.uuid4().hex[:8]
+    for letter in ("c", "a", "b"):
+        _signup(client, f"{letter}-sorttest-{marker}")
+
+    def emails(direction: str) -> list[str]:
+        resp = client.get(
+            "/api/v1/admin/users",
+            headers=admin_headers,
+            params={"query": f"sorttest-{marker}", "sort_by": "email", "direction": direction},
+        )
+        assert resp.status_code == 200, resp.text
+        return [u["email"][0] for u in resp.json()]
+
+    assert emails("asc") == ["a", "b", "c"]
+    assert emails("desc") == ["c", "b", "a"]
+
+
+def test_user_list_sorts_deactivated_accounts_together(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    marker = uuid.uuid4().hex[:8]
+    first = _signup(client, f"active-sorttest-{marker}")
+    second = _signup(client, f"inactive-sorttest-{marker}")
+    client.post(f"/api/v1/admin/users/{second['id']}/deactivate", headers=admin_headers)
+
+    resp = client.get(
+        "/api/v1/admin/users",
+        headers=admin_headers,
+        params={"query": f"sorttest-{marker}", "sort_by": "is_active", "direction": "asc"},
+    )
+    assert [u["id"] for u in resp.json()] == [second["id"], first["id"]]
+
+
+def test_user_list_rejects_an_unknown_sort_column(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    resp = client.get(
+        "/api/v1/admin/users", headers=admin_headers, params={"sort_by": "password_hash"}
+    )
+    assert resp.status_code == 422
+
+
+def test_bulk_delete_removes_only_deactivated_accounts(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    gone = _signup(client, "bulk-gone")
+    kept_active = _signup(client, "bulk-active")
+    missing_id = uuid.uuid4()
+    client.post(f"/api/v1/admin/users/{gone['id']}/deactivate", headers=admin_headers)
+
+    resp = client.post(
+        "/api/v1/admin/users/bulk-delete",
+        headers=admin_headers,
+        json={"user_ids": [gone["id"], kept_active["id"], str(missing_id)]},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["deleted"] == [gone["id"]]
+    assert body["skipped_active"] == [kept_active["id"]]
+    assert body["not_found"] == [str(missing_id)]
+    assert db_session.get(User, uuid.UUID(gone["id"])) is None
+    assert db_session.get(User, uuid.UUID(kept_active["id"])) is not None
+
+    # The audit row outlives the account (its target id is nulled on delete), so it's matched
+    # by the email recorded in its details.
+    audit = [
+        row
+        for row in db_session.query(AdminAuditLog).filter(
+            AdminAuditLog.action == "hard_delete_user"
+        )
+        if (row.details or {}).get("email") == gone["email"]
+    ]
+    assert len(audit) == 1
+
+
+def test_bulk_delete_never_deletes_the_caller(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    admin_row = db_session.query(User).filter_by(email=admin_user["email"]).one()
+    admin_row.is_active = False
+    db_session.commit()
+
+    client.post(
+        "/api/v1/admin/users/bulk-delete",
+        headers=admin_headers,
+        json={"user_ids": [str(admin_row.id)]},
+    )
+    assert db_session.get(User, admin_row.id) is not None
+
+
+def test_support_admin_cannot_bulk_delete(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"], admin_role="support")
+    resp = client.post(
+        "/api/v1/admin/users/bulk-delete",
+        headers=admin_headers,
+        json={"user_ids": [str(uuid.uuid4())]},
+    )
+    assert resp.status_code == 403

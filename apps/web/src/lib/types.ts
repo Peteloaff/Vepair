@@ -580,6 +580,12 @@ export interface AdminBulkResult {
   not_found: string[];
 }
 
+export interface AdminBulkDeleteResult {
+  deleted: string[];
+  not_found: string[];
+  skipped_active: string[];
+}
+
 export interface AdminImpersonateResponse {
   access_token: string;
   expires_in: number;

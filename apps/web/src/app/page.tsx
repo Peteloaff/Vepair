@@ -366,6 +366,43 @@ function Dashboard({
         <p className="mb-4 rounded-xl bg-danger-faint px-3 py-2 text-xs text-danger">{loadError}</p>
       )}
 
+      <nav
+        aria-label="Shortcuts"
+        className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
+      >
+        {(
+          [
+            { href: "/progress", label: "Progress", icon: "chart", color: "blue" },
+            { href: "/vocal-plan", label: "Vocal plan", icon: "plan", color: "violet" },
+            { href: "/vocal-range", label: "Vocal range", icon: "range", color: "teal" },
+            { href: "/tone-match", label: "Tone Match", icon: "game", color: "amber" },
+            { href: "/recordings", label: "Recordings", icon: "rec", color: "cyan" },
+          ] as { href: string; label: string; icon: IconName; color: TileColor }[]
+        ).map((q) => (
+          <Link key={q.href} href={q.href} className={tileLinkClass}>
+            <IconTile name={q.icon} color={q.color} size="sm" />
+            {q.label}
+          </Link>
+        ))}
+        {showCoachPortalLink && (
+          <Link href="/coach" className={tileLinkClass}>
+            <IconTile name="users" color="violet" size="sm" />
+            Coach Portal
+          </Link>
+        )}
+        {(pendingInviteCount > 0 || hasCoachConnection) && (
+          <Link href="/coach-access" className={`relative ${tileLinkClass}`}>
+            <IconTile name="users" color="violet" size="sm" />
+            Coach Access
+            {coachAccessBadge > 0 && (
+              <span className="absolute right-3 top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
+                {coachAccessBadge}
+              </span>
+            )}
+          </Link>
+        )}
+      </nav>
+
       <div className="grid gap-4 lg:grid-cols-12">
         <Card title="VepAIr Score" className="lg:col-span-5">
           {recoveryScoreError ? (
@@ -547,43 +584,6 @@ function Dashboard({
           </p>
         </Card>
       </div>
-
-      <nav
-        aria-label="Shortcuts"
-        className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
-      >
-        {(
-          [
-            { href: "/progress", label: "Progress", icon: "chart", color: "blue" },
-            { href: "/vocal-plan", label: "Vocal plan", icon: "plan", color: "violet" },
-            { href: "/vocal-range", label: "Vocal range", icon: "range", color: "teal" },
-            { href: "/tone-match", label: "Tone Match", icon: "game", color: "amber" },
-            { href: "/recordings", label: "Recordings", icon: "rec", color: "cyan" },
-          ] as { href: string; label: string; icon: IconName; color: TileColor }[]
-        ).map((q) => (
-          <Link key={q.href} href={q.href} className={tileLinkClass}>
-            <IconTile name={q.icon} color={q.color} size="sm" />
-            {q.label}
-          </Link>
-        ))}
-        {showCoachPortalLink && (
-          <Link href="/coach" className={tileLinkClass}>
-            <IconTile name="users" color="violet" size="sm" />
-            Coach Portal
-          </Link>
-        )}
-        {(pendingInviteCount > 0 || hasCoachConnection) && (
-          <Link href="/coach-access" className={`relative ${tileLinkClass}`}>
-            <IconTile name="users" color="violet" size="sm" />
-            Coach Access
-            {coachAccessBadge > 0 && (
-              <span className="absolute right-3 top-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-xs font-semibold text-accent-ink">
-                {coachAccessBadge}
-              </span>
-            )}
-          </Link>
-        )}
-      </nav>
 
       <div className="mt-4">
         <ToneGameTrendCard />
