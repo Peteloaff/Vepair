@@ -534,3 +534,124 @@ def test_support_admin_cannot_bulk_delete(client, signed_up_user, db_session) ->
         json={"user_ids": [str(uuid.uuid4())]},
     )
     assert resp.status_code == 403
+
+
+def test_bulk_delete_reports_a_failing_account_instead_of_crashing(
+    client, signed_up_user, db_session, monkeypatch
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    doomed = _signup(client, "bulk-doomed")
+    client.post(f"/api/v1/admin/users/{doomed['id']}/deactivate", headers=admin_headers)
+
+    def boom(db, user):
+        raise RuntimeError("constraint exploded")
+
+    monkeypatch.setattr("app.routers.admin.delete_user_and_storage", boom)
+    resp = client.post(
+        "/api/v1/admin/users/bulk-delete",
+        headers=admin_headers,
+        json={"user_ids": [doomed["id"]]},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["deleted"] == []
+    assert body["failed"][0]["id"] == doomed["id"]
+    assert "constraint exploded" in body["failed"][0]["reason"]
+    # Nothing was removed, and no audit row claims it was.
+    assert db_session.get(User, uuid.UUID(doomed["id"])) is not None
+    assert not [
+        r
+        for r in db_session.query(AdminAuditLog).filter(AdminAuditLog.action == "hard_delete_user")
+        if (r.details or {}).get("email") == doomed["email"]
+    ]
+
+
+def _signup_with_profile(client, prefix: str) -> dict:
+    """An account that has finished onboarding -- i.e. has a user_profiles row -- which is the
+    case that used to crash hard-delete (the ORM tried to NULL user_profiles.user_id)."""
+    resp = client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": f"{prefix}-{uuid.uuid4().hex[:6]}@example.com",
+            "password": "correcthorse123",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
+    assert client.put("/api/v1/profile", headers=headers, json={}).status_code == 200
+    return resp.json()["user"]
+
+
+def test_bulk_delete_removes_an_account_that_finished_onboarding(
+    client, signed_up_user, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    target = _signup_with_profile(client, "bulk-onboarded")
+    client.post(f"/api/v1/admin/users/{target['id']}/deactivate", headers=admin_headers)
+
+    resp = client.post(
+        "/api/v1/admin/users/bulk-delete", headers=admin_headers, json={"user_ids": [target["id"]]}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["deleted"] == [target["id"]]
+    assert resp.json()["failed"] == []
+    assert db_session.get(User, uuid.UUID(target["id"])) is None
+
+
+def test_single_delete_removes_an_account_that_finished_onboarding(
+    client, signed_up_user, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    target = _signup_with_profile(client, "single-onboarded")
+    client.post(f"/api/v1/admin/users/{target['id']}/deactivate", headers=admin_headers)
+
+    resp = client.post(f"/api/v1/admin/users/{target['id']}/delete", headers=admin_headers)
+    assert resp.status_code == 204, resp.text
+    assert db_session.get(User, uuid.UUID(target["id"])) is None
+
+
+# --- coaches are active from the moment they exist ---
+
+
+def test_admin_created_coach_is_active_immediately(client, signed_up_user, db_session) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    email = f"admin-made-coach-{uuid.uuid4().hex[:6]}@example.com"
+    created = client.post(
+        "/api/v1/admin/users",
+        headers=admin_headers,
+        json={
+            "email": email,
+            "password": "correcthorse123",
+            "account_type": "coach",
+            "display_name": "Made Coach",
+        },
+    )
+    assert created.status_code == 201, created.text
+    login = client.post("/api/v1/auth/login", json={"email": email, "password": "correcthorse123"})
+    coach_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert client.get("/api/v1/coach/profile", headers=coach_headers).status_code == 200
+
+
+def test_switching_an_account_to_coach_activates_it_immediately(
+    client, signed_up_user, db_session
+) -> None:
+    admin_user, admin_headers = signed_up_user
+    _make_admin(db_session, admin_user["email"])
+    singer = _signup(client, "becomes-coach")
+    login_email = singer["email"]
+
+    resp = client.post(
+        f"/api/v1/admin/users/{singer['id']}/set-coach",
+        headers=admin_headers,
+        json={"is_coach": True, "display_name": "New Coach"},
+    )
+    assert resp.status_code == 200, resp.text
+    login = client.post(
+        "/api/v1/auth/login", json={"email": login_email, "password": "correcthorse123"}
+    )
+    coach_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert client.get("/api/v1/coach/profile", headers=coach_headers).status_code == 200

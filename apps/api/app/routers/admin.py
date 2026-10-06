@@ -3,6 +3,7 @@ app.admin_audit.log_admin_action, in the same transaction as the change itself -
 app/admin_auth.py and app/models.AdminAuditLog for the mechanism this router relies on.
 """
 
+import logging
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
@@ -31,8 +32,9 @@ from app.models import (
     UserProfile,
     VoiceSession,
 )
-from app.organizations import invites_used_this_period
+from app.organizations import activate_coach_pro, invites_used_this_period
 from app.schemas_admin import (
+    AdminBulkDeleteFailureOut,
     AdminBulkDeleteResultOut,
     AdminBulkResultOut,
     AdminBulkUserIdsIn,
@@ -52,6 +54,8 @@ from app.schemas_admin import (
 from app.schemas_auth import UserOut
 from app.security import generate_opaque_token, hash_password
 from app.site_settings import get_site_settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 settings = get_settings()
@@ -177,6 +181,7 @@ def create_user(
     db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
     if payload.account_type == "coach":
         organization = Organization(name=payload.studio_name)
+        activate_coach_pro(organization)
         db.add(organization)
         db.flush()
         db.add(
@@ -476,6 +481,7 @@ def set_coach(
                     },
                 )
             organization = Organization()
+            activate_coach_pro(organization)
             db.add(organization)
             db.flush()
             db.add(
@@ -907,6 +913,7 @@ def bulk_delete_users(
     deleted: list[uuid.UUID] = []
     not_found: list[uuid.UUID] = []
     skipped_active: list[uuid.UUID] = []
+    failed: list[AdminBulkDeleteFailureOut] = []
     for user_id in payload.user_ids:
         if user_id == admin.id:
             continue
@@ -917,11 +924,27 @@ def bulk_delete_users(
         if user.is_active:
             skipped_active.append(user_id)
             continue
-        log_admin_action(db, admin.id, "hard_delete_user", user.id, {"email": user.email})
-        delete_user_and_storage(db, user)
+        email = user.email
+        try:
+            log_admin_action(db, admin.id, "hard_delete_user", user.id, {"email": email})
+            delete_user_and_storage(db, user)
+        except Exception as exc:
+            # One account that can't be deleted (a database constraint, a storage hiccup) must
+            # not take down the whole batch -- and an unhandled exception here would reach the
+            # browser as a bare network error with no message. Roll back (which also drops this
+            # account's audit row, since nothing was deleted), log the full trace, and report
+            # the reason back to the admin.
+            db.rollback()
+            logger.error("Bulk delete failed for user_id=%s", user_id, exc_info=True)
+            failed.append(
+                AdminBulkDeleteFailureOut(
+                    id=user_id, email=email, reason=f"{type(exc).__name__}: {str(exc)[:300]}"
+                )
+            )
+            continue
         deleted.append(user_id)
     return AdminBulkDeleteResultOut(
-        deleted=deleted, not_found=not_found, skipped_active=skipped_active
+        deleted=deleted, not_found=not_found, skipped_active=skipped_active, failed=failed
     )
 
 

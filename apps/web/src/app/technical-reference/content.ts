@@ -649,13 +649,16 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
         <p class="block-note">Live in production. No Square (or any automated payment provider) on the coach side — see <code class="path">TECHNICAL_GUIDE.md</code> §10 for the operator walkthrough.</p>
         <div class="card">
           <p>Every coach belongs to exactly one <code>Organization</code>, created automatically at
-          signup, <code>is_coach_pro_active = false</code> by default — there is no free coach
-          tier. <code>get_current_coach</code> 403s with <code>coach_pro_required</code> for every
-          coach endpoint until an admin flips this on, which is the single enforcement seam for the
-          entire coach surface.</p>
-          <p>Payment is collected outside the app; activation is a manual admin action
-          (<code class="path">POST /api/v1/admin/organizations/{id}/set-coach-pro</code>), setting
-          a 12-month period. 50 <code>CoachInvite</code>s are included per year, computed live
+          creation. Every path that makes a coach (self-serve coach signup, admin create-user, admin
+          set-coach) calls <code>activate_coach_pro()</code>, so the organization starts
+          <code>is_coach_pro_active = true</code> with a one-year period and nothing waits on an
+          admin. <code>get_current_coach</code> still 403s with <code>coach_pro_required</code> for
+          an organization an admin has revoked, which remains the single enforcement seam for the
+          entire coach surface. A one-time migration activated every coach that was still waiting
+          (organizations never activated; deliberately revoked ones were left alone).</p>
+          <p>Payment is collected outside the app; an admin can revoke or re-grant access
+          (<code class="path">POST /api/v1/admin/organizations/{id}/set-coach-pro</code>), which sets
+          a fresh 12-month period. 50 <code>CoachInvite</code>s are included per year, computed live
           (never a maintained counter, to avoid drift) — going over doesn't block, it's meant to
           accrue as overage on the org's next QuickBooks draft invoice once that sync exists.</p>
           <div class="callout info">
@@ -857,7 +860,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
               <ul>
                 <li>Full singer product through Progress Dashboard</li>
                 <li>Coach Portal (roster, invites, assign, notes, messaging, custom exercises)</li>
-                <li>Coach Pro billing/gating (manual activation)</li>
+                <li>Coach Pro gating (automatic activation on coach creation, admin can revoke)</li>
                 <li>Backend Admin (users, orgs, reports, audit log, role tiers, bulk ops including delete, sortable user list, impersonation, contact export — §16)</li>
                 <li>Tone Match Challenge (5-tone game + trend)</li>
                 <li>Practice reminders (Cloud Scheduler-triggered daily email)</li>

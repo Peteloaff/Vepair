@@ -19,6 +19,7 @@ from app.models import (
     RefreshToken,
     User,
 )
+from app.organizations import activate_coach_pro
 from app.schemas_auth import (
     AccountDeletionRequest,
     CoachSignupRequest,
@@ -106,8 +107,8 @@ def coach_signup(payload: CoachSignupRequest, db: Session = Depends(get_db)) -> 
     """Stage 12 Phase II. Creates the User, AuthCredential, CoachProfile, and (post-Stage-12
     Part 2) that coach's Organization together in one transaction — a coach account is a coach
     account from creation, never a later upgrade on an existing singer account (see
-    CoachSignupRequest's docstring). The Organization starts with is_coach_pro_active=False (no
-    free coach tier); every coach endpoint stays blocked until an admin activates it."""
+    CoachSignupRequest's docstring). The Organization is created with Coach Pro already active, so
+    a new coach can use the Coach Portal immediately; an admin can still revoke it."""
     if not get_site_settings(db).signups_enabled:
         raise SIGNUPS_DISABLED
     user = User(email=payload.email.lower())
@@ -123,6 +124,7 @@ def coach_signup(payload: CoachSignupRequest, db: Session = Depends(get_db)) -> 
 
     db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
     organization = Organization(name=payload.studio_name)
+    activate_coach_pro(organization)
     db.add(organization)
     db.flush()
     db.add(

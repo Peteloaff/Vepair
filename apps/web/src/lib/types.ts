@@ -584,6 +584,7 @@ export interface AdminBulkDeleteResult {
   deleted: string[];
   not_found: string[];
   skipped_active: string[];
+  failed: { id: string; email: string; reason: string }[];
 }
 
 export interface AdminImpersonateResponse {

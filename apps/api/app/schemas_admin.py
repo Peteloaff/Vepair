@@ -96,11 +96,20 @@ class AdminBulkResultOut(BaseModel):
     not_found: list[uuid.UUID]
 
 
+class AdminBulkDeleteFailureOut(BaseModel):
+    id: uuid.UUID
+    email: str
+    # The exception class and message, so an admin can see why one account wouldn't delete.
+    reason: str
+
+
 class AdminBulkDeleteResultOut(BaseModel):
     deleted: list[uuid.UUID]
     not_found: list[uuid.UUID]
     # Accounts that were still active and therefore left alone -- deactivate them first.
     skipped_active: list[uuid.UUID]
+    # Accounts whose deletion raised; nothing was changed for these (the transaction rolled back).
+    failed: list[AdminBulkDeleteFailureOut] = []
 
 
 class AdminImpersonateOut(BaseModel):

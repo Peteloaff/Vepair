@@ -74,11 +74,18 @@ class User(Base, TimestampMixin):
     # Beta NDA click-through (see app/models.SiteSettings.nda_required and NdaGate.tsx). Null
     # means never accepted -- nothing backfills this, so every pre-existing account is correctly
     # treated as not yet having seen the current beta notice the first time NdaGate checks.
-    nda_accepted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    nda_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    profile: Mapped["UserProfile | None"] = relationship(back_populates="user", uselist=False)
+    # cascade + passive_deletes: without them, deleting a User makes the ORM try to blank out
+    # user_profiles.user_id (a NOT NULL column) instead of deleting the profile, which is what
+    # broke every admin hard-delete of an account that had finished onboarding. The database's
+    # ON DELETE CASCADE does the actual removal.
+    profile: Mapped["UserProfile | None"] = relationship(
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class AuthCredential(Base, TimestampMixin):
@@ -243,9 +250,7 @@ class Recording(Base, TimestampMixin):
     sample_rate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     channels: Mapped[int | None] = mapped_column(Integer, nullable=True)
     quality_flags: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    audio_purged_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    audio_purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     voice_session: Mapped[VoiceSession] = relationship(back_populates="recordings")
     # passive_deletes=True: without it, SQLAlchemy's default relationship-aware delete tries
@@ -363,9 +368,7 @@ class ExerciseSession(Base, TimestampMixin):
     # "adaptive" (the existing once-daily routine) | "warm_up" | "cool_down" (standalone,
     # on-demand sessions -- see app/quick_routine.py). server_default backfills every
     # pre-existing row to "adaptive" at the DB level, no application backfill needed.
-    session_type: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default="adaptive"
-    )
+    session_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="adaptive")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -546,8 +549,10 @@ class Organization(Base, TimestampMixin):
     the org record rather than the user record -- forward-compatible if the 1:1 constraint ever
     loosens, without a schema migration to move it later.
 
-    No free coach tier: is_coach_pro_active defaults False, and app/coach_auth.py's
-    get_current_coach blocks every coach endpoint until an admin activates it via
+    The column defaults False, but every code path that creates a coach (self-serve coach
+    signup, admin create-user, admin set-coach) calls app/organizations.py's activate_coach_pro,
+    so a new coach is active immediately; app/coach_auth.py's get_current_coach still blocks an
+    organization an admin has revoked via
     POST /api/v1/admin/organizations/{id}/set-coach-pro (see app/routers/admin.py). All coach
     billing -- base subscription fee and invite overage alike -- goes through QuickBooks Online
     as founder-reviewed draft invoices, never Stripe; there is no automatic payment-confirmation
