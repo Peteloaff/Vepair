@@ -529,7 +529,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
       <section class="block coach-section" id="coach-invite">
         <div class="block-head"><span class="block-num">03</span><h2>Inviting a Vrotégé</h2></div>
         <div class="card">
-          <p><b>Invite a Vrotégé</b> on your dashboard. Enter their email (they must already have a VepAIr Vrotégé account) and an optional message.</p>
+          <p><b>Invite a Vrotégé</b> on your dashboard. Enter their email and an optional message — they don't need an account yet. VepAIr emails them: if they already have an account, the email takes them to review the invite; if not, it invites them to sign up (their email is prefilled), and your invite is already waiting when they do.</p>
           <p>They see your invite under their own <b>Coach Access</b> page and must explicitly accept, choosing what to share — you see nothing until they do. Cancel a still-pending invite any time from your dashboard.</p>
         </div>
       </section>

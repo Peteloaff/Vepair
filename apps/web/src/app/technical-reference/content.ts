@@ -378,7 +378,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <div class="ref-wrap"><table class="ref">
             <tr><th>Entity</th><th>Purpose</th></tr>
             <tr><td class="code-cell">CoachProfile</td><td>Coach account extension. Belongs to exactly one Organization.</td></tr>
-            <tr><td class="code-cell">CoachInvite</td><td>An invite to a singer, by email — pending/accepted/declined/revoked.</td></tr>
+            <tr><td class="code-cell">CoachInvite</td><td>An invite addressed to an email — pending/accepted/declined/revoked. <code>singer_user_id</code> is null until that email has an account (linked at signup); an invitation email is sent either way.</td></tr>
             <tr><td class="code-cell">CoachAccess</td><td>The active grant. One active coach per singer, DB-enforced (partial unique index).</td></tr>
             <tr><td class="code-cell">CoachAccessCategoryGrant</td><td>Per-category share toggle: recovery_trends / vocal_range / exercise_history / recordings.</td></tr>
             <tr><td class="code-cell">CoachAssignment</td><td>A coach's exercise assignment, with optional per-exercise tone targets.</td></tr>

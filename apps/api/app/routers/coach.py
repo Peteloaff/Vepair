@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.coach_auth import get_current_coach, require_coach_access
 from app.coach_notes import find_flagged_terms
 from app.database import get_db
-from app.email import send_new_message_email
+from app.email import send_coach_invite_email, send_new_message_email
 from app.exercise_routine import VALID_ROUTINE_LENGTHS_MINUTES, build_routine_for_user
 from app.exercise_trends import compute_exercise_trends
 from app.models import (
@@ -126,22 +126,15 @@ def create_invite(
     coach: CoachProfile = Depends(get_current_coach),
     db: Session = Depends(get_db),
 ) -> CoachInviteOut:
-    singer = db.scalar(select(User).where(User.email == payload.singer_email.lower()))
-    if singer is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "code": "singer_not_found",
-                "message": (
-                    "No VepAIr account exists for this email yet — ask them to sign up first."
-                ),
-            },
-        )
+    # The invitee doesn't need an account yet: if one exists the invite is linked to it now,
+    # otherwise it's emailed as a sign-up invitation and linked when they sign up.
+    email = payload.singer_email.lower()
+    singer = db.scalar(select(User).where(User.email == email))
 
     existing = db.scalar(
         select(CoachInvite).where(
             CoachInvite.coach_id == coach.id,
-            CoachInvite.singer_user_id == singer.id,
+            CoachInvite.singer_email == email,
             CoachInvite.status == "pending",
         )
     )
@@ -154,13 +147,21 @@ def create_invite(
             },
         )
 
-    invite = CoachInvite(coach_id=coach.id, singer_user_id=singer.id, message=payload.message)
+    invite = CoachInvite(
+        coach_id=coach.id,
+        singer_user_id=singer.id if singer is not None else None,
+        singer_email=email,
+        message=payload.message,
+    )
     db.add(invite)
     db.commit()
     db.refresh(invite)
+    send_coach_invite_email(
+        email, coach.display_name, coach.studio_name, invite.message, has_account=singer is not None
+    )
     return CoachInviteOut(
         id=invite.id,
-        singer_email=singer.email,
+        singer_email=invite.singer_email,
         status=invite.status,
         message=invite.message,
         created_at=invite.created_at,
@@ -172,22 +173,21 @@ def create_invite(
 def list_sent_invites(
     coach: CoachProfile = Depends(get_current_coach), db: Session = Depends(get_db)
 ) -> list[CoachInviteOut]:
-    rows = db.execute(
-        select(CoachInvite, User.email)
-        .join(User, User.id == CoachInvite.singer_user_id)
+    invites = db.scalars(
+        select(CoachInvite)
         .where(CoachInvite.coach_id == coach.id)
         .order_by(CoachInvite.created_at.desc())
     ).all()
     return [
         CoachInviteOut(
             id=invite.id,
-            singer_email=email,
+            singer_email=invite.singer_email,
             status=invite.status,
             message=invite.message,
             created_at=invite.created_at,
             responded_at=invite.responded_at,
         )
-        for invite, email in rows
+        for invite in invites
     ]
 
 

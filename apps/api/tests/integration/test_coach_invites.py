@@ -37,15 +37,93 @@ def test_coach_can_invite_an_existing_singer_by_email(
     assert body["message"] == "Let's work together!"
 
 
-def test_inviting_a_nonexistent_email_returns_404(client, signed_up_coach) -> None:
+def test_inviting_an_email_without_an_account_works_and_is_emailed(
+    client, signed_up_coach, monkeypatch
+) -> None:
+    sent = []
+    monkeypatch.setattr(
+        "app.routers.coach.send_coach_invite_email",
+        lambda *args, **kwargs: sent.append((args, kwargs)),
+    )
     _coach, coach_headers = signed_up_coach
     resp = client.post(
         "/api/v1/coach/invites",
         headers=coach_headers,
-        json={"singer_email": "nobody-has-this-account@example.com"},
+        json={"singer_email": "Nobody-Has-This-Account@Example.com", "message": "Join me!"},
     )
-    assert resp.status_code == 404
-    assert resp.json()["error"]["code"] == "singer_not_found"
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["singer_email"] == "nobody-has-this-account@example.com"
+    assert resp.json()["status"] == "pending"
+    assert len(sent) == 1
+    args, kwargs = sent[0]
+    assert args[0] == "nobody-has-this-account@example.com"
+    assert kwargs["has_account"] is False
+
+    listed = client.get("/api/v1/coach/invites", headers=coach_headers).json()
+    assert [i["singer_email"] for i in listed] == ["nobody-has-this-account@example.com"]
+
+
+def test_inviting_an_existing_account_sends_the_review_variant(
+    client, signed_up_coach, signed_up_user, monkeypatch
+) -> None:
+    sent = []
+    monkeypatch.setattr(
+        "app.routers.coach.send_coach_invite_email",
+        lambda *args, **kwargs: sent.append(kwargs),
+    )
+    _coach, coach_headers = signed_up_coach
+    singer, _headers = signed_up_user
+    client.post(
+        "/api/v1/coach/invites", headers=coach_headers, json={"singer_email": singer["email"]}
+    )
+    assert sent == [{"has_account": True}]
+
+
+def test_invitee_who_signs_up_afterwards_finds_the_invite_waiting_and_can_accept_it(
+    client, signed_up_coach
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    email = "invited-before-signup@example.com"
+    created = client.post(
+        "/api/v1/coach/invites",
+        headers=coach_headers,
+        json={"singer_email": email, "message": "Welcome aboard"},
+    )
+    assert created.status_code == 201, created.text
+
+    signup = client.post(
+        "/api/v1/auth/signup", json={"email": email, "password": "correcthorse123"}
+    )
+    assert signup.status_code == 201, signup.text
+    singer_headers = {"Authorization": f"Bearer {signup.json()['access_token']}"}
+
+    waiting = client.get("/api/v1/invites", headers=singer_headers).json()
+    assert len(waiting) == 1
+    assert waiting[0]["message"] == "Welcome aboard"
+
+    accepted = client.post(
+        f"/api/v1/invites/{waiting[0]['id']}/accept",
+        headers=singer_headers,
+        json={"granted_categories": ["recovery_trends"]},
+    )
+    assert accepted.status_code == 200, accepted.text
+
+
+def test_an_invite_to_one_email_is_not_handed_to_a_different_signup(
+    client, signed_up_coach
+) -> None:
+    _coach, coach_headers = signed_up_coach
+    client.post(
+        "/api/v1/coach/invites",
+        headers=coach_headers,
+        json={"singer_email": "meant-for-someone-else@example.com"},
+    )
+    signup = client.post(
+        "/api/v1/auth/signup",
+        json={"email": "a-different-person@example.com", "password": "correcthorse123"},
+    )
+    headers = {"Authorization": f"Bearer {signup.json()['access_token']}"}
+    assert client.get("/api/v1/invites", headers=headers).json() == []
 
 
 def test_duplicate_pending_invite_is_not_created_twice(
@@ -297,9 +375,7 @@ def test_coach_can_remove_a_singer_from_their_roster(
         json={"granted_categories": ["recovery_trends"]},
     )
 
-    resp = client.delete(
-        f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers
-    )
+    resp = client.delete(f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers)
     assert resp.status_code == 204
 
     # Immediate for the coach's own future access.
@@ -337,9 +413,7 @@ def test_removed_singer_can_still_see_the_coachs_notes_about_them(
 
     client.delete(f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers)
 
-    notes = client.get(
-        f"/api/v1/coach-connections/{connection_id}/notes", headers=singer_headers
-    )
+    notes = client.get(f"/api/v1/coach-connections/{connection_id}/notes", headers=singer_headers)
     assert notes.status_code == 200
     assert len(notes.json()) == 1
     assert notes.json()[0]["body"] == "Great breath support in today's session."
@@ -351,9 +425,7 @@ def test_coach_cannot_remove_a_singer_with_no_active_access(
     _coach, coach_headers = signed_up_coach
     singer, _singer_headers = signed_up_user
 
-    resp = client.delete(
-        f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers
-    )
+    resp = client.delete(f"/api/v1/coach/singers/{singer['user']['id']}", headers=coach_headers)
     assert resp.status_code == 403
     assert resp.json()["error"]["code"] == "no_active_access"
 

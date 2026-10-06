@@ -618,11 +618,13 @@ class CoachProfile(Base, TimestampMixin):
 
 
 class CoachInvite(Base, TimestampMixin):
-    """One row per invite a coach sends. Targets an existing VepAIr account resolved by email
-    at creation time — inviting a non-account email 404s rather than creating a dangling
-    invite (Phase II doesn't build a parallel pending-account system). `status="revoked"` here
-    means the coach or singer cancelled before any response — distinct from post-acceptance
-    access revocation, which lives on CoachAccess.status, not here."""
+    """One row per invite a coach sends, addressed to an email. If that email already has a
+    VepAIr account, singer_user_id points at it right away; if not, singer_user_id stays null
+    and the invite is emailed as a sign-up invitation -- when someone signs up with that email,
+    app/coach_invites.py's attach_pending_invites links it, and it shows up for them to review
+    (the singer still has to accept, choosing what to share). `status="revoked"` here means the
+    coach or singer cancelled before any response — distinct from post-acceptance access
+    revocation, which lives on CoachAccess.status, not here."""
 
     __tablename__ = "coach_invites"
 
@@ -630,9 +632,11 @@ class CoachInvite(Base, TimestampMixin):
     coach_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE")
     )
-    singer_user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    singer_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True
     )
+    # Always set (lowercased), whether or not the invitee has an account yet.
+    singer_email: Mapped[str] = mapped_column(String(320), index=True)
     # pending|accepted|declined|revoked
     status: Mapped[str] = mapped_column(String(20), default="pending")
     message: Mapped[str | None] = mapped_column(Text, nullable=True)

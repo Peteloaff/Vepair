@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.account_deletion import delete_user_and_storage
 from app.auth import create_access_token, get_current_user
+from app.coach_invites import attach_pending_invites
 from app.config import get_settings
 from app.database import get_db
 from app.email import send_password_reset_email
@@ -96,6 +97,7 @@ def signup(payload: SignupRequest, db: Session = Depends(get_db)) -> TokenRespon
         ) from None
 
     db.add(AuthCredential(user_id=user.id, password_hash=hash_password(payload.password)))
+    attach_pending_invites(db, user)
     db.commit()
     db.refresh(user)
 

@@ -27,9 +27,7 @@ function InviteFormContent() {
       });
       router.push("/coach");
     } catch (err) {
-      if (err instanceof ApiError && err.code === "singer_not_found") {
-        setError("No VepAIr account exists for this email yet — ask them to sign up first.");
-      } else if (err instanceof ApiError && err.code === "invite_already_pending") {
+      if (err instanceof ApiError && err.code === "invite_already_pending") {
         setError("An invite to this Vrotégé is already pending.");
       } else {
         setError("Could not send this invite. Please try again.");
@@ -43,8 +41,9 @@ function InviteFormContent() {
     <div className="mx-auto w-full max-w-sm">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">Invite a Vrotégé</h1>
       <p className="mb-8 text-sm text-text-dim">
-        They must already have a VepAIr account, and must explicitly accept before you see
-        anything of theirs.
+        We&apos;ll email them. If they don&apos;t have a VepAIr account yet, the email invites them to
+        sign up, and your invite is waiting when they do. They must explicitly accept before you
+        see anything of theirs.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
