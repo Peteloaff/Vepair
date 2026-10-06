@@ -538,8 +538,18 @@ function AdminUserSearch({ refreshToken }: { refreshToken: number }) {
       setConfirmText("");
       await runSearch(query, sortBy, direction, true);
       setNotice(parts.join(" "));
+      if (result.failed.length > 0) {
+        setError(
+          `Could not delete ${result.failed.length} account(s): ` +
+            result.failed.map((f) => `${f.email} (${f.reason})`).join("; ")
+        );
+      }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "The request didn't complete — the server may have hit an error. Try again, and check the server logs if it keeps happening."
+      );
     } finally {
       setBulkBusy(false);
     }

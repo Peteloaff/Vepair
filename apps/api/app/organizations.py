@@ -3,10 +3,26 @@ the entity that owns coach_pro billing state and the invite quota. See that mode
 for the full design rationale.
 """
 
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import CoachInvite, CoachProfile, Organization
+
+COACH_PRO_AUTO_ACTIVATION_DAYS = 365
+
+
+def activate_coach_pro(organization: Organization) -> None:
+    """Turns an organization's Coach Pro on right now, with a fresh one-year period (the period
+    only windows the invite quota and the future billing sync -- nothing expires access when it
+    passes). Used wherever a coach account comes into existence, so a new coach never sits
+    waiting on a manual admin activation; an admin can still revoke it afterwards through
+    POST /api/v1/admin/organizations/{id}/set-coach-pro."""
+    now = datetime.now(UTC)
+    organization.is_coach_pro_active = True
+    organization.coach_pro_period_start = now
+    organization.coach_pro_period_end = now + timedelta(days=COACH_PRO_AUTO_ACTIVATION_DAYS)
 
 
 def invites_used_this_period(db: Session, organization: Organization) -> int:

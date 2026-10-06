@@ -794,7 +794,7 @@ def test_new_coach_organization_starts_inactive(
     assert len(matches) == 1
     org = matches[0]
     assert org["name"] == "Fresh Studio"
-    assert org["is_coach_pro_active"] is False
+    assert org["is_coach_pro_active"] is True  # new coaches are activated on creation
     assert org["invite_quota_included"] == 50
     assert org["invites_used_this_period"] == 0
 
@@ -817,30 +817,8 @@ def test_admin_can_activate_and_deactivate_coach_pro(
     coach_row = db_session.query(CoachProfile).filter_by(user_id=signup.json()["user"]["id"]).one()
     org_id = coach_row.organization_id
 
-    blocked = client.get("/api/v1/coach/profile", headers=coach_headers)
-    assert blocked.status_code == 403
-    assert blocked.json()["error"]["code"] == "coach_pro_required"
-
-    activate = client.post(
-        f"/api/v1/admin/organizations/{org_id}/set-coach-pro",
-        headers=admin_headers,
-        json={"is_coach_pro_active": True},
-    )
-    assert activate.status_code == 200, activate.text
-    assert activate.json()["is_coach_pro_active"] is True
-    assert activate.json()["coach_pro_period_end"] is not None
-
-    now_works = client.get("/api/v1/coach/profile", headers=coach_headers)
-    assert now_works.status_code == 200
-
-    action = (
-        db_session.query(AdminAuditLog)
-        .filter_by(action="set_coach_pro")
-        .order_by(AdminAuditLog.created_at.desc())
-        .first()
-    )
-    assert action is not None
-    assert action.details["organization_id"] == str(org_id)
+    # A new coach works immediately -- no manual activation step.
+    assert client.get("/api/v1/coach/profile", headers=coach_headers).status_code == 200
 
     deactivate = client.post(
         f"/api/v1/admin/organizations/{org_id}/set-coach-pro",
@@ -853,6 +831,25 @@ def test_admin_can_activate_and_deactivate_coach_pro(
     blocked_again = client.get("/api/v1/coach/profile", headers=coach_headers)
     assert blocked_again.status_code == 403
     assert blocked_again.json()["error"]["code"] == "coach_pro_required"
+
+    reactivate = client.post(
+        f"/api/v1/admin/organizations/{org_id}/set-coach-pro",
+        headers=admin_headers,
+        json={"is_coach_pro_active": True},
+    )
+    assert reactivate.status_code == 200, reactivate.text
+    assert reactivate.json()["is_coach_pro_active"] is True
+    assert reactivate.json()["coach_pro_period_end"] is not None
+    assert client.get("/api/v1/coach/profile", headers=coach_headers).status_code == 200
+
+    action = (
+        db_session.query(AdminAuditLog)
+        .filter_by(action="set_coach_pro")
+        .order_by(AdminAuditLog.created_at.desc())
+        .first()
+    )
+    assert action is not None
+    assert action.details["organization_id"] == str(org_id)
 
 
 def test_invite_quota_excludes_declined_and_revoked_invites(

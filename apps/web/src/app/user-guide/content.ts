@@ -520,9 +520,9 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
       <section class="block coach-section" id="coach-pro">
         <div class="block-head"><span class="block-num">02</span><h2>Coach Pro activation</h2></div>
         <div class="card">
-          <p>Every coach account needs <b>Coach Pro</b> active to use anything in the portal — there's no free tier. A brand-new account sees:</p>
-          <div class="callout coach"><b>"Your account is pending activation"</b> — your account has been created but isn't active yet. Contact VepAIr to get started.</div>
-          <p>Coach billing goes through VepAIr directly (invoiced separately, not automated card billing) — once that's sorted, an admin flips your account active and you're straight into the portal, no re-signup needed. Included with an active subscription: <b>50 Vrotégé invites per year</b>; sending more than 50 doesn't block you, it's simply tracked as overage for billing.</p>
+          <p>Every coach account needs <b>Coach Pro</b> active to use the portal, and it's switched on <b>automatically the moment the account becomes a coach</b> — whether the coach signs up themselves, an admin creates the account, or an admin changes an existing account to a coach. There's no waiting for approval. If an admin ever turns Coach Pro off for an account, that coach sees:</p>
+          <div class="callout coach"><b>"Your account is pending activation"</b> — the account isn't active right now. Contact VepAIr to get it switched back on.</div>
+          <p>Coach billing goes through VepAIr directly (invoiced separately, not automated card billing). Included with an active subscription: <b>50 Vrotégé invites per year</b>; sending more than 50 doesn't block you, it's simply tracked as overage for billing.</p>
         </div>
       </section>
 
@@ -712,7 +712,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <li>Search by org name, coach email, or coach name (blank search lists the 100 most recent).</li>
             <li>Click into the org, then <span class="ui-btn outline">Activate Coach Pro</span>.</li>
           </ol>
-          <p>Sets a 12-month period from that moment and unblocks the coach's portal immediately — no redeploy, no re-login needed on their end. <span class="ui-btn outline">Deactivate Coach Pro</span> reverses it, locking them out again without touching any of their data or their Vrotégés' data.</p>
+          <p>New coaches are already active, so this is mainly for turning access back on after a deactivation. It sets a 12-month period from that moment and unblocks the coach's portal immediately — no redeploy, no re-login needed on their end. <span class="ui-btn outline">Deactivate Coach Pro</span> reverses it, locking them out again without touching any of their data or their Vrotégés' data.</p>
           <p>The same page shows invites used this period vs. the 50 included — going over doesn't block anything, it accrues as billable overage.</p>
           <div class="callout note">There's no automatic payment signal (billing isn't card-based on the coach side) — activation is always a manual step, done once payment is confirmed outside the app.</div>
         </div>

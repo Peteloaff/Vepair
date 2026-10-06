@@ -11,7 +11,7 @@ tests/conftest.py) -- tests here that sign up directly are specifically about pr
 boundary itself."""
 
 
-def test_coach_signup_creates_an_account_blocked_until_coach_pro_is_active(client) -> None:
+def test_coach_signup_creates_an_account_that_is_active_immediately(client) -> None:
     resp = client.post(
         "/api/v1/auth/coach-signup",
         json={
@@ -28,8 +28,29 @@ def test_coach_signup_creates_an_account_blocked_until_coach_pro_is_active(clien
 
     headers = {"Authorization": f"Bearer {body['access_token']}"}
     profile = client.get("/api/v1/coach/profile", headers=headers)
-    assert profile.status_code == 403
-    assert profile.json()["error"]["code"] == "coach_pro_required"
+    assert profile.status_code == 200, profile.text
+
+
+def test_a_revoked_coach_is_blocked_until_reactivated(client, db_session) -> None:
+    from app.models import CoachProfile, Organization
+
+    resp = client.post(
+        "/api/v1/auth/coach-signup",
+        json={
+            "email": "coach-revoked-test@example.com",
+            "password": "correcthorse123",
+            "display_name": "Revoked Coach",
+        },
+    )
+    headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
+    coach = db_session.query(CoachProfile).filter_by(user_id=resp.json()["user"]["id"]).one()
+    org = db_session.query(Organization).filter_by(id=coach.organization_id).one()
+    org.is_coach_pro_active = False
+    db_session.commit()
+
+    blocked = client.get("/api/v1/coach/profile", headers=headers)
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "coach_pro_required"
 
 
 def test_coach_profile_works_once_coach_pro_is_active(client, signed_up_coach) -> None:
