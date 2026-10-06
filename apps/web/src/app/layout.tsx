@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Albert_Sans, Geist_Mono, Outfit } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
@@ -12,8 +12,13 @@ import { NdaGate } from "@/components/NdaGate";
 // (lib/theme-context.tsx): same "vepair_theme" key, same system-preference fallback.
 const NO_FLASH_THEME_SCRIPT = `try{var t=localStorage.getItem("vepair_theme");var d=t==="dark"||((!t||t==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark");}catch(e){}`;
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+});
+
+const albertSans = Albert_Sans({
+  variable: "--font-albert",
   subsets: ["latin"],
 });
 
@@ -33,8 +38,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f8f8" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#eef4fa" },
+    { media: "(prefers-color-scheme: dark)", color: "#07111d" },
   ],
 };
 
@@ -42,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${outfit.variable} ${albertSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

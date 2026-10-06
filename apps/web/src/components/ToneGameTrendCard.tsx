@@ -51,7 +51,7 @@ export function ToneGameTrendCard() {
     <section className="mt-6">
       <TrendChart
         title="5-Tone Challenge (best score/day)"
-        color="#a78bfa"
+        color="var(--color-violet)"
         points={points}
         yMin={0}
         yMax={500}

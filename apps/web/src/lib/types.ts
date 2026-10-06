@@ -495,6 +495,13 @@ export interface CoachSingerListItem {
   granted_categories: CoachShareCategory[];
   granted_at: string;
   unread_message_count: number;
+  // Roster glance data -- each null unless the singer shares the category it comes from
+  // (recovery_trends: the score fields; exercise_history: the practice fields).
+  score_value: number | null;
+  score_status: RecoveryStatus | null;
+  score_trend: number[] | null;
+  last_practice_date: string | null;
+  current_streak_days: number | null;
 }
 
 export interface CoachSentInvite {

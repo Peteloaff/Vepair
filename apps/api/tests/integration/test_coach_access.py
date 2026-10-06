@@ -522,3 +522,43 @@ def test_coach_history_score_points_include_acoustic_stability_key(
     # tests triggers that; here we only assert the key is present in whatever comes back.
     for point in resp.json()["score_history"] or []:
         assert "acoustic_stability_score" in point
+
+
+def test_roster_glance_follows_each_categorys_consent(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """The roster's score and practice snapshot are each gated on their own category: a singer
+    who shares only recovery_trends exposes the score but not streak/last-practice, and the
+    reverse for exercise_history."""
+    from tests.integration.test_recovery_score import post_checkin
+
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    post_checkin(client, singer_headers)
+    # Computing the score stores today's RecoveryScore row, which is what the roster reads.
+    client.get("/api/v1/recovery-score", headers=singer_headers, params={"date": TODAY})
+    client.post(
+        "/api/v1/exercise-sessions", headers=singer_headers, json={"session_type": "warm_up"}
+    )
+
+    access_id = _connect(
+        client, coach_headers, singer["email"], singer_headers, ["recovery_trends"]
+    )
+    row = client.get("/api/v1/coach/singers", headers=coach_headers).json()[0]
+    assert row["score_value"] is not None
+    assert row["score_status"] is not None
+    assert row["score_trend"]
+    assert row["last_practice_date"] is None
+    assert row["current_streak_days"] is None
+
+    for category, granted in (("exercise_history", True), ("recovery_trends", False)):
+        toggled = client.patch(
+            f"/api/v1/coach-connections/{access_id}/categories",
+            headers=singer_headers,
+            json={"category": category, "granted": granted},
+        )
+        assert toggled.status_code == 200, toggled.text
+    row = client.get("/api/v1/coach/singers", headers=coach_headers).json()[0]
+    assert row["score_value"] is None
+    assert row["score_trend"] is None
+    assert row["current_streak_days"] == 0

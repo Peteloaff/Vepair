@@ -1,7 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 
@@ -42,24 +43,100 @@ function ThemeToggle() {
   );
 }
 
+type NavLink = { href: string; label: string; match?: (path: string) => boolean };
+
+const SINGER_LINKS: NavLink[] = [
+  { href: "/", label: "Home", match: (p) => p === "/" },
+  { href: "/progress", label: "Progress" },
+  { href: "/vocal-plan", label: "Vocal plan" },
+  {
+    href: "/exercises",
+    label: "Exercises",
+    match: (p) => p.startsWith("/exercises") || p.startsWith("/quick-routine"),
+  },
+  { href: "/tone-match", label: "Tone Match" },
+  { href: "/recordings", label: "Recordings" },
+];
+
+function initialsFor(email: string | undefined): string {
+  const local = (email ?? "").split("@")[0].replace(/[^a-zA-Z]+/g, " ").trim();
+  if (!local) return "V";
+  const parts = local.split(" ");
+  const letters = parts.length > 1 ? parts[0][0] + parts[1][0] : local.slice(0, 2);
+  return letters.toUpperCase();
+}
+
 export function TopNav() {
-  const { status, user, logout } = useAuth();
+  const { status, user, logout, apiFetch } = useAuth();
+  const pathname = usePathname();
+  // Which links to show depends on account kind. A coach-only account has no singer data, so the
+  // singer links would all land on empty states; a dual-role account (coach + singer profile)
+  // gets both sets. Best-effort checks -- a failure just leaves the plain singer nav.
+  const [isCoach, setIsCoach] = useState(false);
+  const [hasSingerProfile, setHasSingerProfile] = useState(true);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    let cancelled = false;
+    apiFetch("/api/v1/coach/profile")
+      .then(() => {
+        if (cancelled) return;
+        setIsCoach(true);
+        apiFetch("/api/v1/profile")
+          .then(() => !cancelled && setHasSingerProfile(true))
+          .catch(() => !cancelled && setHasSingerProfile(false));
+      })
+      .catch(() => {
+        if (!cancelled) setIsCoach(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const links: NavLink[] = [];
+  if (!isCoach || hasSingerProfile) links.push(...SINGER_LINKS);
+  else links.push(SINGER_LINKS[0]);
+  if (isCoach) {
+    links.push({ href: "/coach", label: "Coach Portal", match: (p) => p.startsWith("/coach") });
+  }
 
   return (
-    <header className="flex items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-      <Link
-        href="/"
-        className="flex items-center gap-1.5 text-base font-semibold tracking-tight sm:gap-2 sm:text-lg"
-      >
-        <Image src="/brand/vepair-logo.png" alt="" width={24} height={24} priority className="sm:h-7 sm:w-7" />
-        VepAIr
+    <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+      <Link href="/" className="text-xl font-medium tracking-tight sm:text-2xl" aria-label="VepAIr home">
+        Vep<span className="text-brand">AIr</span>
       </Link>
-      <div className="flex items-center gap-2.5 sm:gap-4">
+
+      {status === "authenticated" && (
+        <nav
+          aria-label="Main"
+          className="order-last -mx-4 flex w-[calc(100%+2rem)] gap-1 overflow-x-auto px-4 [scrollbar-width:none] lg:order-none lg:mx-0 lg:w-auto lg:flex-1 lg:px-0 [&::-webkit-scrollbar]:hidden"
+        >
+          {links.map((link) => {
+            const active = link.match ? link.match(pathname) : pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={`relative whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-surface hover:text-text ${
+                  active ? "text-text" : "text-text-dim"
+                }`}
+              >
+                {link.label}
+                {active && (
+                  <span className="bg-brand absolute inset-x-3 bottom-0.5 h-0.5 rounded-full" />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
+
+      <div className="flex items-center gap-2.5 sm:gap-3">
         {status === "authenticated" && (
-          <div className="flex items-center gap-2.5 text-xs text-text-dim sm:gap-4 sm:text-sm">
-            <Link href="/onboarding" className="hover:text-text">
-              Profile
-            </Link>
+          <div className="flex items-center gap-2.5 text-xs text-text-dim sm:gap-3 sm:text-sm">
             <Link href="/help" className="hover:text-text">
               Help
             </Link>
@@ -71,7 +148,14 @@ export function TopNav() {
                 Admin
               </Link>
             )}
-            <span className="hidden sm:inline">{user?.email}</span>
+            <Link
+              href="/onboarding"
+              title={user?.email ? `Profile (${user.email})` : "Profile"}
+              aria-label="Profile"
+              className="bg-brand flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-accent-ink hover:opacity-90"
+            >
+              {initialsFor(user?.email)}
+            </Link>
             <button
               type="button"
               onClick={() => logout()}

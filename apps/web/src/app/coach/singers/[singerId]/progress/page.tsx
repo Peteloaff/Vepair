@@ -124,7 +124,7 @@ function SingerProgressContent() {
         {granted.has("recovery_trends") && history.score_history ? (
           <TrendChart
             title="VepAIr Score"
-            color="#34d399"
+            color="var(--color-accent)"
             points={scorePoints}
             yMin={0}
             yMax={100}
@@ -141,7 +141,7 @@ function SingerProgressContent() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TrendChart
               title="Voice quality"
-              color="#34d399"
+              color="var(--color-accent)"
               points={buildSeries(history.checkins, dates, "voice_quality")}
               yMin={1}
               yMax={10}
@@ -149,7 +149,7 @@ function SingerProgressContent() {
             />
             <TrendChart
               title="Fatigue"
-              color="#fbbf24"
+              color="var(--color-warning)"
               points={buildSeries(history.checkins, dates, "fatigue")}
               yMin={1}
               yMax={10}
@@ -157,7 +157,7 @@ function SingerProgressContent() {
             />
             <TrendChart
               title="Throat discomfort"
-              color="#f87171"
+              color="var(--color-danger)"
               points={buildSeries(history.checkins, dates, "throat_discomfort")}
               yMin={0}
               yMax={10}
@@ -165,7 +165,7 @@ function SingerProgressContent() {
             />
             <TrendChart
               title="Sleep (hours)"
-              color="#38bdf8"
+              color="var(--color-blue)"
               points={buildSeries(history.checkins, dates, "sleep_hours")}
               yMin={0}
               yMax={12}

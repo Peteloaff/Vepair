@@ -8,8 +8,6 @@ export interface WaveformHandle {
 }
 
 const BAR_COUNT = 100;
-const BAR_COLOR = "#34d399";
-const BG_COLOR = "#0a0a0a";
 
 export const Waveform = forwardRef<WaveformHandle, { active: boolean }>(function Waveform(
   { active },
@@ -42,12 +40,14 @@ export const Waveform = forwardRef<WaveformHandle, { active: boolean }>(function
     if (!ctx) return;
 
     const { width, height } = canvas;
-    ctx.fillStyle = BG_COLOR;
+    // Resolved per frame so the scope follows the light/dark theme without a re-mount.
+    const styles = getComputedStyle(canvas);
+    ctx.fillStyle = styles.getPropertyValue("--color-surface-2").trim() || "#132b43";
     ctx.fillRect(0, 0, width, height);
 
     const bars = barsRef.current;
     const barWidth = width / BAR_COUNT;
-    ctx.fillStyle = BAR_COLOR;
+    ctx.fillStyle = styles.getPropertyValue("--color-accent").trim() || "#2dd4ee";
     for (let i = 0; i < bars.length; i++) {
       const barHeight = Math.max(2, bars[i] * height);
       const x = i * barWidth;

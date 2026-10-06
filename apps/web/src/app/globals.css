@@ -6,57 +6,72 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --color-canvas: oklch(98.5% 0.002 264);
-  --color-surface: oklch(100% 0 0);
-  --color-surface-2: oklch(96.5% 0.003 264);
+  --color-canvas: #eef4fa;
+  --color-glow: #cfe6fb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f2f7fc;
 
-  --color-border: oklch(90% 0.004 264);
-  --color-border-strong: oklch(80% 0.006 264);
+  --color-border: rgb(12 45 80 / 0.11);
+  --color-border-strong: rgb(12 45 80 / 0.22);
 
-  --color-text: oklch(20% 0.006 264);
-  --color-text-dim: oklch(40% 0.006 264);
-  --color-text-faint: oklch(55% 0.006 264);
+  --color-text: #0b1c30;
+  --color-text-dim: #46607a;
+  --color-text-faint: #6b8197;
 
-  --color-accent: oklch(60% 0.14 155);
-  --color-accent-strong: oklch(52% 0.15 155);
-  --color-accent-faint: oklch(94% 0.03 155);
-  /* Button/badge text sitting on top of the accent fill -- the accent stays a bright, saturated
-     green in both themes (it's the one color deliberately not theme-reactive, since it's what
-     signals "primary action"), so the ink on top of it stays a fixed near-black in both themes
-     too, rather than following --color-text. */
-  --color-accent-ink: oklch(18% 0.02 155);
+  --color-accent: #0e7490;
+  --color-accent-strong: #0b5f78;
+  --color-accent-faint: rgb(14 116 144 / 0.1);
+  /* Text/icons sitting on top of the accent (or brand-gradient) fill. Theme-reactive: the light
+     accent is a deep teal that needs white on top, the dark accent is a bright cyan that needs
+     near-black. */
+  --color-accent-ink: #ffffff;
 
-  --color-danger: oklch(55% 0.19 25);
-  --color-danger-faint: oklch(95% 0.03 25);
-  --color-warning: oklch(60% 0.15 75);
-  --color-warning-faint: oklch(95% 0.04 75);
-  --color-ok: oklch(60% 0.14 155);
-  --color-ok-faint: oklch(94% 0.03 155);
+  --color-blue: #1d4ed8;
+  --color-violet: #6d28d9;
+  --color-violet-faint: rgb(109 40 217 / 0.1);
+  --color-teal: #0f766e;
+
+  --color-danger: #be123c;
+  --color-danger-faint: rgb(190 18 60 / 0.09);
+  --color-warning: #b45309;
+  --color-warning-faint: rgb(180 83 9 / 0.1);
+  --color-ok: #047857;
+  --color-ok-faint: rgb(4 120 87 / 0.1);
+
+  --shadow-card: 0 10px 26px rgb(20 60 110 / 0.09);
 }
 
 .dark {
-  --color-canvas: oklch(9% 0.002 264);
-  --color-surface: oklch(16% 0.004 264);
-  --color-surface-2: oklch(20% 0.004 264);
+  --color-canvas: #07111d;
+  --color-glow: #0d3052;
+  --color-surface: #0e2033;
+  --color-surface-2: #132b43;
 
-  --color-border: oklch(30% 0.006 264);
-  --color-border-strong: oklch(38% 0.006 264);
+  --color-border: rgb(140 190 255 / 0.14);
+  --color-border-strong: rgb(140 190 255 / 0.28);
 
-  --color-text: oklch(93% 0.002 264);
-  --color-text-dim: oklch(75% 0.004 264);
-  --color-text-faint: oklch(58% 0.006 264);
+  --color-text: #eaf3fc;
+  --color-text-dim: #a2b8cf;
+  --color-text-faint: #7088a0;
 
-  --color-accent: oklch(70% 0.16 155);
-  --color-accent-strong: oklch(76% 0.17 155);
-  --color-accent-faint: oklch(30% 0.05 155 / 0.3);
-  --color-accent-ink: oklch(18% 0.02 155);
+  --color-accent: #2dd4ee;
+  --color-accent-strong: #67e1f3;
+  --color-accent-faint: rgb(45 212 238 / 0.14);
+  --color-accent-ink: #04121f;
 
-  --color-danger: oklch(70% 0.17 25);
-  --color-danger-faint: oklch(28% 0.06 25 / 0.5);
-  --color-warning: oklch(75% 0.15 75);
-  --color-warning-faint: oklch(30% 0.06 75 / 0.4);
-  --color-ok: oklch(70% 0.16 155);
-  --color-ok-faint: oklch(28% 0.05 155 / 0.3);
+  --color-blue: #3b82f6;
+  --color-violet: #8b5cf6;
+  --color-violet-faint: rgb(139 92 246 / 0.16);
+  --color-teal: #14b8a6;
+
+  --color-danger: #fb7185;
+  --color-danger-faint: rgb(251 113 133 / 0.15);
+  --color-warning: #f5a524;
+  --color-warning-faint: rgb(245 165 36 / 0.15);
+  --color-ok: #34d399;
+  --color-ok-faint: rgb(52 211 153 / 0.15);
+
+  --shadow-card: 0 14px 34px rgb(0 0 0 / 0.38);
 }
 
 /* @theme inline (not a plain @theme block) so these resolve at runtime against whichever of the
@@ -64,6 +79,7 @@
    time -- this is what lets toggling the .dark class actually repaint the page. */
 @theme inline {
   --color-canvas: var(--color-canvas);
+  --color-glow: var(--color-glow);
   --color-surface: var(--color-surface);
   --color-surface-2: var(--color-surface-2);
   --color-border: var(--color-border);
@@ -75,17 +91,75 @@
   --color-accent-strong: var(--color-accent-strong);
   --color-accent-faint: var(--color-accent-faint);
   --color-accent-ink: var(--color-accent-ink);
+  --color-blue: var(--color-blue);
+  --color-violet: var(--color-violet);
+  --color-violet-faint: var(--color-violet-faint);
+  --color-teal: var(--color-teal);
   --color-danger: var(--color-danger);
   --color-danger-faint: var(--color-danger-faint);
   --color-warning: var(--color-warning);
   --color-warning-faint: var(--color-warning-faint);
   --color-ok: var(--color-ok);
   --color-ok-faint: var(--color-ok-faint);
-  --font-sans: var(--font-geist-sans);
+  --shadow-card: var(--shadow-card);
+  --font-sans: var(--font-albert);
+  --font-display: var(--font-outfit);
   --font-mono: var(--font-geist-mono);
 }
 
+/* The signature cyan -> blue -> violet gradient. Used on the score ring, the VepAIr wordmark,
+   and every primary button (see the .bg-accent.text-accent-ink rule below). */
+@utility bg-brand {
+  background-image: linear-gradient(
+    135deg,
+    var(--color-accent),
+    var(--color-blue) 58%,
+    var(--color-violet)
+  );
+}
+
+@utility text-brand {
+  background-image: linear-gradient(
+    135deg,
+    var(--color-accent),
+    var(--color-blue) 58%,
+    var(--color-violet)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Every primary button in the app is `bg-accent ... text-accent-ink`; targeting that exact pair
+   turns all of them (and the active state of every segmented control) into the brand gradient
+   without touching each call site. The flat-color hover swap would be invisible under the
+   gradient image, so hover brightens instead. */
+.bg-accent.text-accent-ink {
+  background-image: linear-gradient(
+    135deg,
+    var(--color-accent),
+    var(--color-blue) 58%,
+    var(--color-violet)
+  );
+}
+.bg-accent.text-accent-ink:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
 body {
-  background: var(--color-canvas);
+  background:
+    radial-gradient(900px 420px at 78% -8%, var(--color-glow), transparent 70%),
+    var(--color-canvas);
+  background-repeat: no-repeat;
   color: var(--color-text);
 }

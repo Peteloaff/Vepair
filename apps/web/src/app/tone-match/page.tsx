@@ -462,7 +462,7 @@ function ToneMatchFlow() {
           <button
             type="button"
             onClick={startGame}
-            className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-accent-ink hover:bg-violet-400"
+            className="rounded-lg bg-violet px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             Start the challenge
           </button>
