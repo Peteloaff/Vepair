@@ -97,6 +97,7 @@ class ExerciseInfo:
     contraindications: str | None
     target_measurement: str | None
     expected_result: str
+    equipment: list[dict] | None = None
 
 
 @dataclass
@@ -477,6 +478,7 @@ def to_exercise_info(row: Exercise) -> ExerciseInfo:
         contraindications=row.contraindications,
         target_measurement=row.target_measurement,
         expected_result=row.expected_result,
+        equipment=row.equipment,
     )
 
 

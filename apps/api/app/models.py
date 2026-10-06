@@ -341,6 +341,9 @@ class Exercise(Base, TimestampMixin):
     contraindications: Mapped[str | None] = mapped_column(Text, nullable=True)
     target_measurement: Mapped[str | None] = mapped_column(String(100), nullable=True)
     expected_result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Ordered list of {name, description, how_to_use} -- the physical items a singer must fetch
+    # before the exercise starts (see EquipmentItem in exercise_library.py). Null = none needed.
+    equipment: Mapped[list | None] = mapped_column(JSON, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_by_coach_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("coach_profiles.id", ondelete="CASCADE"), nullable=True

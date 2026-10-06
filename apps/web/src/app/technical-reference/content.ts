@@ -490,6 +490,14 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <code>target_measurement = null</code> — it's adapted from the classic clinical S/Z
           ratio technique but reframed as pure self-awareness, with no ratio or threshold ever
           computed or shown, consistent with §21's non-diagnostic posture.</p>
+          <p><b>Equipment prompts.</b> <code>Exercise.equipment</code> is a nullable JSON list of
+          <code>{name, description, how_to_use}</code>, defined as <code>EquipmentItem</code> constants
+          in <code class="path">exercise_library.py</code> and seeded like every other library field
+          (6 of the 27 exercises carry some: the straw, straw-in-water, and reading exercises). It rides
+          along on <code>ExerciseOut</code>, so both the adaptive and quick routines get it. In
+          <code class="path">ExerciseRunner.tsx</code>, an exercise with equipment shows a "Get what you
+          need" screen first; the timer and the mic-permission prompt only start when the singer taps
+          Next, and skipping is always available.</p>
           <p><b>Warm Up / Cool Down</b> (<code class="path">app/quick_routine.py</code>) are
           on-demand routines, separate from the once-daily adaptive routine — served by
           <code>GET /api/v1/quick-routine?kind=warm_up|cool_down</code>. Warm Up fixes one

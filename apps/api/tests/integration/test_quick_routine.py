@@ -120,3 +120,22 @@ class TestSessionTracking:
         )
         assert resp.status_code == 200, resp.text
         assert resp.json()["current_streak_days"] >= 1
+
+
+def test_exercises_carry_their_equipment_through_the_api(client, signed_up_user) -> None:
+    """The SOVT warm-up exercise needs a straw, and the client needs the structured
+    name/description/how_to_use to render its pre-exercise "get ready" screen."""
+    _user, headers = signed_up_user
+    post_checkin(client, headers)
+
+    body = get_quick_routine(client, headers, "warm_up")
+    by_category = {item["category"]: item for item in body["items"]}
+    breathing = by_category["Breathing"]
+    assert not breathing["equipment"]
+
+    sovt = by_category["SOVT"]
+    assert sovt["equipment"]
+    for item in sovt["equipment"]:
+        assert set(item) == {"name", "description", "how_to_use"}
+        assert all(item[k] for k in item)
+    assert "straw" in sovt["equipment"][0]["name"].lower()
