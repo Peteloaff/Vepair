@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/apiClient";
+import { safeNextPath } from "@/lib/returnTo";
 
 export default function LoginPage() {
   const { status, login } = useAuth();
@@ -16,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/");
+      router.replace(safeNextPath());
     }
   }, [status, router]);
 
@@ -26,7 +27,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(email, password);
-      router.replace("/");
+      router.replace(safeNextPath());
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {

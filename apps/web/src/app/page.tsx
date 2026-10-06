@@ -347,6 +347,23 @@ function Dashboard({
         </div>
       </div>
 
+      {pendingInviteCount > 0 && (
+        <Link
+          href="/coach-access"
+          className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-violet/50 bg-violet-faint px-4 py-3 text-sm"
+        >
+          <span>
+            <span className="font-semibold text-violet">
+              {pendingInviteCount === 1
+                ? "A coach invited you to share your voice progress."
+                : `${pendingInviteCount} coaches invited you to share your voice progress.`}
+            </span>{" "}
+            <span className="text-text-dim">Review it and choose what to share — nothing is shared until you accept.</span>
+          </span>
+          <span className="shrink-0 font-semibold text-violet">Review &rarr;</span>
+        </Link>
+      )}
+
       {profileMissing && (
         <Link
           href="/onboarding"
