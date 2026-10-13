@@ -78,6 +78,12 @@ export class AudioRecorder {
     const AudioContextCtor =
       window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.audioContext = new AudioContextCtor();
+    // iOS Safari creates an AudioContext "suspended" unless it was made inside a tap, and a
+    // suspended context never delivers audio -- the recording (or live coaching) would silently
+    // capture nothing. Resuming here is a no-op everywhere the context is already running.
+    if (this.audioContext.state === "suspended") {
+      void this.audioContext.resume();
+    }
     this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);
     this.processorNode = this.audioContext.createScriptProcessor(PROCESSOR_BUFFER_SIZE, 1, 1);
     this.chunks = [];

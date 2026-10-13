@@ -163,3 +163,14 @@ body {
   background-repeat: no-repeat;
   color: var(--color-text);
 }
+
+/* iOS Safari zooms the whole page in when you tap a form field whose text is smaller than 16px,
+   and doesn't zoom back out. Most fields here use 14px text, so on iPhones (and only there --
+   -webkit-touch-callout is an iOS-only property) fields are bumped to 16px. */
+@supports (-webkit-touch-callout: none) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/Card";
 import { CheckInForm } from "@/components/CheckInForm";
+import { IosInstallHint } from "@/components/IosInstallHint";
 import { Icon, IconTile, type IconName, type TileColor } from "@/components/icons";
 import { GoalTonesCard } from "@/components/GoalTonesCard";
 import { RecoveryScoreCard } from "@/components/RecoveryScoreCard";
@@ -347,6 +349,8 @@ function Dashboard({
         </div>
       </div>
 
+      <IosInstallHint />
+
       {pendingInviteCount > 0 && (
         <Link
           href="/coach-access"
@@ -614,6 +618,14 @@ function LandingChooser() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-2xl text-center">
+        <Image
+          src="/brand/vepair-logo.png"
+          alt=""
+          width={112}
+          height={112}
+          priority
+          className="mx-auto mb-4 h-24 w-24 sm:h-28 sm:w-28"
+        />
         <p className="font-display mb-4 text-6xl font-medium tracking-tight sm:text-7xl">
           Vep<span className="text-brand">AIr</span>
         </p>

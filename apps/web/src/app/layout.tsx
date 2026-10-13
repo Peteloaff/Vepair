@@ -31,9 +31,15 @@ export const metadata: Metadata = {
   title: "VepAIr",
   description: "AI-assisted vocal recovery, conditioning, and performance platform.",
   manifest: "/manifest.webmanifest",
+  // Lets "Add to Home Screen" on iPhone open VepAIr full-screen like an app (the manifest's
+  // display: standalone covers Android; iOS also reads these tags).
   appleWebApp: {
+    capable: true,
     title: "VepAIr",
+    statusBarStyle: "default",
   },
+  // Next only emits the newer "mobile-web-app-capable" tag; older iPhones read the Apple one.
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
