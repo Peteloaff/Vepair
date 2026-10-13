@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -13,7 +14,7 @@ const SHOW_BETA_BADGE = true;
 function BetaBadge() {
   if (!SHOW_BETA_BADGE) return null;
   return (
-    <span className="text-[10px] font-semibold uppercase leading-none tracking-wider text-text-faint">
+    <span className="mb-1 text-[10px] font-semibold uppercase leading-none tracking-wider text-text-faint">
       beta
     </span>
   );
@@ -117,9 +118,23 @@ export function TopNav() {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-      <div className="flex items-baseline gap-1.5">
-        <Link href="/" className="text-xl font-medium tracking-tight sm:text-2xl" aria-label="VepAIr home">
-          Vep<span className="text-brand">AIr</span>
+      <div className="flex items-end gap-1.5">
+        <Link
+          href="/"
+          className="flex items-center gap-2 text-xl font-medium tracking-tight sm:text-2xl"
+          aria-label="VepAIr home"
+        >
+          <Image
+            src="/brand/vepair-logo.png"
+            alt=""
+            width={32}
+            height={32}
+            priority
+            className="h-7 w-7 sm:h-8 sm:w-8"
+          />
+          <span>
+            Vep<span className="text-brand">AIr</span>
+          </span>
         </Link>
         <BetaBadge />
       </div>
