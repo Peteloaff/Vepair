@@ -6,6 +6,19 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 
+// The small "beta" tag next to the VepAIr wordmark. To remove it when the beta ends, set this to
+// false (or delete this constant, the <BetaBadge /> line in TopNav, and the BetaBadge function).
+const SHOW_BETA_BADGE = true;
+
+function BetaBadge() {
+  if (!SHOW_BETA_BADGE) return null;
+  return (
+    <span className="text-[10px] font-semibold uppercase leading-none tracking-wider text-text-faint">
+      beta
+    </span>
+  );
+}
+
 // Cycles light -> dark -> system -> light. A single click-through button rather than a
 // dropdown -- this header is already a dense single-row flex layout at every breakpoint, and a
 // popover would add a second interaction surface (click-outside, z-index) for a control this
@@ -104,9 +117,12 @@ export function TopNav() {
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
-      <Link href="/" className="text-xl font-medium tracking-tight sm:text-2xl" aria-label="VepAIr home">
-        Vep<span className="text-brand">AIr</span>
-      </Link>
+      <div className="flex items-baseline gap-1.5">
+        <Link href="/" className="text-xl font-medium tracking-tight sm:text-2xl" aria-label="VepAIr home">
+          Vep<span className="text-brand">AIr</span>
+        </Link>
+        <BetaBadge />
+      </div>
 
       {status === "authenticated" && (
         <nav
