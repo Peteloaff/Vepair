@@ -160,6 +160,34 @@ export default function HelpPage() {
 
         <section className="mb-10">
           <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-text-faint">
+            Watch
+          </h2>
+          <div className="aspect-video w-full overflow-hidden rounded-[20px] border border-border bg-surface shadow-card">
+            <iframe
+              className="h-full w-full border-0"
+              src="https://www.youtube.com/embed/BmQD-VmNEb8?si=KVg4woVkGTlW_oQc"
+              title="YouTube video player"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+          <p className="mt-3 text-sm text-text-dim">
+            More videos on our{" "}
+            <a
+              href="https://www.youtube.com/@VepAIr-Official"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-accent hover:text-accent-strong"
+            >
+              VepAIr YouTube channel &rarr;
+            </a>
+          </p>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="mb-4 text-xs font-medium uppercase tracking-wide text-text-faint">
             How it works
           </h2>
           <FeatureCard title="How VepAIr adapts to you">
