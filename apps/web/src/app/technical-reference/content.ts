@@ -871,6 +871,10 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>On-demand Warm Up / Cool Down routines, and 4 new SLP-sourced breathing exercises</li>
                 <li>"Get what you need" equipment prompts before exercises that use a straw, water, or reading material</li>
                 <li>Navy/cyan/violet redesign: new Home, Progress and Coach Portal, with score and practice snapshots on the coach roster</li>
+                <li>Coach invites by email: every invite is emailed, an invitee without an account is sent to sign up and finds the invite waiting, and logging in returns to the invite (with a pending-invite banner on Home)</li>
+                <li>Coach Pro activates automatically whenever a coach is created (admin can still revoke)</li>
+                <li>Admin user list: sortable columns, per-row deactivate/delete, and bulk delete of deactivated accounts</li>
+                <li>Help page video and YouTube channel link; removable "beta" tag in the header</li>
               </ul>
             </div>
             <div>
