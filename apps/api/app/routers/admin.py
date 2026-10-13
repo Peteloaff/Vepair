@@ -19,6 +19,7 @@ from app.auth import create_access_token
 from app.coach_invites import attach_pending_invites
 from app.config import get_settings
 from app.database import get_db
+from app.demo_data import create_demo_data, demo_status, remove_demo_data
 from app.email import send_password_reset_email
 from app.models import (
     AuthCredential,
@@ -968,3 +969,33 @@ def bulk_reactivate_users(
         updated.append(user.id)
     db.commit()
     return AdminBulkResultOut(updated=updated, not_found=not_found)
+
+
+@router.get("/demo-data")
+def get_demo_data_status(
+    db: Session = Depends(get_db), admin: User = Depends(get_current_admin)
+) -> dict:
+    return demo_status(db)
+
+
+@router.post("/demo-data")
+def create_demo_organizations(
+    db: Session = Depends(get_db), admin: User = Depends(require_full_admin)
+) -> dict:
+    """Fake organizations with coaches, singers and activity, for exploring the admin and coach
+    views (see app/demo_data.py). Safe to call twice -- it does nothing if demo data exists."""
+    result = create_demo_data(db)
+    if result["created"]:
+        log_admin_action(db, admin.id, "create_demo_data", None, {})
+        db.commit()
+    return result
+
+
+@router.post("/demo-data/remove")
+def remove_demo_organizations(
+    db: Session = Depends(get_db), admin: User = Depends(require_full_admin)
+) -> dict:
+    result = remove_demo_data(db)
+    log_admin_action(db, admin.id, "remove_demo_data", None, result)
+    db.commit()
+    return result

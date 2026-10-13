@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import type { AdminOrganization } from "@/lib/types";
 import { ApiError } from "@/lib/apiClient";
 
-function AdminOrganizationSearch() {
+function AdminOrganizationSearch({ refreshToken }: { refreshToken: number }) {
   const { apiFetch } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AdminOrganization[] | null>(null);
@@ -29,6 +29,13 @@ function AdminOrganizationSearch() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (refreshToken > 0) void runSearch(query);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshToken]);
+
 
   return (
     <section>
@@ -107,7 +114,119 @@ function AdminOrganizationSearch() {
   );
 }
 
+type DemoStatus = { exists: boolean; organizations: number; singers: number };
+
+function DemoDataPanel({ onChanged }: { onChanged: () => void }) {
+  const { apiFetch } = useAuth();
+  const [status, setStatus] = useState<DemoStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch<DemoStatus>("/api/v1/admin/demo-data")
+      .then(setStatus)
+      .catch(() => setStatus(null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function run(path: string, message: (r: Record<string, number>) => string) {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await apiFetch<Record<string, number>>(path, { method: "POST" });
+      setNotice(message(result));
+      setConfirmRemove(false);
+      setStatus(await apiFetch<DemoStatus>("/api/v1/admin/demo-data"));
+      onChanged();
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "The request didn't complete — try again, and check the server logs if it keeps happening."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mb-8 rounded-2xl border border-border bg-surface p-4">
+      <h2 className="text-sm font-medium">Demo data</h2>
+      <p className="mt-1 mb-3 text-xs text-text-dim">
+        Adds four fake organizations (an active one, one over its invite quota, one with Coach Pro
+        turned off, and a brand-new one), each with a coach, singers, check-ins, and activity, so
+        you can see how this page and the Coach Portal behave. Demo accounts use{" "}
+        <code className="font-mono">@demo.vepair.invalid</code> emails, can&apos;t log in, and send
+        no email. Removing them deletes only those accounts; nothing else is touched.
+      </p>
+      {status?.exists && (
+        <p className="mb-3 text-xs text-text-dim">
+          Currently in the system: {status.organizations} demo organizations and {status.singers}{" "}
+          demo singers.
+        </p>
+      )}
+      {error && <p className="mb-3 text-xs text-danger">{error}</p>}
+      {notice && <p className="mb-3 text-xs text-accent">{notice}</p>}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={busy || status?.exists}
+          onClick={() =>
+            run("/api/v1/admin/demo-data", (r) =>
+              r.created
+                ? `Created ${r.organizations} organizations and ${r.singers} singers.`
+                : "Demo data already exists."
+            )
+          }
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-ink disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy && !confirmRemove ? "Working..." : "Add demo organizations"}
+        </button>
+        {!confirmRemove ? (
+          <button
+            type="button"
+            disabled={busy || !status?.exists}
+            onClick={() => setConfirmRemove(true)}
+            className="rounded-lg border border-danger px-4 py-2 text-sm text-danger hover:bg-danger-faint disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Remove demo data
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                run(
+                  "/api/v1/admin/demo-data/remove",
+                  (r) =>
+                    `Removed ${r.removed_accounts} demo accounts and ${r.removed_organizations} organizations.`
+                )
+              }
+              className="rounded-lg bg-danger px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {busy ? "Removing..." : "Yes, remove all demo data"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirmRemove(false)}
+              className="rounded-lg border border-border-strong px-4 py-2 text-sm hover:bg-surface-2"
+            >
+              Cancel
+            </button>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export default function AdminOrganizationsPage() {
+  const [refreshToken, setRefreshToken] = useState(0);
   return (
     <RequireAuth>
       <RequireAdmin>
@@ -124,7 +243,8 @@ export default function AdminOrganizationsPage() {
               ← Back to Admin
             </Link>
           </div>
-          <AdminOrganizationSearch />
+          <DemoDataPanel onChanged={() => setRefreshToken((t) => t + 1)} />
+          <AdminOrganizationSearch refreshToken={refreshToken} />
         </main>
       </RequireAdmin>
     </RequireAuth>
