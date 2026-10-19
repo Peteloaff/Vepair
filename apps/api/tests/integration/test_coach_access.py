@@ -451,9 +451,7 @@ def test_singer_summary_always_includes_email_and_reassessment_date(
     assert body["next_reassessment_date"] is None
 
 
-def test_reassessment_date_can_be_set_and_cleared(
-    client, signed_up_coach, signed_up_user
-) -> None:
+def test_reassessment_date_can_be_set_and_cleared(client, signed_up_coach, signed_up_user) -> None:
     _coach, coach_headers = signed_up_coach
     singer, singer_headers = signed_up_user
     _connect(client, coach_headers, singer["email"], singer_headers, ["exercise_history"])
@@ -483,9 +481,7 @@ def test_reassessment_date_can_be_set_and_cleared(
     assert clear_resp.json()["next_reassessment_date"] is None
 
 
-def test_reassessment_date_requires_active_access(
-    client, signed_up_coach, signed_up_user
-) -> None:
+def test_reassessment_date_requires_active_access(client, signed_up_coach, signed_up_user) -> None:
     _coach, coach_headers = signed_up_coach
     singer, _singer_headers = signed_up_user
 
@@ -562,3 +558,35 @@ def test_roster_glance_follows_each_categorys_consent(
     assert row["score_value"] is None
     assert row["score_trend"] is None
     assert row["current_streak_days"] == 0
+
+
+def test_singer_can_accept_a_new_invite_from_a_coach_they_revoked(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """Regression: re-accepting used to insert a second CoachAccess for the same (coach, singer)
+    pair, which the unique constraint rejected as a 500. The old row is reactivated instead, and
+    only the categories chosen this time are shared."""
+    _coach, coach_headers = signed_up_coach
+    singer, singer_headers = signed_up_user
+    access_id = _connect(
+        client, coach_headers, singer["email"], singer_headers, ["recovery_trends", "vocal_range"]
+    )
+    revoked = client.delete(f"/api/v1/coach-connections/{access_id}", headers=singer_headers)
+    assert revoked.status_code == 204
+
+    created = client.post(
+        "/api/v1/coach/invites", headers=coach_headers, json={"singer_email": singer["email"]}
+    )
+    assert created.status_code == 201, created.text
+    accepted = client.post(
+        f"/api/v1/invites/{created.json()['id']}/accept",
+        headers=singer_headers,
+        json={"granted_categories": ["exercise_history"]},
+    )
+    assert accepted.status_code == 200, accepted.text
+    assert accepted.json()["id"] == access_id
+    assert accepted.json()["status"] == "active"
+
+    roster = client.get("/api/v1/coach/singers", headers=coach_headers).json()
+    assert len(roster) == 1
+    assert roster[0]["granted_categories"] == ["exercise_history"]
