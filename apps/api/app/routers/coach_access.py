@@ -119,19 +119,52 @@ def accept_invite(
     invite.status = "accepted"
     invite.responded_at = now
 
-    access = CoachAccess(
-        coach_id=invite.coach_id,
-        singer_user_id=current_user.id,
-        invite_id=invite.id,
-        granted_at=now,
+    # One CoachAccess row per (coach, singer) pair, ever (uq_coach_access_pair) -- so a singer who
+    # revoked a coach and accepts a fresh invite from the same coach gets that row reactivated
+    # rather than a second one inserted (which the unique constraint would reject, as a 500).
+    # Sharing starts over from only what they choose now: grants from the earlier connection are
+    # switched off first. Notes, messages, and assignments stay attached to the same row.
+    access = db.scalar(
+        select(CoachAccess).where(
+            CoachAccess.coach_id == invite.coach_id,
+            CoachAccess.singer_user_id == current_user.id,
+        )
     )
-    db.add(access)
+    if access is None:
+        access = CoachAccess(
+            coach_id=invite.coach_id,
+            singer_user_id=current_user.id,
+            invite_id=invite.id,
+            granted_at=now,
+        )
+        db.add(access)
+    else:
+        access.status = "active"
+        access.invite_id = invite.id
+        access.granted_at = now
+        access.revoked_at = None
+        access.revoked_by = None
     db.flush()
 
+    existing_grants = {
+        g.category: g
+        for g in db.scalars(
+            select(CoachAccessCategoryGrant).where(
+                CoachAccessCategoryGrant.coach_access_id == access.id
+            )
+        ).all()
+    }
+    for category, grant in existing_grants.items():
+        if category not in payload.granted_categories:
+            grant.granted = False
+
     for category in payload.granted_categories:
-        db.add(
-            CoachAccessCategoryGrant(coach_access_id=access.id, category=category, granted=True)
-        )
+        if category in existing_grants:
+            existing_grants[category].granted = True
+        else:
+            db.add(
+                CoachAccessCategoryGrant(coach_access_id=access.id, category=category, granted=True)
+            )
         # Audit trail (PRIVACY.md "auditable access") — CoachAccessCategoryGrant above is what
         # authorization checks actually query; this row is never read at request time.
         db.add(
@@ -394,9 +427,7 @@ def send_message_to_coach(
     return message
 
 
-@router.get(
-    "/coach-connections/{coach_access_id}/messages", response_model=list[CoachMessageOut]
-)
+@router.get("/coach-connections/{coach_access_id}/messages", response_model=list[CoachMessageOut])
 def list_messages_from_coach(
     coach_access_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
