@@ -921,6 +921,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>VepAIr logo back in the header and landing page, refreshed app icons, and iPhone polish (audio resume, no input zoom, home-screen install hint)</li>
                 <li>A singer can accept a fresh invite from a coach they previously revoked</li>
                 <li>Assigned exercises: an "Assigned by your coach" card on Home and Coach Access with a Start button, still subject to today's safety cap</li>
+                <li>Organization teams: several coaches per organization with admin/member roles, a Coach Portal Team page, the same controls in the admin console, a shared invite quota, and each coach's Vrotégés kept private to that coach</li>
               </ul>
             </div>
             <div>
