@@ -543,12 +543,11 @@ class ConsentRecord(Base, TimestampMixin):
 
 
 class Organization(Base, TimestampMixin):
-    """SaaS billing (post-Stage-12 Part 2). One per coach, always -- not a multi-coach tenant
-    (see ROADMAP.md's "Coach organizations & invite quota" section for the founder's decision on
-    why this stays 1:1 for now). Formalizes what used to be CoachProfile.studio_name into a real
-    entity that owns coach_pro billing state and the 50-invite/year quota, so that quota lives on
-    the org record rather than the user record -- forward-compatible if the 1:1 constraint ever
-    loosens, without a schema migration to move it later.
+    """SaaS billing (post-Stage-12 Part 2). Started life one-per-coach; now a clinic or studio can
+    have several coaches (CoachProfile.org_role: admin or member -- see app/org_team.py), all
+    sharing this org's Coach Pro status and invite quota. Formalizes what used to be
+    CoachProfile.studio_name into a real entity that owns coach_pro billing state and the
+    50-invite/year quota, so that quota lives on the org record rather than the user record.
 
     The column defaults False, but every code path that creates a coach (self-serve coach
     signup, admin create-user, admin set-coach) calls app/organizations.py's activate_coach_pro,
@@ -603,9 +602,16 @@ class CoachProfile(Base, TimestampMixin):
     # SaaS billing (post-Stage-12 Part 2). Replaces the old free-text studio_name -- every coach
     # gets exactly one Organization, formalizing what was a display label into the real entity
     # that owns coach_pro billing state and the invite quota (see Organization's own docstring).
+    # Many coaches can share one Organization (a clinic or studio with several therapists) --
+    # see app/org_team.py. Not unique.
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), unique=True
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), index=True
     )
+    # "admin" can manage the organization's team (add/remove coaches, change roles); "member" is
+    # a coach with no team-management rights. Neither role ever sees another coach's Vrotégés --
+    # a singer's consent is to one specific coach (CoachAccess), not to the organization.
+    # Everyone who existed before teams (each the sole coach of their own org) is an admin.
+    org_role: Mapped[str] = mapped_column(String(20), default="admin", server_default="admin")
 
     organization: Mapped["Organization"] = relationship()
 

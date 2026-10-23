@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
+import { TeamManager } from "@/components/TeamManager";
 import { useAuth } from "@/lib/auth-context";
 import type { AdminOrganization } from "@/lib/types";
 import { ApiError } from "@/lib/apiClient";
@@ -75,6 +76,7 @@ function OrganizationDetailContent() {
         <h1 className="mb-1 text-xl font-semibold">{detail.name || "(unnamed organization)"}</h1>
         <p className="mb-4 text-sm text-text-dim">
           {detail.coach_display_name} &middot; {detail.coach_email}
+          {detail.member_count > 1 && <> &middot; +{detail.member_count - 1} more</>}
         </p>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
           <dt className="text-text-faint">Coach Pro status</dt>
@@ -110,6 +112,11 @@ function OrganizationDetailContent() {
       {error && <p className="rounded-lg bg-danger-faint px-3 py-2 text-sm text-danger">{error}</p>}
 
       <section className="rounded-2xl border border-border p-5">
+        <h2 className="mb-3 text-sm font-medium text-text-dim">Team</h2>
+        <TeamManager basePath={`/api/v1/admin/organizations/${detail.id}/team`} />
+      </section>
+
+      <section className="rounded-2xl border border-border p-5">
         <h2 className="mb-3 text-sm font-medium text-text-dim">Coach Pro</h2>
         <p className="mb-3 text-xs text-text-faint">
           All coach billing goes through QuickBooks, not Stripe — there&apos;s no automatic payment
@@ -141,7 +148,7 @@ export default function AdminOrganizationDetailPage() {
   return (
     <RequireAuth>
       <RequireAdmin>
-        <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-12">
+        <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
           <OrganizationDetailContent />
         </main>
       </RequireAdmin>

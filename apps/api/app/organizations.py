@@ -28,7 +28,7 @@ def activate_coach_pro(organization: Organization) -> None:
 def invites_used_this_period(db: Session, organization: Organization) -> int:
     """Live count, not a maintained counter -- avoids the drift risk of keeping a running total
     in sync with every CoachInvite accept/decline/revoke transition. Counts invites sent by any
-    coach in this organization (today, always exactly one) since coach_pro_period_start, that
+    coach in this organization (see app/org_team.py) since coach_pro_period_start, that
     aren't declined or revoked -- a declined/revoked invite frees its unit back up rather than
     permanently consuming it (see ROADMAP.md's "Coach organizations & invite quota" section).
     Returns 0 for an organization with no active period (nothing to count against yet)."""

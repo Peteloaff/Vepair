@@ -30,6 +30,7 @@ class CoachProfileOut(BaseModel):
     id: uuid.UUID
     display_name: str
     studio_name: str | None
+    org_role: str
     created_at: datetime
 
     model_config = {"from_attributes": True}

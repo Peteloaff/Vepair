@@ -94,6 +94,9 @@ function AdminOrganizationSearch({ refreshToken }: { refreshToken: number }) {
                 </td>
                 <td className="py-2 pr-4">
                   {org.coach_display_name} &middot; {org.coach_email}
+                  {org.member_count > 1 && (
+                    <span className="text-text-faint"> &middot; +{org.member_count - 1} more</span>
+                  )}
                 </td>
                 <td className="py-2 pr-4">
                   {org.is_coach_pro_active ? (

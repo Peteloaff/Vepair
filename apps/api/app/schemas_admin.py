@@ -139,6 +139,7 @@ class AdminOrganizationOut(BaseModel):
     coach_pro_period_end: datetime | None
     invite_quota_included: int
     invites_used_this_period: int
+    member_count: int = 1
 
 
 class AdminReportsSummaryOut(BaseModel):

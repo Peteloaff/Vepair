@@ -214,6 +214,12 @@ exist and are recorded here so they aren't re-derived or re-litigated later.
 
 ### Coach organizations & invite quota (decided 2026-08-19, not yet built)
 
+> **Update 2026-10-23:** the "one coach per organization" decision below was loosened, as it
+> anticipated. An organization can now have several coaches, each an `admin` or `member`
+> (`CoachProfile.org_role`, see `app/org_team.py`), managed from the Coach Portal's Team page or the
+> admin console. The quota is shared across the team; a singer's data stays private to the one
+> coach they chose.
+
 A second piece of the coach monetization model, decided alongside the subscription tiers above.
 Not built yet — same rule as everything else in this section.
 

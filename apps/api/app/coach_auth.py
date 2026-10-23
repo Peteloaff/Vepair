@@ -52,6 +52,21 @@ def get_current_coach(
     return coach
 
 
+def get_current_org_admin(coach: CoachProfile = Depends(get_current_coach)) -> CoachProfile:
+    """A coach who is also an admin of their organization's team (see app/org_team.py) -- the
+    gate for adding coaches and changing roles. Not a platform admin: that's a separate thing
+    (app/admin_auth.py), and manages organizations from the admin console instead."""
+    if coach.org_role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "org_admin_required",
+                "message": "Only an organization admin can manage the team.",
+            },
+        )
+    return coach
+
+
 def require_coach_access(category: str | None = None) -> Callable[..., CoachAccess]:
     """Dependency factory. The returned dependency resolves the active CoachAccess row for
     (the requesting coach, the `singer_user_id` path parameter on the route it's used on),

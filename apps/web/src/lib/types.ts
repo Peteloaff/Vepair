@@ -498,10 +498,34 @@ export interface CoachMessage {
   created_at: string;
 }
 
+export type OrgRole = "admin" | "member";
+
+export interface TeamMember {
+  coach_id: string;
+  user_id: string;
+  email: string;
+  display_name: string;
+  org_role: OrgRole;
+  is_active: boolean;
+  status: "active" | "invited" | "deactivated";
+  singer_count: number;
+  is_me: boolean;
+}
+
+export interface Team {
+  organization_id: string;
+  organization_name: string | null;
+  my_role: OrgRole;
+  members: TeamMember[];
+  invite_quota_included: number;
+  invites_used_this_period: number;
+}
+
 export interface CoachProfile {
   id: string;
   display_name: string;
   studio_name: string | null;
+  org_role: OrgRole;
   created_at: string;
 }
 
@@ -627,6 +651,7 @@ export interface AdminOrganization {
   coach_pro_period_end: string | null;
   invite_quota_included: number;
   invites_used_this_period: number;
+  member_count: number;
 }
 
 export interface AdminReportsSummary {
