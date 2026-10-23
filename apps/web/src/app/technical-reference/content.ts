@@ -889,6 +889,10 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Coach Pro activates automatically whenever a coach is created (admin can still revoke)</li>
                 <li>Admin user list: sortable columns, per-row deactivate/delete, and bulk delete of deactivated accounts</li>
                 <li>Help page video and YouTube channel link; removable "beta" tag in the header</li>
+                <li>Admin demo data: four fake organizations with coaches, singers and activity, removable in one click</li>
+                <li>VepAIr logo back in the header and landing page, refreshed app icons, and iPhone polish (audio resume, no input zoom, home-screen install hint)</li>
+                <li>A singer can accept a fresh invite from a coach they previously revoked</li>
+                <li>Assigned exercises: an "Assigned by your coach" card on Home and Coach Access with a Start button, still subject to today's safety cap</li>
               </ul>
             </div>
             <div>
