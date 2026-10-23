@@ -377,7 +377,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <h4>Coach Portal</h4>
           <div class="ref-wrap"><table class="ref">
             <tr><th>Entity</th><th>Purpose</th></tr>
-            <tr><td class="code-cell">CoachProfile</td><td>Coach account extension. Belongs to exactly one Organization.</td></tr>
+            <tr><td class="code-cell">CoachProfile</td><td>Coach account extension. Belongs to one Organization (which can have several coaches) and carries an <code>org_role</code> of <code>admin</code> or <code>member</code>.</td></tr>
             <tr><td class="code-cell">CoachInvite</td><td>An invite addressed to an email — pending/accepted/declined/revoked. <code>singer_user_id</code> is null until that email has an account (linked at signup); an invitation email is sent either way.</td></tr>
             <tr><td class="code-cell">CoachAccess</td><td>The active grant. One active coach per singer, DB-enforced (partial unique index).</td></tr>
             <tr><td class="code-cell">CoachAccessCategoryGrant</td><td>Per-category share toggle: recovery_trends / vocal_range / exercise_history / recordings.</td></tr>
@@ -396,7 +396,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <h4>Coach Pro billing (SaaS)</h4>
           <div class="ref-wrap"><table class="ref">
             <tr><th>Entity</th><th>Purpose</th></tr>
-            <tr><td class="code-cell">Organization</td><td>One per coach, always. Holds <code>is_coach_pro_active</code> and the invite quota.</td></tr>
+            <tr><td class="code-cell">Organization</td><td>A clinic or studio: one or more coaches (<code>CoachProfile.org_role</code>). Holds <code>is_coach_pro_active</code> and the invite quota, shared by every coach in it.</td></tr>
             <tr><td class="code-cell">UserSubscription</td><td>Singer-side tier (free/user_pro) — laid down, not yet enforced (Square integration not built).</td></tr>
             <tr><td class="code-cell">OrganizationInvoiceLog</td><td>Idempotency + ledger for the (not-yet-built) monthly QuickBooks sync.</td></tr>
           </table></div>
@@ -662,8 +662,8 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
         <div class="block-head"><span class="block-num">14</span><h2>Coach Pro billing (SaaS)</h2></div>
         <p class="block-note">Live in production. No Square (or any automated payment provider) on the coach side — see <code class="path">TECHNICAL_GUIDE.md</code> §10 for the operator walkthrough.</p>
         <div class="card">
-          <p>Every coach belongs to exactly one <code>Organization</code>, created automatically at
-          creation. Every path that makes a coach (self-serve coach signup, admin create-user, admin
+          <p>Every coach belongs to an <code>Organization</code>, created automatically for a new
+          coach (a coach added to a team joins an existing one instead). Every path that makes a coach (self-serve coach signup, admin create-user, admin
           set-coach) calls <code>activate_coach_pro()</code>, so the organization starts
           <code>is_coach_pro_active = true</code> with a one-year period and nothing waits on an
           admin. <code>get_current_coach</code> still 403s with <code>coach_pro_required</code> for
@@ -675,6 +675,34 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           a fresh 12-month period. 50 <code>CoachInvite</code>s are included per year, computed live
           (never a maintained counter, to avoid drift) — going over doesn't block, it's meant to
           accrue as overage on the org's next QuickBooks draft invoice once that sync exists.</p>
+          <p><b>Organization teams</b> (<code class="path">app/org_team.py</code>). The old 1:1
+          between <code>Organization</code> and <code>CoachProfile</code> is gone: migration
+          <code>e5b9c2d7a1f4</code> drops the unique constraint and adds
+          <code>coach_profiles.org_role</code> (<code>admin</code>/<code>member</code>, backfilled
+          <code>admin</code> since every existing coach is the sole coach of their own org). An org
+          admin (<code>get_current_org_admin</code>) manages the team from
+          <code class="path">/coach/team</code> via <code>GET /api/v1/coach/team</code>,
+          <code>POST /members</code>, <code>PATCH /members/{coach_id}</code> (role, deactivate/
+          reactivate, name) and <code>POST /members/{coach_id}/resend-welcome</code>; any member
+          can read the team. A platform admin has the same operations from the admin console under
+          <code>/api/v1/admin/organizations/{id}/team</code> (full-admin only to change; audited as
+          <code>add_org_member</code>/<code>update_org_member</code>/
+          <code>resend_org_member_welcome</code>). Adding a member creates a new account with a
+          random password nobody knows plus a 7-day <code>PasswordResetToken</code>, and emails a
+          set-your-password link (<code>send_team_welcome_email</code>) that opens the ordinary
+          <code>/reset-password</code> page; an email that already has an account is refused with
+          <code>409 email_taken</code>. Rules enforced in <code>update_member</code>: an
+          organization always keeps one active admin (<code>409 last_admin</code>) and you can't
+          deactivate yourself (<code>409 cannot_deactivate_self</code>). The platform-admin
+          <code>set-coach</code> revoke is refused while an org still has other coaches
+          (<code>409 org_has_team</code>). Status on the team list is derived: <code>invited</code>
+          until the user has a <code>LoginEvent</code>, <code>deactivated</code> when
+          <code>User.is_active</code> is false.</p>
+          <p><b>Privacy invariant:</b> sharing an organization shares nothing about Vrotégés.
+          <code>CoachAccess</code> stays per (coach, singer), so <code>require_coach_access</code>
+          is unchanged and neither role can open a teammate's Vrotégé — the team view exposes only
+          a connected-singer count per coach. The invite quota already counted invites across every
+          coach in the organization, so it is now genuinely shared.</p>
           <div class="callout info">
             <b>Not built yet:</b> the QuickBooks Online monthly sync job (draft-invoice creation,
             OAuth connection) and the singer-side Square/User Pro billing track. Both are scoped

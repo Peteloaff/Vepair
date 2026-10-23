@@ -51,7 +51,10 @@ decline another):
    a full revoke. A coach can invite an email address that has no account yet; VepAIr then holds
    that email (and the coach's optional message) on the pending invite, solely to email the
    invitation and to link it if that person signs up, until the invite is accepted, declined, or
-   cancelled -- nothing about the invitee is shared with the coach either way. One active coach
+   cancelled -- nothing about the invitee is shared with the coach either way. A clinic or
+   studio can have several coaches under one organization, but a singer's consent is to one
+   specific coach, never to the organization: teammates and organization admins cannot open each
+   other's singers, and the team view only ever shows how many singers each coach has. One active coach
    per singer at a time (DB-enforced). Revoking is immediate for
    future access (the coach's next request is rejected) but forward-only for the past — already-
    viewed data isn't retroactively unshown, and the revoke confirmation says so plainly.

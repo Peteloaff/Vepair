@@ -195,6 +195,43 @@ def send_coach_invite_email(
     _send(to_email, subject, html_body, text_body)
 
 
+def send_team_welcome_email(
+    to_email: str,
+    display_name: str,
+    organization_name: str | None,
+    added_by: str,
+    org_role: str,
+    token: str,
+    token_days: int,
+) -> None:
+    """Sent when an organization admin adds a coach to their team. The account already exists
+    with a password nobody knows; the link lets the new member choose their own (the ordinary
+    /reset-password page, with a longer-lived token). Never fails the calling request."""
+    org = organization_name or "their VepAIr studio"
+    url = f"{settings.frontend_base_url}/reset-password?token={token}"
+    role_line = (
+        "You're an admin, so you can also add and manage the other coaches on the team."
+        if org_role == "admin"
+        else "You can invite your own Vrotégés, assign training and follow their progress."
+    )
+    subject = f"{added_by} added you to {org} on VepAIr"
+    text_body = (
+        f"Hi {display_name},\n\n{added_by} added you as a coach for {org} on VepAIr. "
+        f"{role_line}\n\nChoose your password to get started: {url}\n\n"
+        f"This link works for {token_days} days. If you weren't expecting this, you can ignore "
+        f"this email."
+    )
+    html_body = (
+        f"<p>Hi {html.escape(display_name)},</p>"
+        f"<p>{html.escape(added_by)} added you as a coach for {html.escape(org)} on VepAIr. "
+        f"{html.escape(role_line)}</p>"
+        f'<p><a href="{html.escape(url)}">Choose your password</a></p>'
+        f"<p>This link works for {token_days} days. If you weren&rsquo;t expecting this, you can "
+        f"ignore this email.</p>"
+    )
+    _send(to_email, subject, html_body, text_body)
+
+
 def send_new_message_email(to_email: str, from_label: str) -> None:
     """Sent synchronously at message-creation time (app/routers/coach.py's send_message,
     app/routers/coach_access.py's send_message_to_coach) -- a discrete event, not a daily

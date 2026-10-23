@@ -281,6 +281,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
         <ul>
           <li><a href="#coach-account">Your coach account</a></li>
           <li><a href="#coach-pro">Coach Pro activation</a></li>
+          <li><a href="#coach-team">Your team</a></li>
           <li><a href="#coach-invite">Inviting a Vrotégé</a></li>
           <li><a href="#coach-roster">Your roster</a></li>
           <li><a href="#coach-singer-view">A Vrotégé's dashboard</a></li>
@@ -526,6 +527,21 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           <p>Every coach account needs <b>Coach Pro</b> active to use the portal, and it's switched on <b>automatically the moment the account becomes a coach</b> — whether the coach signs up themselves, an admin creates the account, or an admin changes an existing account to a coach. There's no waiting for approval. If an admin ever turns Coach Pro off for an account, that coach sees:</p>
           <div class="callout coach"><b>"Your account is pending activation"</b> — the account isn't active right now. Contact VepAIr to get it switched back on.</div>
           <p>Coach billing goes through VepAIr directly (invoiced separately, not automated card billing). Included with an active subscription: <b>50 Vrotégé invites per year</b>; sending more than 50 doesn't block you, it's simply tracked as overage for billing.</p>
+        </div>
+      </section>
+
+      <section class="block coach-section" id="coach-team">
+        <div class="block-head"><span class="block-num">02b</span><h2>Your team (clinics and studios)</h2></div>
+        <div class="card">
+          <p>A clinic or studio can have <b>several coaches</b> under one organization. Open <b>Team</b> from the top of your Coach Portal to see everyone in it. The whole team shares one Coach Pro plan and one invite allowance.</p>
+          <table class="ref">
+            <tr><th>Role</th><th>What they can do</th></tr>
+            <tr><td>Admin</td><td>Everything a member can, plus <b>add coaches</b>, change anyone's role, and <b>deactivate / reactivate</b> a coach. Whoever set up the organization is its first admin.</td></tr>
+            <tr><td>Member</td><td>A full coach: invites and coaches their own Vrotégés, assigns training, writes notes. Can see who is on the team but can't change it.</td></tr>
+          </table>
+          <p><b>To add a coach</b> (admins only): enter their name, email and role under <b>Add a coach</b>. They get an email with a link to choose their own password — you never see or set it. Until they log in for the first time they show as <b>Invited</b>; <b>Resend invite</b> sends a fresh link. <b>Deactivate</b> switches a coach's login off without deleting anything, and <b>Reactivate</b> turns it back on. An organization always keeps at least one active admin.</p>
+          <div class="callout coach"><b>Each coach's Vrotégés stay private to that coach.</b> A Vrotégé chooses to share with one specific coach, not with the clinic, so teammates and even admins can't open each other's Vrotégés — the Team page only shows how many each coach has. If a coach leaves, ask each Vrotégé to connect with their new coach.</div>
+          <p>The email you add must be new to VepAIr. If that person already has an account (for example as a Vrotégé), contact VepAIr support to add them.</p>
         </div>
       </section>
 

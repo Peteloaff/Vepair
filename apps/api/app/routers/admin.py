@@ -20,7 +20,7 @@ from app.coach_invites import attach_pending_invites
 from app.config import get_settings
 from app.database import get_db
 from app.demo_data import create_demo_data, demo_status, remove_demo_data
-from app.email import send_password_reset_email
+from app.email import send_password_reset_email, send_team_welcome_email
 from app.models import (
     AuthCredential,
     CoachProfile,
@@ -33,6 +33,14 @@ from app.models import (
     User,
     UserProfile,
     VoiceSession,
+)
+from app.org_team import (
+    WELCOME_TOKEN_DAYS,
+    add_member,
+    build_team,
+    issue_welcome_token,
+    team_member_not_found,
+    update_member,
 )
 from app.organizations import activate_coach_pro, invites_used_this_period
 from app.schemas_admin import (
@@ -54,6 +62,7 @@ from app.schemas_admin import (
     AdminUserListItemOut,
 )
 from app.schemas_auth import UserOut
+from app.schemas_team import TeamMemberCreate, TeamMemberUpdate, TeamOut
 from app.security import generate_opaque_token, hash_password
 from app.site_settings import get_site_settings
 
@@ -499,6 +508,23 @@ def set_coach(
         log_admin_action(db, admin.id, "grant_coach", user.id, {"email": user.email})
     else:
         if existing is not None:
+            teammates = db.scalar(
+                select(func.count())
+                .select_from(CoachProfile)
+                .where(
+                    CoachProfile.organization_id == existing.organization_id,
+                    CoachProfile.id != existing.id,
+                )
+            )
+            if teammates:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "org_has_team",
+                        "message": "This coach's organization has other coaches. Remove or "
+                        "deactivate them from the organization's team instead.",
+                    },
+                )
             db.delete(existing)
         log_admin_action(db, admin.id, "revoke_coach", user.id, {"email": user.email})
 
@@ -514,7 +540,14 @@ def _organization_not_found() -> HTTPException:
 
 
 def _organization_to_out(db: Session, organization: Organization) -> AdminOrganizationOut:
-    coach = db.scalar(select(CoachProfile).where(CoachProfile.organization_id == organization.id))
+    # The "primary" coach shown on the list is an organization admin (the earliest), falling back
+    # to the earliest member if an organization somehow has none.
+    members = db.scalars(
+        select(CoachProfile)
+        .where(CoachProfile.organization_id == organization.id)
+        .order_by(CoachProfile.org_role, CoachProfile.created_at)
+    ).all()
+    coach = members[0] if members else None
     coach_user = db.get(User, coach.user_id) if coach else None
     return AdminOrganizationOut(
         id=organization.id,
@@ -526,6 +559,7 @@ def _organization_to_out(db: Session, organization: Organization) -> AdminOrgani
         coach_pro_period_end=organization.coach_pro_period_end,
         invite_quota_included=organization.invite_quota_included,
         invites_used_this_period=invites_used_this_period(db, organization),
+        member_count=len(members),
     )
 
 
@@ -535,21 +569,25 @@ def search_organizations(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ) -> list[AdminOrganizationOut]:
-    """Search by org name or coach email/display name -- mirrors search_users's shape. One coach
-    per organization today (see Organization's docstring), so the join is always 1:1."""
-    stmt = (
-        select(Organization)
-        .join(CoachProfile, CoachProfile.organization_id == Organization.id)
-        .join(User, User.id == CoachProfile.user_id)
-        .order_by(Organization.created_at.desc())
-        .limit(100)
-    )
+    """Search by org name or any member's email/display name -- mirrors search_users's shape. An
+    organization can have several coaches, so matching goes through a subquery of organization
+    ids rather than a join (which would repeat an organization once per matching coach)."""
+    stmt = select(Organization).order_by(Organization.created_at.desc()).limit(100)
+    has_coach = select(CoachProfile.organization_id)
     if query:
-        stmt = stmt.where(
-            (Organization.name.ilike(f"%{query}%"))
-            | (User.email.ilike(f"%{query}%"))
-            | (CoachProfile.display_name.ilike(f"%{query}%"))
+        member_match = (
+            select(CoachProfile.organization_id)
+            .join(User, User.id == CoachProfile.user_id)
+            .where(
+                (User.email.ilike(f"%{query}%")) | (CoachProfile.display_name.ilike(f"%{query}%"))
+            )
         )
+        stmt = stmt.where(
+            Organization.id.in_(has_coach),
+            (Organization.name.ilike(f"%{query}%")) | (Organization.id.in_(member_match)),
+        )
+    else:
+        stmt = stmt.where(Organization.id.in_(has_coach))
     orgs = db.scalars(stmt).all()
     return [_organization_to_out(db, o) for o in orgs]
 
@@ -608,6 +646,127 @@ def set_coach_pro(
     db.commit()
     db.refresh(organization)
     return _organization_to_out(db, organization)
+
+
+@router.get("/organizations/{organization_id}/team", response_model=TeamOut)
+def get_organization_team(
+    organization_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> TeamOut:
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    return build_team(db, organization, None)
+
+
+@router.post(
+    "/organizations/{organization_id}/team/members", response_model=TeamOut, status_code=201
+)
+def add_organization_team_member(
+    organization_id: uuid.UUID,
+    payload: TeamMemberCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> TeamOut:
+    """The same add-a-coach action an organization admin has on their Team page, from the admin
+    console -- for helping a clinic set up, or an organization that has no admin left."""
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    coach, user, token = add_member(
+        db, organization, payload.email, payload.display_name, payload.org_role
+    )
+    log_admin_action(
+        db,
+        admin.id,
+        "add_org_member",
+        user.id,
+        {"organization_id": str(organization.id), "email": user.email, "org_role": coach.org_role},
+    )
+    db.commit()
+    send_team_welcome_email(
+        user.email,
+        coach.display_name,
+        organization.name,
+        "VepAIr support",
+        coach.org_role,
+        token,
+        WELCOME_TOKEN_DAYS,
+    )
+    return build_team(db, organization, None)
+
+
+@router.patch("/organizations/{organization_id}/team/members/{coach_id}", response_model=TeamOut)
+def update_organization_team_member(
+    organization_id: uuid.UUID,
+    coach_id: uuid.UUID,
+    payload: TeamMemberUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> TeamOut:
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    _coach, user = update_member(
+        db,
+        organization,
+        coach_id,
+        acting_user_id=None,
+        org_role=payload.org_role,
+        is_active=payload.is_active,
+        display_name=payload.display_name,
+    )
+    log_admin_action(
+        db,
+        admin.id,
+        "update_org_member",
+        user.id,
+        {
+            "organization_id": str(organization.id),
+            "email": user.email,
+            "changes": payload.model_dump(exclude_none=True),
+        },
+    )
+    db.commit()
+    return build_team(db, organization, None)
+
+
+@router.post(
+    "/organizations/{organization_id}/team/members/{coach_id}/resend-welcome",
+    status_code=202,
+)
+def resend_organization_member_welcome(
+    organization_id: uuid.UUID,
+    coach_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> None:
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    target = db.get(CoachProfile, coach_id)
+    if target is None or target.organization_id != organization.id:
+        raise team_member_not_found()
+    user = db.get(User, target.user_id)
+    token = issue_welcome_token(db, user)
+    log_admin_action(
+        db,
+        admin.id,
+        "resend_org_member_welcome",
+        user.id,
+        {"organization_id": str(organization.id), "email": user.email},
+    )
+    db.commit()
+    send_team_welcome_email(
+        user.email,
+        target.display_name,
+        organization.name,
+        "VepAIr support",
+        target.org_role,
+        token,
+        WELCOME_TOKEN_DAYS,
+    )
 
 
 @router.post("/users/{user_id}/send-password-reset", status_code=202)

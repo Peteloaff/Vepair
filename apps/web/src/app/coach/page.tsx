@@ -147,13 +147,22 @@ function CoachDashboardContent() {
             {profile.studio_name && <> &middot; {profile.studio_name}</>}
           </p>
         </div>
-        <Link
-          href="/coach/invite"
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-violet to-blue px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
-        >
-          <Icon name="plus" className="h-4 w-4" />
-          Invite a Vrotégé
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/coach/team"
+            className="inline-flex items-center gap-2 rounded-xl border border-border-strong px-4 py-2.5 text-sm font-semibold hover:bg-surface-2"
+          >
+            <Icon name="users" className="h-4 w-4" />
+            Team
+          </Link>
+          <Link
+            href="/coach/invite"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-violet to-blue px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+          >
+            <Icon name="plus" className="h-4 w-4" />
+            Invite a Vrotégé
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

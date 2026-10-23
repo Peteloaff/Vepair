@@ -39,6 +39,9 @@ def test_demo_data_creates_four_organizations_with_realistic_usage(
     assert orgs["Sunrise Singers Collective"]["invites_used_this_period"] > 50
     assert orgs["Blue Note Academy"]["is_coach_pro_active"] is False
     assert orgs["Harbor Voice Studio"]["is_coach_pro_active"] is True
+    # Harbor has a lead coach plus two teammates on its team.
+    assert orgs["Harbor Voice Studio"]["member_count"] == 3
+    assert orgs["Riverside Choir Co."]["member_count"] == 1
 
 
 def test_demo_data_is_idempotent_and_removable_without_touching_other_accounts(

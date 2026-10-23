@@ -86,6 +86,14 @@ DEMO_ORGS = [
     ),
 ]
 
+# Extra coaches on a demo organization's team, as (name, org_role). They have no Vrotégés of
+# their own -- each coach's Vrotégés are private to that coach -- so the roster stays the
+# organization's lead coach's.
+DEMO_TEAMMATES = {
+    "Harbor Voice Studio": [("Jamie Cole", "member"), ("Rowan Pike", "admin")],
+    "Sunrise Singers Collective": [("Dana Whitfield", "member")],
+}
+
 MOODS = {
     "good": dict(voice_quality=(7, 9), fatigue=(2, 4), throat_discomfort=(0, 1), sleep=(7, 8.5)),
     "moderate": dict(
@@ -115,16 +123,16 @@ def demo_users(db: Session) -> list[User]:
 
 def demo_status(db: Session) -> dict:
     users = demo_users(db)
-    coach_ids = {
-        row
-        for row in db.scalars(
-            select(CoachProfile.user_id).where(CoachProfile.user_id.in_([u.id for u in users]))
-        ).all()
-    }
+    coaches = db.execute(
+        select(CoachProfile.user_id, CoachProfile.organization_id).where(
+            CoachProfile.user_id.in_([u.id for u in users])
+        )
+    ).all()
     return {
         "exists": bool(users),
-        "organizations": len(coach_ids),
-        "singers": len(users) - len(coach_ids),
+        # Distinct organizations: several demo coaches can share one.
+        "organizations": len({organization_id for _, organization_id in coaches}),
+        "singers": len(users) - len(coaches),
     }
 
 
@@ -206,6 +214,19 @@ def create_demo_data(db: Session) -> dict:
         )
         db.add(coach)
         db.flush()
+
+        for mate_name, mate_role in DEMO_TEAMMATES.get(org_name, []):
+            mate = User(email=_email(f"team{org_index}-{mate_name.lower().replace(' ', '-')}"))
+            db.add(mate)
+            db.flush()
+            db.add(
+                CoachProfile(
+                    user_id=mate.id,
+                    display_name=mate_name,
+                    organization_id=organization.id,
+                    org_role=mate_role,
+                )
+            )
 
         for name, categories, mood in singers:
             user = User(email=_email(name.lower().replace(" ", ".")))
@@ -297,7 +318,8 @@ def remove_demo_data(db: Session) -> dict:
             select(CoachProfile).where(CoachProfile.user_id.in_([u.id for u in users]))
         ).all()
     }
-    organization_ids = [c.organization_id for c in coach_by_user.values()]
+    # A set: several coaches can share one organization.
+    organization_ids = {c.organization_id for c in coach_by_user.values()}
     singers = [u for u in users if u.id not in coach_by_user]
     coaches = [u for u in users if u.id in coach_by_user]
 
