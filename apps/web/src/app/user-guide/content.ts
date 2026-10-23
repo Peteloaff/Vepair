@@ -406,6 +406,8 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           <p>During each exercise: instructions, a countdown, and (mic permitting) live feedback on pitch, volume, onset, or glide smoothness — entirely on your device, nothing uploaded for this part. <b>Skip</b> or <b>Mark done</b> on any exercise. At the end: completion count, per-exercise trend notes, and a <b>Share My Progress</b> button.</p>
           <h3>Getting what you need</h3>
           <p>Some exercises need a prop — a straw, a glass of water, something to read aloud. Before one of those starts, VepAIr shows a <b>Get what you need</b> screen first: it lists each item, explains <b>what it is</b> and <b>how to use it</b>, and the exercise timer (and live coaching) doesn't begin until you tap <b>Next</b>. No straw handy? Tap <b>Skip this exercise</b>.</p>
+          <h3>Exercises from your coach</h3>
+          <p>When a coach assigns you exercises, an <b>Assigned by your coach</b> card appears at the top of your <b>Home</b> page (and on <b>Coach Access</b>) with your coach's note, each exercise, and any target note they set. Tap <b>Start assigned exercises</b> to run just those, in your coach's order — you don't have to go through the daily routine to find them. As always, today's safety check applies: if you've reported high discomfort, a demanding exercise is marked <b>Held back today</b> and won't start, and it becomes available again once your check-in looks better.</p>
           <h3>Warm Up &amp; Cool Down</h3>
           <p>Need something shorter than the full daily routine? <b>Warm Up</b> and <b>Cool Down</b> (linked from the dashboard and from the exercise length-picker screen) are on-demand routines you can launch any time — before a rehearsal or after a show, not just once a day. Warm Up steps through a short breathing → gentle humming → SOVT progression; Cool Down runs the same closing exercises VepAIr already ends every daily routine with. Both still respect your safety cap — a rough day still gets you a gentler version — and both count toward your training streak, same as any completed routine.</p>
         </div>
@@ -479,6 +481,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
             <tr><td>Recordings</td><td>Your voice recordings, for side-by-side comparison</td></tr>
           </table>
           <p>Toggle any category on or off any time from <b>Coach Access</b> — never a full revoke required. <b>Revoke access</b> cuts off everything immediately for anything new (already-viewed data isn't retroactively unshown). Illness/reflux/notes fields and any private journal free-text are <b>never</b> shared, regardless of what you check.</p>
+          <p>Anything your coach assigns shows up on your <b>Home</b> page and at the top of <b>Coach Access</b> as <b>Assigned by your coach</b>, with a button to start it.</p>
           <p>Your coach may leave you <b>notes</b> — always readable to you, even after you revoke access. You can also <b>message</b> your coach directly, a two-way conversation open to both of you at any time while the connection is active; your own message history stays readable even after a revoke, same as notes.</p>
         </div>
       </section>

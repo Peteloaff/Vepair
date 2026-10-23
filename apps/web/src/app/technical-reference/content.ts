@@ -371,7 +371,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <div class="ref-wrap"><table class="ref">
             <tr><th>Entity</th><th>Purpose</th></tr>
             <tr><td class="code-cell">Exercise</td><td>Library entry — 27 seeded + coach-authored. <code>created_by_coach_id</code> nullable.</td></tr>
-            <tr><td class="code-cell">ExerciseSession / ExerciseResult</td><td>One routine instance; per-exercise completion + measured outcome. <code>session_type</code> (adaptive/warm_up/cool_down, default adaptive via <code>server_default</code>) distinguishes the daily routine from an on-demand quick routine — both count toward the training streak identically.</td></tr>
+            <tr><td class="code-cell">ExerciseSession / ExerciseResult</td><td>One routine instance; per-exercise completion + measured outcome. <code>session_type</code> (adaptive/warm_up/cool_down/assigned, default adaptive via <code>server_default</code>) distinguishes the daily routine from an on-demand quick routine — both count toward the training streak identically.</td></tr>
           </table></div>
 
           <h4>Coach Portal</h4>
@@ -518,6 +518,20 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <p>A coach can assign exercises (including their own custom ones); an assignment can
           never push past what today's own safety cap would already allow — it's filtered through
           the exact same <code>allowed</code> list every adaptively-chosen exercise draws from.</p>
+          <p><b>Assigned exercises, launchable directly</b> (<code class="path">app/assigned_exercises.py</code>).
+          The adaptive routine only folds an assignment in where it fits the chosen length and
+          the daily cap, so a singer could be assigned something and never see it.
+          <code>GET /api/v1/assigned-exercises?date=</code> lists the active assignment itself
+          (coach name, note, the coach's exercise order, tone targets), split into
+          <code>items</code> (runnable today) and <code>held_back</code> (above today's
+          intensity cap, listed but never launchable). It reuses
+          <code>get_active_assignment</code> (same active-assignment-and-active-access gate as the
+          routine) and the same <code>build_signals_for_user</code>/<code>propose_intensity_caps</code>,
+          so the safety guarantee is unchanged. The home page and Coach Access render an
+          <code class="path">AssignedExercisesCard</code>; its Start button opens
+          <code class="path">/assigned</code>, which runs <code>items</code> through the shared
+          <code>ExerciseRunner</code> as an <code>ExerciseSession</code> with
+          <code>session_type="assigned"</code>.</p>
         </div>
       </section>
 

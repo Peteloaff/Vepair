@@ -71,10 +71,31 @@ class QuickRoutineOut(BaseModel):
     items: list[ExerciseOut]
 
 
+class AssignedExercisesOut(BaseModel):
+    """What the signed-in singer's coach has assigned, for the home page card and the runner
+    behind it. `items` are runnable today; `held_back` are assigned exercises today's own safety
+    check is keeping off the list -- shown so the singer knows they exist, never launchable. All
+    coach fields are null when there is no active assignment (`has_assignment` false)."""
+
+    has_assignment: bool
+    coach_display_name: str | None
+    coach_studio_name: str | None
+    note_to_singer: str | None
+    assigned_at: datetime | None
+    intensity_cap: str
+    total_duration_seconds: int
+    safety_message: str | None
+    reasons: list[str]
+    items: list[ExerciseOut]
+    held_back: list[ExerciseOut]
+    exercise_tone_targets: dict[uuid.UUID, str]
+
+
 class ExerciseSessionCreate(BaseModel):
     routine_length_minutes: int | None = Field(default=None, ge=1, le=60)
     # "adaptive" (default) is the existing once-daily routine; "warm_up"/"cool_down" are the
-    # standalone on-demand sessions -- see app/quick_routine.py. Plain string, matching how
+    # standalone on-demand sessions -- see app/quick_routine.py; "assigned" is a coach's
+    # assignment run on its own -- see app/assigned_exercises.py. Plain string, matching how
     # every other categorical field in this schema (intensity_cap, difficulty, etc.) is stored,
     # not a DB enum.
     session_type: str = "adaptive"
