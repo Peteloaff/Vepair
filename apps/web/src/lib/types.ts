@@ -244,6 +244,23 @@ export interface QuickRoutine {
   items: Exercise[];
 }
 
+export interface AssignedExercises {
+  has_assignment: boolean;
+  coach_display_name: string | null;
+  coach_studio_name: string | null;
+  note_to_singer: string | null;
+  assigned_at: string | null;
+  intensity_cap: "low" | "moderate" | "high";
+  total_duration_seconds: number;
+  safety_message: string | null;
+  reasons: string[];
+  // Runnable today, in the coach's order.
+  items: Exercise[];
+  // Assigned, but today's safety check is keeping them off the list.
+  held_back: Exercise[];
+  exercise_tone_targets: Record<string, string>;
+}
+
 export interface ExerciseTrend {
   exercise_id: string;
   exercise_name: string;

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.assigned_exercises import build_assigned_exercises_for_user
 from app.auth import get_current_user
 from app.database import get_db
 from app.exercise_audio import analyze_exercise_attempt
@@ -19,6 +20,7 @@ from app.exercise_trends import compute_exercise_trends
 from app.models import Exercise, ExerciseResult, ExerciseSession, User
 from app.quick_routine import build_quick_routine_for_user
 from app.schemas_exercise import (
+    AssignedExercisesOut,
     ExerciseOut,
     ExerciseResultOut,
     ExerciseSessionCreate,
@@ -124,6 +126,29 @@ def get_quick_routine(
         safety_message=result.safety_message,
         reasons=result.reasons,
         items=[ExerciseOut(audio_demo_url=None, **vars(item)) for item in result.items],
+    )
+
+
+@router.get("/assigned-exercises", response_model=AssignedExercisesOut)
+def get_assigned_exercises(
+    for_date: date = Query(..., alias="date"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AssignedExercisesOut:
+    result = build_assigned_exercises_for_user(db, current_user.id, for_date)
+    return AssignedExercisesOut(
+        has_assignment=result.has_assignment,
+        coach_display_name=result.coach_display_name,
+        coach_studio_name=result.coach_studio_name,
+        note_to_singer=result.note_to_singer,
+        assigned_at=result.assigned_at,
+        intensity_cap=result.intensity_cap,
+        total_duration_seconds=result.total_duration_seconds,
+        safety_message=result.safety_message,
+        reasons=result.reasons,
+        items=[ExerciseOut(audio_demo_url=None, **vars(item)) for item in result.items],
+        held_back=[ExerciseOut(audio_demo_url=None, **vars(item)) for item in result.held_back],
+        exercise_tone_targets=result.tone_targets,
     )
 
 

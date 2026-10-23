@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.models import CoachAccess, CoachAssignment
 
 
-def _get_active_assignment(db: Session, singer_user_id: uuid.UUID) -> CoachAssignment | None:
+def get_active_assignment(db: Session, singer_user_id: uuid.UUID) -> CoachAssignment | None:
     """None unless there is BOTH an active CoachAssignment AND its linked CoachAccess is still
     active — revoking access silently stops an assignment's influence on future routines
     without deleting the assignment's own history row. CoachAssignment.status
@@ -30,7 +30,7 @@ def _get_active_assignment(db: Session, singer_user_id: uuid.UUID) -> CoachAssig
 def get_active_assigned_exercise_ids(
     db: Session, singer_user_id: uuid.UUID
 ) -> list[uuid.UUID] | None:
-    assignment = _get_active_assignment(db, singer_user_id)
+    assignment = get_active_assignment(db, singer_user_id)
     if assignment is None:
         return None
     return [uuid.UUID(x) for x in assignment.exercise_ids]
@@ -43,7 +43,7 @@ def get_active_assigned_exercise_tone_targets(
     same active-assignment-and-access gating as get_active_assigned_exercise_ids. Returns an
     empty dict (never None) when there's no active assignment or no targets were set on it, so
     callers can always do a plain `.get(exercise_id)` without a None check first."""
-    assignment = _get_active_assignment(db, singer_user_id)
+    assignment = get_active_assignment(db, singer_user_id)
     if assignment is None or not assignment.exercise_tone_targets:
         return {}
     return {uuid.UUID(k): v for k, v in assignment.exercise_tone_targets.items()}

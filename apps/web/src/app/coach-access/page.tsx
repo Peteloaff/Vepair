@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AssignedExercisesCard } from "@/components/AssignedExercisesCard";
 import { MessageThread } from "@/components/MessageThread";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/lib/auth-context";
@@ -390,6 +391,8 @@ function CoachAccessContent() {
           </div>
         )}
       </section>
+
+      <AssignedExercisesCard className="mb-8" />
 
       <section>
         <h2 className="mb-3 text-sm font-medium text-text">Your coaches</h2>

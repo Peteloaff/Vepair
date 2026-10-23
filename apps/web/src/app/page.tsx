@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AssignedExercisesCard } from "@/components/AssignedExercisesCard";
 import { Card } from "@/components/Card";
 import { CheckInForm } from "@/components/CheckInForm";
 import { IosInstallHint } from "@/components/IosInstallHint";
@@ -386,6 +387,8 @@ function Dashboard({
       {loadError && (
         <p className="mb-4 rounded-xl bg-danger-faint px-3 py-2 text-xs text-danger">{loadError}</p>
       )}
+
+      <AssignedExercisesCard className="mb-4" />
 
       <nav
         aria-label="Shortcuts"

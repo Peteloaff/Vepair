@@ -366,7 +366,8 @@ class ExerciseSession(Base, TimestampMixin):
     )
     routine_length_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # "adaptive" (the existing once-daily routine) | "warm_up" | "cool_down" (standalone,
-    # on-demand sessions -- see app/quick_routine.py). server_default backfills every
+    # on-demand sessions -- see app/quick_routine.py) | "assigned" (a coach's assignment run
+    # on its own -- see app/assigned_exercises.py). server_default backfills every
     # pre-existing row to "adaptive" at the DB level, no application backfill needed.
     session_type: Mapped[str] = mapped_column(String(20), nullable=False, server_default="adaptive")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
