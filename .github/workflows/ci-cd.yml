@@ -1,0 +1,209 @@
+# Tests on every push; deploys the API to Cloud Run when main changes and the tests pass.
+#
+# The frontend is not deployed here: Vercel already builds and deploys it on every push to main.
+# This workflow only does what used to be a manual `gcloud run deploy` from Cloud Shell.
+#
+# The deploy job stays idle (skipped) until the one-time Google Cloud setup in TECHNICAL_GUIDE.md
+# section 13 has been done and the three repository variables below exist. It authenticates with
+# Workload Identity Federation, so there is no key or secret stored in GitHub, and the Google side
+# only trusts this repository's main branch.
+
+name: CI / CD
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A newer push to the same branch replaces an older test run (never a deploy: see deploy job).
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: vepair
+          POSTGRES_PASSWORD: vepair
+          POSTGRES_DB: vepair
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vepair -d vepair"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://vepair:vepair@localhost:5432/vepair
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            apps/api/pyproject.toml
+            packages/audio-engine/pyproject.toml
+
+      - name: System libraries for audio
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libsndfile1
+
+      - name: Install
+        run: |
+          pip install ./packages/audio-engine[dev]
+          pip install -e "./apps/api[dev]"
+
+      - name: Lint
+        run: |
+          ruff check apps/api/app apps/api/tests
+          ruff check packages/audio-engine
+
+      - name: Migrations have a single head
+        working-directory: apps/api
+        run: |
+          heads=$(alembic heads | wc -l)
+          if [ "$heads" -ne 1 ]; then
+            echo "::error::Alembic has $heads heads; merge them before deploying."
+            alembic heads
+            exit 1
+          fi
+
+      - name: Apply migrations to the test database
+        working-directory: apps/api
+        run: alembic upgrade head
+
+      - name: Seed the exercise library
+        # Many API tests assume the library exists, as it does in every real database.
+        working-directory: apps/api
+        run: python scripts/seed_exercises.py
+
+      - name: Audio engine tests
+        run: pytest packages/audio-engine/tests -q
+
+      - name: API tests
+        working-directory: apps/api
+        run: pytest -q
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - name: Generate Next.js route types
+        # Next creates the global types (like LayoutProps) the app uses; a fresh checkout has none.
+        run: npx next typegen
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+
+  deploy:
+    name: Deploy API to Cloud Run
+    needs: [backend, frontend]
+    # Only from main, never from a pull request, and only once the Google Cloud setup has been done.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      vars.GCP_PROJECT_ID != '' &&
+      vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' &&
+      vars.GCP_SERVICE_ACCOUNT != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # lets this job ask Google to trust it (Workload Identity Federation)
+    concurrency:
+      # Deploys queue instead of cancelling each other, so a deploy is never cut off half-way.
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Did the backend change?
+        id: changes
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # A manual run, or a first push to a branch, always deploys. Otherwise only deploy when
+          # something the API image is built from changed (docs and frontend-only pushes skip it).
+          if [ "$EVENT" = "workflow_dispatch" ] || [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$BEFORE" "$GITHUB_SHA" 2>/dev/null | grep -qE '^(apps/api/|packages/audio-engine/|Dockerfile$|\.dockerignore$)'; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "No backend files changed in this push, so the API was not redeployed."
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: steps.changes.outputs.deploy == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        if: steps.changes.outputs.deploy == 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy
+        if: steps.changes.outputs.deploy == 'true'
+        # No --env-vars-file and no --allow-unauthenticated: the service keeps the environment
+        # variables and the public access it already has. The container applies pending database
+        # migrations itself when it starts (see Dockerfile).
+        run: |
+          gcloud run deploy vepair-api \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --source . \
+            --region us-west1 \
+            --port 8000 \
+            --quiet
+
+      - name: Smoke test the new revision
+        if: steps.changes.outputs.deploy == 'true'
+        run: |
+          url=$(gcloud run services describe vepair-api \
+            --project "${{ vars.GCP_PROJECT_ID }}" --region us-west1 --format 'value(status.url)')
+          echo "Checking $url"
+          for i in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error --max-time 20 "$url/openapi.json" > /dev/null; then
+              echo "API is up."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::The new revision did not answer. Roll back in Cloud Run (TECHNICAL_GUIDE.md section 13)."
+          exit 1
