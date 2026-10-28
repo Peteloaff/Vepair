@@ -871,14 +871,18 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
             <tr><th>Account</th><th>Owns</th><th>Trigger</th></tr>
             <tr><td>GitHub</td><td>Source of truth</td><td>—</td></tr>
             <tr><td>Vercel</td><td>Frontend (<code class="path">apps/web</code>)</td><td>Auto, every push to <code>main</code></td></tr>
-            <tr><td>Cloud Run</td><td>Backend (<code class="path">apps/api</code>)</td><td class="code-cell">Manual — gcloud run deploy</td></tr>
-            <tr><td>Supabase</td><td>Postgres + Storage</td><td>Migrations run as part of the manual backend deploy</td></tr>
+            <tr><td>Cloud Run</td><td>Backend (<code class="path">apps/api</code>)</td><td class="code-cell">GitHub Actions on push to <code>main</code> (tests first) once set up; otherwise manual <code>gcloud run deploy</code></td></tr>
+            <tr><td>Supabase</td><td>Postgres + Storage</td><td>Migrations run as part of the backend deploy</td></tr>
           </table>
           <div class="callout warn">
-            <b>The single most important operational fact:</b> a <code>git push</code> updates the
-            live frontend automatically in minutes. It does <b>nothing</b> to the live backend — a
-            code change to <code class="path">apps/api</code> is not actually live until a manual
-            <code>gcloud run deploy</code> runs from Cloud Shell.
+            <b>The single most important operational fact:</b> a <code>git push</code> to
+            <code>main</code> updates the live frontend automatically in minutes. The backend deploys
+            from the <b>CI / CD</b> GitHub Action (<code class="path">.github/workflows/ci-cd.yml</code>)
+            only after the one-time Google Cloud setup in <code class="path">TECHNICAL_GUIDE.md</code>
+            §13 — it runs the tests, then <code>gcloud run deploy</code>, and skips the deploy when no
+            backend files changed. Until that setup is done, a code change to
+            <code class="path">apps/api</code> is not live until <code>gcloud run deploy</code> runs from
+            Cloud Shell.
           </div>
         </div>
       </section>
