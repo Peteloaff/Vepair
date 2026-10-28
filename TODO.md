@@ -22,7 +22,7 @@ Reference's "Live in production" list; the long-form decisions behind billing ar
 
 ## 2. Small, ready to build (S)
 
-All five items below were built on `feature/team-polish` (2026-10-28) and are ticked once that branch is deployed.
+All five items below were built and deployed on 2026-10-28.
 
 - [x] **Edit the organization name**: today a clinic's name is set once at signup and can't be
       changed by its admin. Add it to the Team page (and the admin console).
