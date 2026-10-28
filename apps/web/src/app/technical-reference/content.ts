@@ -955,6 +955,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Assigned exercises: an "Assigned by your coach" card on Home and Coach Access with a Start button, still subject to today's safety cap</li>
                 <li>Organization teams: several coaches per organization with admin/member roles, a Coach Portal Team page, the same controls in the admin console, a shared invite quota, and each coach's Vrotégés kept private to that coach</li>
                 <li>Team polish: rename an organization, platform admins can add an existing account to a team, and a clearer set-your-password page for new team members</li>
+                <li>Org admins can remove a coach from the team (history kept, connections ended) and manage Vrotégé connections: invite for a coach, move to another coach, end a connection, cancel an invite, without seeing voice data</li>
               </ul>
             </div>
             <div>

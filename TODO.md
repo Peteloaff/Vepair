@@ -50,7 +50,7 @@ All five items below were built and deployed on 2026-10-28.
       broken branch is caught before "merge and deploy". Part of the same workflow as above.
 - [x] **Coach leaves a team**: built on `feature/org-vrotege-management` (2026-10-28), with remove-
       from-team, org-admin Vrotégé connections (invite for a coach, move, end connection).
-      Ticked as deployed once that branch ships.
+      Deployed 2026-10-28.
 - [ ] **Org-level reporting for admins**: per-coach practice and activity roll-ups on the Team
       page (counts only, no singer identities, in keeping with the privacy rule).
 - [ ] **Google Play packaging**: wrap the PWA (TWA or Capacitor, to be confirmed), Play Console
