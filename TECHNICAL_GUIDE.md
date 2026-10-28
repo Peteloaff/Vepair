@@ -18,7 +18,8 @@ The single most important thing to understand about this setup: **the frontend a
 deploy on two completely different triggers.** A `git push` updates the live frontend within a
 couple of minutes automatically. It does **nothing** to the live backend — that needs a manual
 `gcloud run deploy` every time `apps/api`, `packages/audio-engine`, or the root `Dockerfile`
-changes. Forgetting this is the single most common way to ship a backend fix that "isn't showing
+changes (or, once the setup in §13 is done, the GitHub Actions deploy does that for you when you
+push to `main`). Forgetting this is the single most common way to ship a backend fix that "isn't showing
 up" — it built and tested fine locally, it's sitting on `main`, but the running Cloud Run
 container is still the old image.
 
@@ -242,8 +243,10 @@ gcloud run services update vepair-api --region us-west1 --update-env-vars API_CO
 1. Edit, test locally (`pytest`, `ruff check .` from `apps/api`; `pytest` from
    `packages/audio-engine`).
 2. Commit and push to `main`.
-3. **Manually redeploy** — open Cloud Shell, run the deploy sequence in §3. This is the step
-   that's easy to forget since the frontend half "just works" on push.
+3. **Redeploy.** Once §13's one-time setup is done, GitHub Actions runs the tests and deploys
+   automatically after the push to `main`; just watch the run go green. Without that setup, open
+   Cloud Shell and run the deploy sequence in §3 — the step that's easy to forget, since the
+   frontend half "just works" on push.
 
 **Database schema change** (a new Alembic migration):
 1. Generate/write the migration locally, test against local Postgres.
@@ -406,3 +409,61 @@ gcloud scheduler jobs create http vepair-purge-stale-data \
 - **As of this writing, this scheduler job has not been created yet** — the endpoint and its
   admin-configurable retention windows are live, but nothing calls it automatically until the
   command above is run once.
+
+## 13. Automatic tests and deploys (GitHub Actions)
+
+`.github/workflows/ci-cd.yml` does two things:
+
+- **Tests on every push, to any branch.** A *Backend tests* job (ruff, a single-Alembic-head check,
+  migrations applied to a throwaway Postgres 17, then the `packages/audio-engine` and `apps/api`
+  pytest suites) and a *Frontend checks* job (`tsc`, eslint, vitest, `next build`). They run in
+  parallel in a few minutes. A red cross on a commit in GitHub means one of them failed; open the run
+  to see which step.
+- **Deploys the API to Cloud Run when `main` changes and both jobs pass.** The *Deploy* job only runs
+  for pushes to `main` (never pull requests or other branches), and only when something the API image
+  is built from changed (`apps/api`, `packages/audio-engine`, `Dockerfile`, `.dockerignore`) — a
+  docs-only or frontend-only push skips it. It runs the same `gcloud run deploy vepair-api --source .
+  --region us-west1 --port 8000` as §3, then checks that the new revision answers. Pending migrations
+  apply when the container starts, exactly as before. It does **not** pass `--env-vars-file` or
+  `--allow-unauthenticated`, so the service keeps the environment variables and public access it
+  already has; change an environment variable in Cloud Run or with `gcloud run services update`, not
+  by redeploying. The frontend is untouched by this workflow: Vercel still deploys it on every push.
+
+The deploy authenticates with **Workload Identity Federation**: no key or secret is stored in GitHub.
+Google only trusts identity tokens from this repository's `main` branch, so a pull request, a fork or
+another branch cannot deploy. The repository is public, which is why that restriction matters.
+
+### One-time setup
+
+1. In **Cloud Shell**, in the project that hosts `vepair-api`, run:
+
+   ```bash
+   cd ~/Vepair && git pull && bash scripts/gcp-setup-github-deploy.sh
+   ```
+
+   It creates a `github-deployer` service account and the trust relationship, is safe to run twice,
+   and prints three values at the end.
+2. Add those three values to GitHub as **repository variables** (not secrets; they are identifiers):
+   *Settings → Secrets and variables → Actions → Variables*: `GCP_PROJECT_ID`,
+   `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`. (Or ask Claude to set them from the
+   printed values.) Until all three exist the deploy job is simply skipped.
+3. Run it once by hand to prove it works: *Actions → CI / CD → Run workflow* on `main`.
+
+Optional: in *Settings → Environments → production* you can add **required reviewers**, which makes
+every deploy wait for a click before it runs.
+
+### Day to day
+
+Merge to `main` and push. Watch the run in the *Actions* tab. If the *Deploy* job is green, the new
+backend is live; there is nothing to run in Cloud Shell.
+
+### If a deploy goes wrong
+
+- **Tests red:** nothing is deployed. Fix and push again.
+- **Deploy red, or the smoke test fails:** the previous revision keeps serving traffic if the new one
+  never became ready. If a bad revision did go live, roll back in the Cloud Run console
+  (*vepair-api → Revisions → the previous one → Manage traffic → 100%*), or from Cloud Shell:
+  `gcloud run services update-traffic vepair-api --region us-west1 --to-revisions=REVISION=100`.
+  A migration that already ran is **not** undone by a rollback, so write migrations that the previous
+  code can still live with.
+- **Emergency manual deploy:** the Cloud Shell command in §3 still works exactly as before.

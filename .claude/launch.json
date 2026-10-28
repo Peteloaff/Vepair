@@ -8,6 +8,12 @@
       "cwd": "apps/web",
       "url": "http://localhost:3000",
       "port": 3000
+    },
+    {
+      "name": "staticue",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "C:/Users/ADMIN/Desktop/NFLPredictor/site/public"],
+      "port": 8765
     }
   ]
 }

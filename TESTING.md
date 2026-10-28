@@ -12,6 +12,11 @@ Every stage adds to all of these as relevant:
 - **Regression tests** — previously-working audio must keep producing results within documented
   tolerance as DSP libraries change.
 
+**Automated runs.** GitHub Actions (`.github/workflows/ci-cd.yml`, see `TECHNICAL_GUIDE.md` §13) runs
+ruff, the `packages/audio-engine` and `apps/api` pytest suites against a throwaway Postgres (after applying
+every Alembic migration), `tsc`, eslint, vitest and a production `next build` on every push, and a failing
+step blocks the API deploy.
+
 ## 2. Golden Voice Set (from Stage 3 on)
 
 A permanent fixture set (`data/fixtures/golden-voice-set/`) covering: stable vowel, unstable
