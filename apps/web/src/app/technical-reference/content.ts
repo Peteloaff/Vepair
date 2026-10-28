@@ -970,6 +970,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
                 <li>Organization teams: several coaches per organization with admin/member roles, a Coach Portal Team page, the same controls in the admin console, a shared invite quota, and each coach's Vrotégés kept private to that coach</li>
                 <li>Team polish: rename an organization, platform admins can add an existing account to a team, and a clearer set-your-password page for new team members</li>
                 <li>Org admins can remove a coach from the team (history kept, connections ended) and manage Vrotégé connections: invite for a coach, move to another coach, end a connection, cancel an invite, without seeing voice data</li>
+                <li>Org reporting: a Team activity table for organization admins (per-coach invites, notes, messages, assignments, and practice for Vrotégés who share exercise history), counts only with no names</li>
                 <li>Automatic tests and deploys: GitHub Actions runs the backend and frontend checks on every push and deploys the API to Cloud Run from <code>main</code> when backend files change, with no keys stored in GitHub</li>
               </ul>
             </div>
