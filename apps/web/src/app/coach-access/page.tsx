@@ -87,7 +87,9 @@ function InviteCard({
 
       <p className="mt-2 text-xs text-text-faint">
         Administrators of {invite.coach_studio_name || "this coach's organization"} can see that
-        you&apos;re connected to {invite.coach_display_name}, but never your voice data.
+        you&apos;re connected to {invite.coach_display_name}. If you share your exercise history,
+        they may also see combined practice totals for the coach&apos;s group that don&apos;t name
+        you (shown only when at least 3 people share). They never see your voice data.
       </p>
 
       <p className="mt-3 mb-2 text-xs text-text-faint">

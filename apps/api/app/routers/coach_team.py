@@ -4,7 +4,7 @@ See app/org_team.py for the rules."""
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from app.coach_connections import end_connection, new_invite
 from app.database import get_db
 from app.email import send_coach_invite_email, send_team_added_email, send_team_welcome_email
 from app.models import CoachInvite, CoachProfile, User
+from app.org_report import PERIODS, build_report
 from app.org_team import (
     WELCOME_TOKEN_DAYS,
     add_member,
@@ -31,6 +32,7 @@ from app.schemas_team import (
     OrgInviteCreate,
     OrgMoveVrotege,
     OrgPendingInviteOut,
+    OrgReportOut,
     OrgVrotegesOut,
     RemoveMemberOut,
     TeamMemberCreate,
@@ -161,6 +163,25 @@ def remove_team_member(
 # ---- Vrotégé connections, for organization admins ----
 # An admin manages *who coaches whom* -- never what a Vrotégé shares. Every connection still
 # needs the Vrotégé's own acceptance, and an admin never sees any of their voice data.
+
+
+@router.get("/report", response_model=OrgReportOut)
+def get_org_report(
+    days: int = Query(default=30),
+    admin: CoachProfile = Depends(get_current_org_admin),
+    db: Session = Depends(get_db),
+) -> OrgReportOut:
+    """Per-coach activity and practice for the organization, as counts only (see
+    app/org_report.py for what is shown and when it is hidden)."""
+    if days not in PERIODS:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "invalid_period",
+                "message": f"Choose a period of {', '.join(str(p) for p in PERIODS)} days.",
+            },
+        )
+    return build_report(db, admin.organization, days)
 
 
 @router.get("/vroteges", response_model=OrgVrotegesOut)

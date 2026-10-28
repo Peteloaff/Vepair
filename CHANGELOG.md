@@ -2,6 +2,18 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Organization reporting for admins (2026-10-28)
+
+- **Team activity.** A new section on the Team page (admins only) shows, per coach and for the
+  whole team, over the last 7, 30 or 90 days: Vrotégés connected, invites sent, notes written,
+  messages sent and exercises assigned, plus practice sessions completed and how many Vrotégés
+  practiced. Counts only: it names no one and never shows voice data.
+- **Privacy rules built in.** Practice figures count only Vrotégés who share their exercise
+  history with that coach, and stay hidden (a dash) until at least 3 of a coach's Vrotégés do, so a
+  number can't describe one identifiable person. Team totals leave hidden coaches out. The
+  Vrotégé's invite card now says admins may see these combined totals.
+- New endpoint `GET /api/v1/coach/team/report`; no database change. Code in `app/org_report.py`.
+
 ## Added — Organization admins manage coaches and Vrotégé connections (2026-10-28)
 
 - **Remove a coach from the team.** Besides deactivating (a reversible pause), an organization

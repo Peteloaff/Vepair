@@ -544,6 +544,38 @@ export interface OrgVroteges {
   pending_invites: OrgPendingInvite[];
 }
 
+export interface CoachReportRow {
+  coach_id: string;
+  display_name: string;
+  org_role: OrgRole;
+  is_active: boolean;
+  connected_vroteges: number;
+  invites_sent: number;
+  notes_written: number;
+  messages_sent: number;
+  assignments_sent: number;
+  sharing_vroteges: number;
+  // null = hidden: fewer than min_group_size Vrotégés share their exercise history with this coach.
+  practice_sessions: number | null;
+  practicing_vroteges: number | null;
+}
+
+export interface OrgReport {
+  period_days: number;
+  since: string;
+  min_group_size: number;
+  coaches: CoachReportRow[];
+  totals: {
+    connected_vroteges: number;
+    invites_sent: number;
+    notes_written: number;
+    messages_sent: number;
+    assignments_sent: number;
+    practice_sessions: number;
+    practicing_vroteges: number;
+  };
+}
+
 export interface CoachProfile {
   id: string;
   display_name: string;

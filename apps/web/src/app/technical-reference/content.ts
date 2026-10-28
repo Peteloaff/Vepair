@@ -730,10 +730,20 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           connection still goes through the Vrotégé's own accept-and-choose-categories step. The
           Vrotégé's invite card says that administrators of the coach's organization can see the
           connection (but not voice data).</p>
+          <p><b>Org reporting.</b> <code>GET /api/v1/coach/team/report?days=7|30|90</code> (org admin,
+          422 <code>invalid_period</code> otherwise) returns per-coach counts from
+          <code>app/org_report.py</code>. A coach's own work (invites sent, notes written,
+          messages sent, assignments sent) always shows. Vrotégé practice (completed
+          <code>ExerciseSession</code>s in the window, and how many Vrotégés practiced) counts only
+          active connections whose <code>exercise_history</code> grant is on, and is
+          <code>null</code> for a coach until <code>MIN_GROUP_SIZE</code> (3) of their Vrotégés
+          share; the team totals sum only the coaches shown, so a hidden coach can't be derived by
+          subtraction. Nothing in the response names or identifies a Vrotégé. The Team page's
+          <i>Team activity</i> table renders it, and the invite card tells Vrotégés about it.</p>
           <p><b>Privacy invariant:</b> sharing an organization shares nothing about Vrotégés'
           data. <code>CoachAccess</code> stays per (coach, singer), so
           <code>require_coach_access</code> is unchanged and neither role can open a teammate's
-          Vrotégé; an admin sees only who is connected to whom. The invite quota already counted invites across every
+          Vrotégé; an admin sees only who is connected to whom, plus the report below. The invite quota already counted invites across every
           coach in the organization, so it is now genuinely shared.</p>
           <div class="callout info">
             <b>Not built yet:</b> the QuickBooks Online monthly sync job (draft-invoice creation,

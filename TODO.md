@@ -49,8 +49,9 @@ All five items below were built and deployed on 2026-10-28.
 - [x] **Coach leaves a team**: built on `feature/org-vrotege-management` (2026-10-28), with remove-
       from-team, org-admin Vrotégé connections (invite for a coach, move, end connection).
       Deployed 2026-10-28.
-- [ ] **Org-level reporting for admins**: per-coach practice and activity roll-ups on the Team
-      page (counts only, no singer identities, in keeping with the privacy rule).
+- [x] **Org-level reporting for admins**: built on `feature/org-reporting` (2026-10-28): a Team
+      activity table on the Team page, counts only, practice figures hidden below 3 sharing
+      Vrotégés. Ticked as deployed once that branch ships.
 - [ ] **Google Play packaging**: wrap the PWA (TWA or Capacitor, to be confirmed), Play Console
       listing, store assets. Needs a Play developer account. The iPhone/App Store equivalent
       would be a separate decision.

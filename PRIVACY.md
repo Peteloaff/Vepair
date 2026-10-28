@@ -57,7 +57,13 @@ decline another):
    other's singers. An organization admin can see who is connected to which coach (a name or
    email and the connection date) and can invite on a coach's behalf, end a connection or move a
    singer to another coach, but never any of a singer's voice data, and every new connection still
-   needs the singer's own acceptance. The singer is told this on each invite. Removing a coach from
+   needs the singer's own acceptance. An organization admin also sees a Team activity report of
+   counts per coach: the coach's own work (invites, notes, messages and assignments sent) and, for
+   singers who have shared their *exercise history* with that coach, how many practice sessions
+   were completed and how many singers practiced. It names no one, covers only consenting
+   singers, and a coach's practice figures are hidden until at least 3 of their singers share
+   (team totals leave hidden coaches out, so they can't be worked out by subtraction). The singer
+   is told all of this on each invite. Removing a coach from
    a team ends their connections but keeps the notes and messages written to the singer. One active coach
    per singer at a time (DB-enforced). Revoking is immediate for
    future access (the coach's next request is rejected) but forward-only for the past — already-

@@ -94,3 +94,46 @@ class TeamMemberUpdate(BaseModel):
     org_role: OrgRole | None = None
     is_active: bool | None = None
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class CoachReportRow(BaseModel):
+    """One coach's activity for the report period. Everything here is a count.
+
+    The first group is the coach's own work (nothing about any Vrotégé's voice). The practice
+    figures describe Vrotégés, so they only cover those who share their exercise history with
+    this coach, and are None (hidden) until at least `min_group_size` of them do -- with fewer,
+    a count would effectively describe one identifiable person."""
+
+    coach_id: uuid.UUID
+    display_name: str
+    org_role: OrgRole
+    is_active: bool
+    connected_vroteges: int
+    invites_sent: int
+    notes_written: int
+    messages_sent: int
+    assignments_sent: int
+    # Vrotégés connected to this coach who share their exercise history (a count, no names).
+    sharing_vroteges: int
+    practice_sessions: int | None
+    practicing_vroteges: int | None
+
+
+class OrgReportTotals(BaseModel):
+    connected_vroteges: int
+    invites_sent: int
+    notes_written: int
+    messages_sent: int
+    assignments_sent: int
+    # Sums over the coaches whose practice figures are shown, never over hidden ones, so a
+    # hidden coach can't be worked out by subtraction.
+    practice_sessions: int
+    practicing_vroteges: int
+
+
+class OrgReportOut(BaseModel):
+    period_days: int
+    since: datetime
+    min_group_size: int
+    coaches: list[CoachReportRow]
+    totals: OrgReportTotals
