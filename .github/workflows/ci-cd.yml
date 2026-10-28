@@ -81,6 +81,11 @@ jobs:
         working-directory: apps/api
         run: alembic upgrade head
 
+      - name: Seed the exercise library
+        # Many API tests assume the library exists, as it does in every real database.
+        working-directory: apps/api
+        run: python scripts/seed_exercises.py
+
       - name: Audio engine tests
         run: pytest packages/audio-engine/tests -q
 
@@ -107,6 +112,9 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
 
       - run: npm ci
+      - name: Generate Next.js route types
+        # Next creates the global types (like LayoutProps) the app uses; a fresh checkout has none.
+        run: npx next typegen
       - name: Typecheck
         run: npx tsc --noEmit
       - name: Lint
