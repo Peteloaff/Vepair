@@ -612,6 +612,13 @@ class CoachProfile(Base, TimestampMixin):
     # a singer's consent is to one specific coach (CoachAccess), not to the organization.
     # Everyone who existed before teams (each the sole coach of their own org) is an admin.
     org_role: Mapped[str] = mapped_column(String(20), default="admin", server_default="admin")
+    # Set when an organization admin removes this coach from the team. The row (and so every
+    # note, message and assignment that points at it) is kept so Vrotégés keep the history
+    # written about them, but the account is no longer a coach: get_current_coach rejects it
+    # and it is left out of every team list. Cleared if the coach is added back.
+    removed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     organization: Mapped["Organization"] = relationship()
 

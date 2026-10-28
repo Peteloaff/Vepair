@@ -2,6 +2,24 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Organization admins manage coaches and Vrotégé connections (2026-10-28)
+
+- **Remove a coach from the team.** Besides deactivating (a reversible pause), an organization
+  admin can now remove a coach for good, from the Team page or (for platform admins) the admin
+  console. The coach keeps their login but stops being a coach, their Vrotégés' connections end,
+  and their pending invites are cancelled. Their notes, messages and assignments are kept, so
+  Vrotégés keep everything written about them. Adding the same email back restores them without a
+  new password link. You can't remove yourself or the last active admin. New column
+  `coach_profiles.removed_at` (migration `f6c3a8d1b2e7`).
+- **Vrotégé connections, for admins.** A new "Vrotégés in your organization" section on the Team
+  page (admins only) lists who is connected to which coach, and lets an admin **invite a Vrotégé
+  for a coach**, **move** a Vrotégé to another coach, **end a connection**, or **cancel a pending
+  invite**. Admins see a name or email and a date, never a Vrotégé's voice data, and every new
+  connection still needs the Vrotégé to accept and choose what to share. Vrotégés are told on each
+  invite that their coach's organization admins can see the connection.
+- The two actions coaches and admins share (sending an invite, ending a connection) now live in one
+  module, `app/coach_connections.py`, so both paths behave the same.
+
 ## Added — Team polish, existing accounts on a team, and a docs refresh (2026-10-28)
 
 - **Organization admins can rename their organization** from the Coach Portal's Team page (it was

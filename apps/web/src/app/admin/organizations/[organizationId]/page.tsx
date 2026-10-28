@@ -117,7 +117,7 @@ function OrganizationDetailContent() {
           basePath={`/api/v1/admin/organizations/${detail.id}/team`}
           renamePath={`/api/v1/admin/organizations/${detail.id}`}
           allowExisting
-          onRenamed={load}
+          onChanged={load}
         />
       </section>
 

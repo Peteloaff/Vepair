@@ -522,6 +522,28 @@ export interface Team {
   invites_used_this_period: number;
 }
 
+export interface OrgVrotegeConnection {
+  access_id: string;
+  singer_label: string;
+  singer_email: string;
+  coach_id: string;
+  coach_name: string;
+  connected_since: string | null;
+}
+
+export interface OrgPendingInvite {
+  invite_id: string;
+  singer_email: string;
+  coach_id: string;
+  coach_name: string;
+  sent_at: string;
+}
+
+export interface OrgVroteges {
+  connections: OrgVrotegeConnection[];
+  pending_invites: OrgPendingInvite[];
+}
+
 export interface CoachProfile {
   id: string;
   display_name: string;

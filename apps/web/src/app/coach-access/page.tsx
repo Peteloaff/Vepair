@@ -85,6 +85,11 @@ function InviteCard({
         <p className="mt-1 text-sm text-text-dim">&ldquo;{invite.message}&rdquo;</p>
       )}
 
+      <p className="mt-2 text-xs text-text-faint">
+        Administrators of {invite.coach_studio_name || "this coach's organization"} can see that
+        you&apos;re connected to {invite.coach_display_name}, but never your voice data.
+      </p>
+
       <p className="mt-3 mb-2 text-xs text-text-faint">
         Choose what to share — nothing is selected by default:
       </p>

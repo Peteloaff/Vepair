@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -37,6 +38,46 @@ class TeamMemberCreate(BaseModel):
     email: EmailStr
     display_name: str = Field(min_length=1, max_length=200)
     org_role: OrgRole = "member"
+
+
+class OrgVrotegeConnectionOut(BaseModel):
+    """One active coach/Vrotégé connection, as an organization admin sees it: who is connected to
+    which coach and since when -- an identifier only, never any of their voice data."""
+
+    access_id: uuid.UUID
+    singer_label: str  # username if they set one, else their email
+    singer_email: str
+    coach_id: uuid.UUID
+    coach_name: str
+    connected_since: datetime | None
+
+
+class OrgPendingInviteOut(BaseModel):
+    invite_id: uuid.UUID
+    singer_email: str
+    coach_id: uuid.UUID
+    coach_name: str
+    sent_at: datetime
+
+
+class OrgVrotegesOut(BaseModel):
+    connections: list[OrgVrotegeConnectionOut]
+    pending_invites: list[OrgPendingInviteOut]
+
+
+class OrgInviteCreate(BaseModel):
+    coach_id: uuid.UUID
+    singer_email: EmailStr
+    message: str | None = Field(default=None, max_length=1000)
+
+
+class OrgMoveVrotege(BaseModel):
+    coach_id: uuid.UUID
+
+
+class RemoveMemberOut(BaseModel):
+    ended_connections: int
+    cancelled_invites: int
 
 
 class TeamExistingMemberCreate(BaseModel):

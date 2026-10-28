@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.coach_auth import get_current_coach, require_coach_access
+from app.coach_connections import end_connection, new_invite
 from app.coach_notes import find_flagged_terms
 from app.database import get_db
 from app.email import send_coach_invite_email, send_new_message_email
@@ -22,7 +23,6 @@ from app.models import (
     CoachMessage,
     CoachNote,
     CoachProfile,
-    ConsentRecord,
     DailyCheckIn,
     Exercise,
     Recording,
@@ -126,38 +126,15 @@ def create_invite(
     coach: CoachProfile = Depends(get_current_coach),
     db: Session = Depends(get_db),
 ) -> CoachInviteOut:
-    # The invitee doesn't need an account yet: if one exists the invite is linked to it now,
-    # otherwise it's emailed as a sign-up invitation and linked when they sign up.
-    email = payload.singer_email.lower()
-    singer = db.scalar(select(User).where(User.email == email))
-
-    existing = db.scalar(
-        select(CoachInvite).where(
-            CoachInvite.coach_id == coach.id,
-            CoachInvite.singer_email == email,
-            CoachInvite.status == "pending",
-        )
-    )
-    if existing is not None:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "invite_already_pending",
-                "message": "An invite to this Vrotégé is already pending.",
-            },
-        )
-
-    invite = CoachInvite(
-        coach_id=coach.id,
-        singer_user_id=singer.id if singer is not None else None,
-        singer_email=email,
-        message=payload.message,
-    )
-    db.add(invite)
+    invite, has_account = new_invite(db, coach, payload.singer_email, payload.message)
     db.commit()
     db.refresh(invite)
     send_coach_invite_email(
-        email, coach.display_name, coach.studio_name, invite.message, has_account=singer is not None
+        invite.singer_email,
+        coach.display_name,
+        coach.studio_name,
+        invite.message,
+        has_account=has_account,
     )
     return CoachInviteOut(
         id=invite.id,
@@ -307,27 +284,7 @@ def remove_singer(
     (CoachAssignment/CoachNote rows are never deleted, and the singer keeps permanent read
     access to notes already written about them). The singer's account and all their own data
     are untouched — this only ends the coach's access to it."""
-    access.status = "revoked"
-    access.revoked_at = datetime.now(UTC)
-    access.revoked_by = "coach"
-
-    grants = db.scalars(
-        select(CoachAccessCategoryGrant).where(
-            CoachAccessCategoryGrant.coach_access_id == access.id,
-            CoachAccessCategoryGrant.granted.is_(True),
-        )
-    ).all()
-    for grant in grants:
-        db.add(
-            ConsentRecord(
-                user_id=access.singer_user_id,
-                consent_type="coach_sharing",
-                category=grant.category,
-                granted=False,
-                granted_at=func.clock_timestamp(),
-                clinician_id=access.coach_id,
-            )
-        )
+    end_connection(db, access, "coach")
     db.commit()
 
 
