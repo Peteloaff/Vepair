@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { OrgReport } from "@/components/OrgReport";
 import { OrgVroteges } from "@/components/OrgVroteges";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireCoach } from "@/components/RequireCoach";
@@ -26,6 +27,7 @@ export default function CoachTeamPage() {
             renamePath="/api/v1/coach/team/organization"
             onChanged={() => setVersion((v) => v + 1)}
           />
+          <OrgReport key={`report-${version}`} />
           <OrgVroteges key={version} />
           <div className="mt-8">
             <Link href="/coach" className="text-xs text-text-faint hover:text-text-dim">
