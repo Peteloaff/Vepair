@@ -16,8 +16,9 @@ Reference's "Live in production" list; the long-form decisions behind billing ar
       email arrived. Confirmed by Pete 2026-10-28.
 - [x] **Admin accounts**: pete@vepair.com is the main admin and pete@abc.com is a demo account.
       Sorted out by Pete 2026-10-28.
-- [ ] **Decide when to remove the "beta" tag**: one line, `SHOW_BETA_BADGE` in
-      `apps/web/src/components/TopNav.tsx`.
+- [x] **Decide when to remove the "beta" tag**: decided by Pete 2026-10-28: keep it until payments
+      go live, then remove it (one line, `SHOW_BETA_BADGE` in
+      `apps/web/src/components/TopNav.tsx`). Do it as part of launching the paywall.
 
 ## 2. Small, ready to build (S)
 
