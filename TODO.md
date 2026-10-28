@@ -10,11 +10,10 @@ Reference's "Live in production" list; the long-form decisions behind billing ar
 
 - [ ] **Real iPhone check**: logo in the header, new icons, home-screen install, and that audio
       plays (the AudioContext resume fix). Android already works.
-- [ ] **Confirm assigned exercises**: log in as pete@vepair.com and check John's assignment shows
-      on Home under "Assigned by your coach". If not, check John's connection is active and he
-      assigned from Pete's Assign page.
-- [ ] **Try the Team page for real**: add a coach with an email you own and confirm the
-      set-your-password email arrives (check spam first).
+- [x] **Confirm assigned exercises**: John's assignment shows on Home under "Assigned by your
+      coach" for pete@vepair.com. Confirmed by Pete 2026-10-28.
+- [x] **Try the Team page for real**: added a coach with a real email and the set-your-password
+      email arrived. Confirmed by Pete 2026-10-28.
 - [ ] **Admin accounts**: make pete@vepair.com the main admin and demote pete@abc.com to a demo
       account (done through the admin console so it is audited; not yet done).
 - [ ] **Decide when to remove the "beta" tag**: one line, `SHOW_BETA_BADGE` in
