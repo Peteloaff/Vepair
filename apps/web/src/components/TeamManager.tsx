@@ -17,8 +17,20 @@ const inputClass =
 
 // The team of coaches in one organization. Used by the Coach Portal's Team page (any coach sees
 // it, only an organization admin can change it) and by the admin console's organization page --
-// the two differ only in the base path, which both serve with the same shape.
-export function TeamManager({ basePath }: { basePath: string }) {
+// the two differ only in the paths, which both serve with the same shapes. `renamePath` is
+// where the organization's name is PATCHed; `allowExisting` (admin console only) adds the
+// option to attach a person who already has a VepAIr account.
+export function TeamManager({
+  basePath,
+  renamePath,
+  allowExisting = false,
+  onRenamed,
+}: {
+  basePath: string;
+  renamePath: string;
+  allowExisting?: boolean;
+  onRenamed?: () => void;
+}) {
   const { apiFetch } = useAuth();
   const [team, setTeam] = useState<Team | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +41,9 @@ export function TeamManager({ basePath }: { basePath: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgRole>("member");
   const [adding, setAdding] = useState(false);
+  const [existing, setExisting] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [orgName, setOrgName] = useState("");
 
   async function load() {
     try {
@@ -68,11 +83,15 @@ export function TeamManager({ basePath }: { basePath: string }) {
     setError(null);
     setNotice(null);
     try {
-      await apiFetch(`${basePath}/members`, {
+      await apiFetch(existing ? `${basePath}/members/existing` : `${basePath}/members`, {
         method: "POST",
         body: { email: email.trim(), display_name: name.trim(), org_role: role },
       });
-      setNotice(`Added ${name.trim()}. We emailed ${email.trim()} a link to choose a password.`);
+      setNotice(
+        existing
+          ? `Added ${name.trim()}. They keep their existing login and now also see the Coach Portal.`
+          : `Added ${name.trim()}. We emailed ${email.trim()} a link to choose a password.`
+      );
       setName("");
       setEmail("");
       setRole("member");
@@ -81,6 +100,21 @@ export function TeamManager({ basePath }: { basePath: string }) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
       setAdding(false);
+    }
+  }
+
+  async function saveName(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setNotice(null);
+    try {
+      await apiFetch(renamePath, { method: "PATCH", body: { name: orgName.trim() } });
+      setRenaming(false);
+      setNotice("Organization name updated.");
+      await load();
+      onRenamed?.();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
     }
   }
 
@@ -102,6 +136,51 @@ export function TeamManager({ basePath }: { basePath: string }) {
 
   return (
     <div>
+      {renaming ? (
+        <form onSubmit={saveName} className="mb-4 flex flex-wrap items-end gap-2">
+          <label className="min-w-0 flex-1 text-xs text-text-faint">
+            Organization name
+            <input
+              required
+              maxLength={200}
+              value={orgName}
+              onChange={(e) => setOrgName(e.target.value)}
+              className={`mt-1 ${inputClass}`}
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-ink"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={() => setRenaming(false)}
+            className="rounded-xl border border-border-strong px-4 py-2.5 text-sm hover:bg-surface-2"
+          >
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <div className="mb-1 flex flex-wrap items-center gap-3">
+          <h3 className="text-lg font-medium tracking-tight">
+            {team.organization_name || "Unnamed organization"}
+          </h3>
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => {
+                setOrgName(team.organization_name ?? "");
+                setRenaming(true);
+              }}
+              className="text-xs text-accent hover:text-accent-strong"
+            >
+              Rename
+            </button>
+          )}
+        </div>
+      )}
       <p className="mb-4 text-sm text-text-dim">
         {team.members.length === 1 ? "1 coach" : `${team.members.length} coaches`} &middot;{" "}
         {team.invites_used_this_period} of {team.invite_quota_included} Vrotégé invites used this
@@ -136,6 +215,7 @@ export function TeamManager({ basePath }: { basePath: string }) {
                   <Chip tone={m.org_role === "admin" ? "violet" : "neutral"}>
                     {m.org_role === "admin" ? "Admin" : "Member"}
                   </Chip>
+                  {m.also_singer && <Chip tone="accent">Also a Vrotégé</Chip>}
                   <Chip tone={status.tone}>{status.label}</Chip>
                 </div>
               </div>
@@ -190,7 +270,7 @@ export function TeamManager({ basePath }: { basePath: string }) {
                         onClick={() => {
                           if (
                             window.confirm(
-                              `Deactivate ${m.display_name}? They won't be able to log in until you reactivate them. Their Vrotégés and data are kept.`
+                              `Deactivate ${m.display_name}? They won't be able to log in until you reactivate them${m.also_singer ? " — and because this is also their Vrotégé account, that includes their own VepAIr login" : ""}. Their Vrotégés and data are kept.`
                             )
                           ) {
                             void patch(m, { is_active: false }, `${m.display_name} was deactivated.`);
@@ -223,9 +303,22 @@ export function TeamManager({ basePath }: { basePath: string }) {
         <form onSubmit={addMember} className="mt-6 rounded-2xl border border-border p-4">
           <h3 className="mb-1 text-sm font-semibold">Add a coach</h3>
           <p className="mb-3 text-xs text-text-faint">
-            They get an email with a link to choose their own password. Admins can manage the team;
-            members can invite and coach their own Vrotégés.
+            {existing
+              ? "They keep their existing login and data, and also get the Coach Portal."
+              : "They get an email with a link to choose their own password."}{" "}
+            Admins can manage the team; members can invite and coach their own Vrotégés.
           </p>
+          {allowExisting && (
+            <label className="mb-3 flex items-center gap-2 text-sm text-text-dim">
+              <input
+                type="checkbox"
+                checked={existing}
+                onChange={(e) => setExisting(e.target.checked)}
+                className="h-4 w-4 rounded border-border-strong bg-surface"
+              />
+              This person already has a VepAIr account
+            </label>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-text-faint">
               Name

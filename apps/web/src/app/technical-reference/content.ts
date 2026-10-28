@@ -682,7 +682,7 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           <code>admin</code> since every existing coach is the sole coach of their own org). An org
           admin (<code>get_current_org_admin</code>) manages the team from
           <code class="path">/coach/team</code> via <code>GET /api/v1/coach/team</code>,
-          <code>POST /members</code>, <code>PATCH /members/{coach_id}</code> (role, deactivate/
+          <code>PATCH /organization</code> (rename), <code>POST /members</code>, <code>PATCH /members/{coach_id}</code> (role, deactivate/
           reactivate, name) and <code>POST /members/{coach_id}/resend-welcome</code>; any member
           can read the team. A platform admin has the same operations from the admin console under
           <code>/api/v1/admin/organizations/{id}/team</code> (full-admin only to change; audited as
@@ -691,7 +691,14 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           random password nobody knows plus a 7-day <code>PasswordResetToken</code>, and emails a
           set-your-password link (<code>send_team_welcome_email</code>) that opens the ordinary
           <code>/reset-password</code> page; an email that already has an account is refused with
-          <code>409 email_taken</code>. Rules enforced in <code>update_member</code>: an
+          <code>409 email_taken</code>. A platform admin can instead attach an account that already
+          exists (<code>POST /api/v1/admin/organizations/{id}/team/members/existing</code>, audited as
+          <code>add_existing_org_member</code>): it keeps its login and data and just gains a
+          <code>CoachProfile</code> in the organization; refused with <code>already_a_coach</code> or
+          <code>account_deactivated</code>, and the member list flags <code>also_singer</code>. Rename is
+          <code>PATCH /api/v1/admin/organizations/{id}</code> (audited as
+          <code>rename_organization</code>). The welcome link adds <code>&amp;welcome=1</code> so
+          <code>/reset-password</code> can greet a new member and hide the token field. Rules enforced in <code>update_member</code>: an
           organization always keeps one active admin (<code>409 last_admin</code>) and you can't
           deactivate yourself (<code>409 cannot_deactivate_self</code>). The platform-admin
           <code>set-coach</code> revoke is refused while an org still has other coaches

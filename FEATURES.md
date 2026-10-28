@@ -20,7 +20,7 @@ different from your usual. Everything below is in service of that one idea.
 ## Live features
 
 ### Account & onboarding
-Email/password signup, login, and password reset. Onboarding immediately offers a track choice
+Email/password signup, login, and emailed password reset. Onboarding immediately offers a track choice
 (**Vocal Repair** or **Vocal Improvement**) plus a short, entirely optional background
 questionnaire (voice use, singer status, style, practice frequency, goals, prior coaching
 history). No question here is required to use the app.
@@ -60,7 +60,7 @@ a "why did I get this score?" breakdown showing exactly which measurements contr
 much. Explicitly not a medical score — a transparent readiness signal, not a black box.
 
 ### Adaptive Voice Exercises
-A 23-exercise library across 12 categories (breathing, humming, lip/tongue trills, resonant
+A 27-exercise library across 12 categories (breathing, humming, lip/tongue trills, resonant
 voice, SOVT/straw phonation, sirens/glides, range exploration, cooldown, and more), assembled
 into a 5/10/15/20-minute routine that adapts daily to your recovery status, fatigue, recent
 vocal load, sleep, and baseline deviations. Reported discomfort always caps the routine to the
@@ -103,14 +103,75 @@ The long-range view: your VepAIr Score charted over any range up to all-time, yo
 training streak and consistency (with a calendar-style activity grid), and every tracked
 exercise's current trend in one place.
 
+### Warm Up & Cool Down
+Two on-demand routines, separate from the once-a-day adaptive one, for before a rehearsal or
+after a show. Warm Up steps through breathing, gentle humming and straw (SOVT) exercises; Cool
+Down runs a short closing exercise. They go through the exact same safety rules as the daily
+routine, and a completed one counts toward your training streak. The library also gained four
+speech-therapy-style breathing exercises (pursed-lip breathing, an /s/ vs. /z/ breath check, an
+extended-exhale count and relaxed breathing with tension release).
+
+### "Get what you need" prompts
+Some exercises need a prop: a drinking straw, a glass of water, something to read aloud. Before
+one of those starts, VepAIr shows a screen that lists each item, explains what it is and how to
+use it, and only starts the timer (and microphone) when you tap Next. Skipping is always allowed.
+
+### Tone Match
+A tap-a-note, sing-it-back practice tool, plus a 5-tone challenge game with a trend card on the
+home page. Grading happens on your device; results are private and never shared with a coach.
+
+### Practice reminders
+An optional daily email nudge for people who have opted in to notifications.
+
+### Light / dark theme and installing the app
+A real light and dark theme across the whole app (system preference by default, a toggle in the
+header). VepAIr installs to a phone's home screen as an app on Android and iPhone, with the
+VepAIr logo as its icon.
+
+### Working with a coach
+A coach (or a clinic's team of coaches) can invite you by email, even before you have an account.
+Nothing is shared until you accept, and you choose exactly which categories to share (recovery
+trends, vocal range, exercise history, recordings), changeable or revocable at any time. Once
+connected, your coach can:
+- assign training, which appears on your Home page under **Assigned by your coach** with a Start
+  button, still subject to the same daily safety limit as everything else;
+- leave you notes and message you, and you can message back;
+- follow your progress on a dashboard built from the same numbers you see.
+
+A coach can only ever see what you've shared with them, and never your private notes fields.
+
+### VepAIr Coach portal
+For vocal coaches, singing teachers and studios: a roster with at-a-glance score and practice
+snapshots, invites, per-Vrotégé dashboards and progress charts, assigning training (including
+exercises the coach writes, and reusable assignment templates), notes, and messaging. A clinic or
+studio can have several coaches under one organization, each an **admin** or a **member**: admins
+add coaches (who set their own password through an emailed link), change roles and deactivate
+coaches. The team shares one Coach Pro plan and one invite allowance, but each coach's Vrotégés
+stay private to that coach.
+
+### Your data, your control
+Download everything VepAIr holds about you as one file, delete any single recording, delete your
+whole account, and raw audio is purged automatically after a retention period. A read-only public
+API (personal access tokens) lets you pull your own recovery, range and training data into other
+tools.
+
+### Admin console
+For the people running VepAIr: user search and sorting, deactivate/reactivate/delete (single and
+bulk), role tiers, an audit log of every admin action, reports, organization and Coach Pro
+management (including each organization's team), and a demo-data tool for exploring the admin and
+coach screens. Not part of the consumer product.
+
 ## Planned / not yet built
+
+The working list, with sizes and what each item is waiting on, is in [`TODO.md`](TODO.md). In
+short:
 
 | Feature | Status |
 |---|---|
-| VepAIr Coach — professional portal for vocal coaches/studios to assign training and view a consented user's progress | Scoped (Stage 12), not started — see [`ROADMAP.md`](ROADMAP.md) |
-| Mobile app packaging (Android/Play Store) | Planned as part of the post-Stage-11 deployment milestone, not started |
-| Recording deletion | Not yet built — recordings currently persist indefinitely once uploaded |
-| Real email delivery for password reset | Currently dev-mode only (token printed to server logs) — no email provider configured yet |
+| Free vs. paid singer tier (User Pro) | Pricing decided in outline, not built — see [`ROADMAP.md`](ROADMAP.md) |
+| Monthly QuickBooks draft invoices for coach invite overage | Decided, not built — see [`ROADMAP.md`](ROADMAP.md) |
+| Android app packaging (Google Play) | Not started; the app already installs from the browser as a PWA |
+| Cross-user Tone Match leaderboard | Scoped, unscheduled; needs a privacy decision first |
 | Computer Vision Coach, Wearables + Vocal Load | Backlog — deprioritized, revisited only if they become a priority |
 
 **Explicitly and permanently out of scope**: anything clinical or regulatory ("VepAIr Clinical").

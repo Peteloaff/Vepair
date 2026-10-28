@@ -541,7 +541,7 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
           </table>
           <p><b>To add a coach</b> (admins only): enter their name, email and role under <b>Add a coach</b>. They get an email with a link to choose their own password — you never see or set it. Until they log in for the first time they show as <b>Invited</b>; <b>Resend invite</b> sends a fresh link. <b>Deactivate</b> switches a coach's login off without deleting anything, and <b>Reactivate</b> turns it back on. An organization always keeps at least one active admin.</p>
           <div class="callout coach"><b>Each coach's Vrotégés stay private to that coach.</b> A Vrotégé chooses to share with one specific coach, not with the clinic, so teammates and even admins can't open each other's Vrotégés — the Team page only shows how many each coach has. If a coach leaves, ask each Vrotégé to connect with their new coach.</div>
-          <p>The email you add must be new to VepAIr. If that person already has an account (for example as a Vrotégé), contact VepAIr support to add them.</p>
+          <p><b>Rename your organization</b> any time with <b>Rename</b> next to its name at the top of the Team page (admins only). The email you add must be new to VepAIr. If that person already has an account (for example as a Vrotégé), contact VepAIr support: they can add that account to your team without changing its login or data.</p>
         </div>
       </section>
 

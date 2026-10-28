@@ -20,7 +20,11 @@ from app.coach_invites import attach_pending_invites
 from app.config import get_settings
 from app.database import get_db
 from app.demo_data import create_demo_data, demo_status, remove_demo_data
-from app.email import send_password_reset_email, send_team_welcome_email
+from app.email import (
+    send_password_reset_email,
+    send_team_added_email,
+    send_team_welcome_email,
+)
 from app.models import (
     AuthCredential,
     CoachProfile,
@@ -37,8 +41,10 @@ from app.models import (
 from app.org_team import (
     WELCOME_TOKEN_DAYS,
     add_member,
+    attach_existing_member,
     build_team,
     issue_welcome_token,
+    rename_organization,
     team_member_not_found,
     update_member,
 )
@@ -62,7 +68,13 @@ from app.schemas_admin import (
     AdminUserListItemOut,
 )
 from app.schemas_auth import UserOut
-from app.schemas_team import TeamMemberCreate, TeamMemberUpdate, TeamOut
+from app.schemas_team import (
+    OrganizationRename,
+    TeamExistingMemberCreate,
+    TeamMemberCreate,
+    TeamMemberUpdate,
+    TeamOut,
+)
 from app.security import generate_opaque_token, hash_password
 from app.site_settings import get_site_settings
 
@@ -648,6 +660,29 @@ def set_coach_pro(
     return _organization_to_out(db, organization)
 
 
+@router.patch("/organizations/{organization_id}", response_model=AdminOrganizationOut)
+def rename_organization_admin(
+    organization_id: uuid.UUID,
+    payload: OrganizationRename,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> AdminOrganizationOut:
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    old_name = organization.name
+    rename_organization(organization, payload.name)
+    log_admin_action(
+        db,
+        admin.id,
+        "rename_organization",
+        None,
+        {"organization_id": str(organization.id), "from": old_name, "to": organization.name},
+    )
+    db.commit()
+    return _organization_to_out(db, organization)
+
+
 @router.get("/organizations/{organization_id}/team", response_model=TeamOut)
 def get_organization_team(
     organization_id: uuid.UUID,
@@ -694,6 +729,38 @@ def add_organization_team_member(
         token,
         WELCOME_TOKEN_DAYS,
     )
+    return build_team(db, organization, None)
+
+
+@router.post(
+    "/organizations/{organization_id}/team/members/existing",
+    response_model=TeamOut,
+    status_code=201,
+)
+def add_existing_account_to_team(
+    organization_id: uuid.UUID,
+    payload: TeamExistingMemberCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> TeamOut:
+    """Adds an account that already exists (e.g. a Vrotégé) to this team as a coach. The account
+    keeps its login, password and all of its own data; it just also gets a CoachProfile in this
+    organization. Refused for an account that is already a coach or is deactivated."""
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    coach, user = attach_existing_member(
+        db, organization, payload.email, payload.display_name, payload.org_role
+    )
+    log_admin_action(
+        db,
+        admin.id,
+        "add_existing_org_member",
+        user.id,
+        {"organization_id": str(organization.id), "email": user.email, "org_role": coach.org_role},
+    )
+    db.commit()
+    send_team_added_email(user.email, coach.display_name, organization.name, coach.org_role)
     return build_team(db, organization, None)
 
 

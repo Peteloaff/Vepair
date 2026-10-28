@@ -16,10 +16,17 @@ from app.org_team import (
     add_member,
     build_team,
     issue_welcome_token,
+    rename_organization,
     team_member_not_found,
     update_member,
 )
-from app.schemas_team import TeamMemberCreate, TeamMemberOut, TeamMemberUpdate, TeamOut
+from app.schemas_team import (
+    OrganizationRename,
+    TeamMemberCreate,
+    TeamMemberOut,
+    TeamMemberUpdate,
+    TeamOut,
+)
 
 router = APIRouter(prefix="/api/v1/coach/team", tags=["coach-team"])
 
@@ -34,6 +41,17 @@ def get_team(
     coach: CoachProfile = Depends(get_current_coach), db: Session = Depends(get_db)
 ) -> TeamOut:
     return build_team(db, coach.organization, coach.user_id)
+
+
+@router.patch("/organization", response_model=TeamOut)
+def rename_my_organization(
+    payload: OrganizationRename,
+    admin: CoachProfile = Depends(get_current_org_admin),
+    db: Session = Depends(get_db),
+) -> TeamOut:
+    rename_organization(admin.organization, payload.name)
+    db.commit()
+    return build_team(db, admin.organization, admin.user_id)
 
 
 @router.post("/members", response_model=TeamMemberOut, status_code=201)
