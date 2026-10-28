@@ -2,6 +2,113 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Added — Team polish, existing accounts on a team, and a docs refresh (2026-10-28)
+
+- **Organization admins can rename their organization** from the Coach Portal's Team page (it was
+  set once at signup and could never change). Platform admins can rename any organization from
+  the admin console; that action is audit-logged.
+- **Platform admins can add an account that already exists to a team** (for example a Vrotégé who
+  is also a coach), from the organization page in the admin console. The account keeps its
+  login and all of its own data and just also gets a coach role; it is refused for an account that
+  is already a coach or is deactivated, and the person is emailed. Organization admins still
+  can't do this themselves. The team list marks such accounts "Also a Vrotégé" and the deactivate
+  confirmation says that deactivating a coach switches off the whole login.
+- **A clearer set-your-password page.** A link from an email no longer asks anyone to paste a
+  "reset token"; it just asks for a password, and a new team member's welcome link says "Welcome
+  to VepAIr". A link that has lost its token falls back to a plain "code from your email" field.
+- `FEATURES.md`, `ROADMAP.md` and this changelog brought up to date, and a scoped `TODO.md` added.
+
+## Added — Organization teams (2026-10-23)
+
+- **Several coaches per organization.** A clinic or studio can now have a team: each coach is an
+  **admin** or a **member** (`coach_profiles.org_role`). Admins add coaches (a new account with an
+  emailed set-your-password link that works for 7 days), change roles, and deactivate or
+  reactivate coaches from a new **Team** page in the Coach Portal; platform admins get the same
+  controls on each organization's page in the admin console. An organization always keeps at
+  least one active admin. The 50-invite allowance and Coach Pro status are shared by the team.
+- **Each coach's Vrotégés stay private to that coach.** A Vrotégé consents to one specific coach,
+  not to the clinic, so teammates and admins can't open each other's Vrotégés; the Team page only
+  shows a count. Migration `e5b9c2d7a1f4` drops the one-coach-per-organization constraint and
+  backfills every existing coach as an admin.
+- The admin organization list shows one row per organization (with "+N more") instead of one per
+  coach, and "remove coach status" is refused while an organization still has other coaches.
+- Demo data now includes teammates on two of the demo organizations.
+
+## Added — Assigned exercises on Home, and a re-invite fix (2026-10-19 to 2026-10-23)
+
+- **A Vrotégé can see and start what their coach assigned.** Before, an assignment only appeared
+  inside the timed daily routine and only if it fit, so a Vrotégé could be assigned exercises and
+  never see them. Home and Coach Access now show an **Assigned by your coach** card (coach, note,
+  exercises in the coach's order, target notes) with a Start button. Today's safety limit still
+  applies: a demanding exercise is marked "Held back today" and can't be started.
+- **Fixed:** accepting a new invite from a coach the Vrotégé had earlier revoked failed with an
+  error (a uniqueness rule on the coach/Vrotégé pair). A revoked connection is now reactivated.
+
+## Added — Logo, icons and iPhone polish; demo data; Help video (2026-10-12)
+
+- The VepAIr logo is back in the header and on the landing page, with refreshed app icons.
+- iPhone fixes: audio playback resumes correctly, text fields no longer zoom the page, and an
+  "Add to Home Screen" hint shows on iPhone (which has no install prompt).
+- **Admin demo data:** one click creates four fake organizations with coaches, Vrotégés and
+  activity so the admin and coach screens can be explored; one click removes it again.
+- The Help page has the VepAIr video and a link to the YouTube channel, and a small, easily
+  removable "beta" tag sits next to the wordmark.
+
+## Added — Redesign, equipment prompts, invites by email, admin user management (2026-10-06)
+
+- **A new look:** navy, cyan and violet, with a redesigned Home, Progress and Coach Portal (score
+  and practice snapshots on the coach roster) and shortcuts on top of Home.
+- **"Get what you need" prompts** before exercises that use a straw, water or reading material.
+- **Coach invites are emailed**, and a coach can invite someone who has no account yet: the email
+  invites them to sign up and the invite is waiting when they do. Logging in returns to the
+  invite, and Home shows a pending-invite banner.
+- **Coach Pro activates automatically** whenever a coach account is created (an admin can still
+  revoke it), and every coach that was waiting was activated.
+- **Admin user management:** sortable user list, per-row deactivate and delete, and bulk delete of
+  deactivated accounts. **Fixed:** deleting an account that had finished onboarding failed in
+  production.
+
+## Added — Light/dark theme and Warm Up / Cool Down (2026-09-28)
+
+- An app-wide **light and dark theme** (system preference by default, toggle in the header).
+- **Warm Up** and **Cool Down**: on-demand routines separate from the daily one, and four new
+  breathing exercises.
+
+## Added — Public API, assignment templates, billing-provider decision (2026-09-04 to 2026-09-14)
+
+- A **read-only public API** gated by personal access tokens (recovery, range and training data),
+  with an admin-controlled kill switch.
+- **Coach assignment templates:** a coach's saved, reusable exercise sets.
+- The planned paid-tier provider changed from Stripe to Square (documented in `ROADMAP.md`).
+- Successful email sends are now logged, not just failures.
+
+## Added — Reminders, messaging, data minimization and admin tooling (2026-09-02)
+
+- **Practice reminders** (daily email) and **coach to Vrotégé messaging**.
+- **Data minimization:** automatic purge of old raw audio, delete any single recording, and
+  download all of your data.
+- **Admin tooling:** role tiers, bulk operations, impersonation (read-only), login events and a
+  contact-list export.
+- The User Guide and Technical Reference moved into the app itself, custom exercise creation
+  became a real + button, a trend chart was added to the coach's Vrotégé dashboard, and Tone Match
+  tones were raised to full volume.
+
+## Added — "Vrotégé", usernames and the coach dashboard (2026-09-01)
+
+- "Singer" became **Vrotégé** in all user-facing text, an optional username was added (editable
+  from Profile), and the coach's Vrotégé dashboard was redesigned as a stat-tile hero.
+
+## Added — Coach billing foundation, NDA gate and the 5-Tone Challenge (2026-08-18 to 2026-08-26)
+
+- **Organizations and Coach Pro gating** (`Organization`, the 50-invite quota computed live, admin
+  activation) as the foundation for coach billing, and a **beta confidentiality (NDA) click-through**
+  on first login.
+- **5-Tone Challenge** game in Tone Match with a home-page trend card; a **Progress tab** with full
+  trend charts on the coach's Vrotégé dashboard (gaps drawn dashed).
+- Admins can set a user's password directly; reference tones are louder; the Help page explains
+  the adaptive-training loop with a diagram; the forgot-password page no longer shows false success
+  on failure.
+
 ## Added — Admin account creation and a public signup lockdown switch (2026-08-15)
 
 - **Admins can create accounts directly from the admin page** (`POST /api/v1/admin/users`, a

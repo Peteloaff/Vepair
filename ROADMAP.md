@@ -25,11 +25,11 @@ PASS test report and explicit approval from the founder (Pete).**
 | 6 | Personalized Daily Exercises | ✅ Built and approved |
 | 7 | Live AI Vocal Coach | ✅ Built and approved |
 | 8 | Vocal Range Mapping | ✅ Built and approved |
-| 9 | Personalized Vocal Track & 90-Day Plan | ✅ Built and awaiting approval |
-| 10 | Share My Progress | ✅ Built and awaiting approval |
-| 11 | Progress Dashboard | ✅ Built and awaiting approval |
-| — | **Deployment milestone**: move to Supabase dev/prod, set up the GitHub workflow, prepare for Google Play submission | ⚪ Happens after Stage 11 is approved, before Stage 12 begins — see "Deployment milestone" below |
-| 12 | VepAIr Coach (Professional SaaS for vocal coaches/studios) | 🟡 Phase II (Coach pilot) built on `feature/coach-portal`, dev-only, not yet merged/deployed — see below |
+| 9 | Personalized Vocal Track & 90-Day Plan | ✅ Built and live |
+| 10 | Share My Progress | ✅ Built and live |
+| 11 | Progress Dashboard | ✅ Built and live |
+| — | **Deployment milestone**: move to Supabase dev/prod, set up the GitHub workflow, prepare for Google Play submission | 🟡 Mostly done: live on Cloud Run + Vercel + Supabase. Still open: automated CI/CD and Google Play packaging — see `TODO.md` |
+| 12 | VepAIr Coach (Professional SaaS for vocal coaches/studios) | ✅ Phase II (coach portal) live, with organizations, Coach Pro gating and multi-coach teams. Paid-tier billing automation still open — see below and `TODO.md` |
 
 **Backlog (deprioritized, not scheduled):** Computer Vision Coach (optional/experimental),
 Wearables + Vocal Load. Revisited only if they become a priority — removed from the numbered
@@ -55,13 +55,14 @@ Phases:
    baselines, validated measurements, range/endurance tracking (Stages 1-10).
 2. **Phase II — Coach pilot.** Singer dashboard, training assignment, progress tracking,
    recording comparison, professional notes — unpaid, with a small number of real coaches, to
-   test whether they actually use it. **Built** on `feature/coach-portal` (invite/accept
+   test whether they actually use it. **Built and live** (invite/accept
    lifecycle, per-category revocable consent, read-only dashboard reusing the singer's own
    scoring functions, training assignment that can never bypass an existing safety cap,
    coach-signup flow, professional notes with blocklist + disclaimer mitigations) — see
-   `ARCHITECTURE.md` §6m, `MEDICAL_SAFETY.md` §12, `PRIVACY.md` §3/§6, `TESTING.md` §16. **Not
-   yet merged to `main` or deployed** — stays dev-only until the founder gives an explicit
-   go-ahead to invite real pilot coaches.
+   `ARCHITECTURE.md` §6m, `MEDICAL_SAFETY.md` §12, `PRIVACY.md` §3/§6, `TESTING.md` §16. Since
+   then it has also gained: invites by email (including to people without an account),
+   messaging, assignment templates, coach-written exercises, assigned exercises launchable
+   from the singer's Home page, and multi-coach organization teams.
 3. **Phase III — Paid VepAIr Coach.** Professional subscriptions for independent coaches/singing
    teachers first (~$79-149/mo per the doc's proposed range — to be validated, not fixed).
 4. **Phase IV — VepAIr Studio.** Multiple coaches, seat management, centralized billing,
@@ -82,7 +83,13 @@ automatic just because a coach knows the singer); the platform never auto-diagno
 condition — same `MEDICAL_SAFETY.md` boundary as the consumer product; one shared Voice
 Intelligence engine, not a second parallel one for professionals.
 
-### Internal admin backend (founder's operational tooling — scoped, not yet built)
+### Internal admin backend (founder's operational tooling — built and live)
+
+> **Update 2026-10-28:** everything in this section is built, including the items it
+> originally deferred past v1 (bulk operations, a second role tier, impersonation, the
+> contact-list export, login events). See `CHANGELOG.md` (2026-08-13 to 2026-09-02) and the
+> Technical Reference's admin section. The text below is the original scoping, kept for the
+> reasoning behind it.
 
 Distinct from the VepAIr Coach portal above (which is for external vocal coaches/studios): the
 founder needs an internal, GUI admin backend for running the business — user administration,
@@ -212,7 +219,7 @@ exist and are recorded here so they aren't re-derived or re-litigated later.
   points; whether the 7-day trial requires a card up front or not, which depends on what Square's
   trial primitives make easiest.
 
-### Coach organizations & invite quota (decided 2026-08-19, not yet built)
+### Coach organizations & invite quota (decided 2026-08-19; built, teams added 2026-10-23)
 
 > **Update 2026-10-23:** the "one coach per organization" decision below was loosened, as it
 > anticipated. An organization can now have several coaches, each an `admin` or `member`
@@ -221,12 +228,13 @@ exist and are recorded here so they aren't re-derived or re-litigated later.
 > coach they chose.
 
 A second piece of the coach monetization model, decided alongside the subscription tiers above.
-Not built yet — same rule as everything else in this section.
+The `Organization` entity, Coach Pro gating and the live-computed 50-invite quota are built.
+Overage invoicing (below) is not.
 
 **Decided:**
 
-- **A new `Organization` entity, one per coach, always.** Not a multi-coach tenant (no org with
-  several coach logins under it, no owner/member roles to design) — it formalizes what
+- **A new `Organization` entity** (originally one per coach, since loosened — see the update
+  above). It formalizes what
   `CoachProfile.studio_name` is today (a free-text label) into a real record with its own id,
   billing fields, and invite pool. `CoachProfile` gets a foreign key to it. The 1:1 constraint is
   deliberate for now, not an oversight — if a real multi-coach studio need shows up later, the
@@ -263,7 +271,7 @@ overage is computed by VepAIr and handed to QuickBooks as a draft invoice, not m
 the payment provider. This sidesteps the annual-allowance-vs-monthly-overage billing-interval
 mismatch entirely, rather than solving it inside the payment provider.
 
-### QuickBooks Online monthly invoicing sync (decided 2026-08-19, not yet built)
+### QuickBooks Online monthly invoicing sync (decided 2026-08-19, still not built)
 
 **Founder's call: invoicing for the license/invite overage isn't automated through Stripe at
 all — VepAIr computes the numbers, QuickBooks Online is where the actual invoice gets created

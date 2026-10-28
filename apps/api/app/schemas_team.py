@@ -18,6 +18,9 @@ class TeamMemberOut(BaseModel):
     # Vrotégés currently connected to this coach -- a count only, never who they are.
     singer_count: int
     is_me: bool
+    # The same login is also a Vrotégé (admin-attached existing account). Deactivating
+    # the coach deactivates the whole login, so the UI says so.
+    also_singer: bool = False
 
 
 class TeamOut(BaseModel):
@@ -34,6 +37,16 @@ class TeamMemberCreate(BaseModel):
     email: EmailStr
     display_name: str = Field(min_length=1, max_length=200)
     org_role: OrgRole = "member"
+
+
+class TeamExistingMemberCreate(BaseModel):
+    email: EmailStr
+    display_name: str = Field(min_length=1, max_length=200)
+    org_role: OrgRole = "member"
+
+
+class OrganizationRename(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
 
 
 class TeamMemberUpdate(BaseModel):

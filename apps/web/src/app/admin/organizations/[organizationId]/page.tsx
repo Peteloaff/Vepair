@@ -113,7 +113,12 @@ function OrganizationDetailContent() {
 
       <section className="rounded-2xl border border-border p-5">
         <h2 className="mb-3 text-sm font-medium text-text-dim">Team</h2>
-        <TeamManager basePath={`/api/v1/admin/organizations/${detail.id}/team`} />
+        <TeamManager
+          basePath={`/api/v1/admin/organizations/${detail.id}/team`}
+          renamePath={`/api/v1/admin/organizations/${detail.id}`}
+          allowExisting
+          onRenamed={load}
+        />
       </section>
 
       <section className="rounded-2xl border border-border p-5">

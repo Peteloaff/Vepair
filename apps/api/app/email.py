@@ -208,7 +208,7 @@ def send_team_welcome_email(
     with a password nobody knows; the link lets the new member choose their own (the ordinary
     /reset-password page, with a longer-lived token). Never fails the calling request."""
     org = organization_name or "their VepAIr studio"
-    url = f"{settings.frontend_base_url}/reset-password?token={token}"
+    url = f"{settings.frontend_base_url}/reset-password?token={token}&welcome=1"
     role_line = (
         "You're an admin, so you can also add and manage the other coaches on the team."
         if org_role == "admin"
@@ -228,6 +228,38 @@ def send_team_welcome_email(
         f'<p><a href="{html.escape(url)}">Choose your password</a></p>'
         f"<p>This link works for {token_days} days. If you weren&rsquo;t expecting this, you can "
         f"ignore this email.</p>"
+    )
+    _send(to_email, subject, html_body, text_body)
+
+
+def send_team_added_email(
+    to_email: str,
+    display_name: str,
+    organization_name: str | None,
+    org_role: str,
+) -> None:
+    """Sent when support adds someone who already has a VepAIr account to an organization's
+    team. No password link: they already have a login, and now also see the Coach Portal."""
+    org = organization_name or "a VepAIr studio"
+    url = f"{settings.frontend_base_url}/coach"
+    role_line = (
+        "You're an admin, so you can also add and manage the other coaches on the team."
+        if org_role == "admin"
+        else "You can invite your own Vrotégés, assign training and follow their progress."
+    )
+    subject = f"You were added to {org} on VepAIr"
+    text_body = (
+        f"Hi {display_name},\n\nYour VepAIr account was added as a coach for {org}. "
+        f"{role_line} Your existing account, data and sign-in are unchanged.\n\n"
+        f"Open your Coach Portal: {url}\n\n"
+        f"If you weren't expecting this, reply to this email."
+    )
+    html_body = (
+        f"<p>Hi {html.escape(display_name)},</p>"
+        f"<p>Your VepAIr account was added as a coach for {html.escape(org)}. "
+        f"{html.escape(role_line)} Your existing account, data and sign-in are unchanged.</p>"
+        f'<p><a href="{html.escape(url)}">Open your Coach Portal</a></p>'
+        f"<p>If you weren&rsquo;t expecting this, reply to this email.</p>"
     )
     _send(to_email, subject, html_body, text_body)
 

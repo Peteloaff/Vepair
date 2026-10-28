@@ -325,3 +325,189 @@ def test_removing_coach_status_is_refused_while_the_org_has_other_coaches(
     )
     assert resp.status_code == 409
     assert resp.json()["error"]["code"] == "org_has_team"
+
+
+# ---- renaming an organization ----
+
+
+def test_org_admin_can_rename_their_organization(client, signed_up_coach, welcome_emails) -> None:
+    _coach, admin_headers = signed_up_coach
+    resp = client.patch(
+        "/api/v1/coach/team/organization", headers=admin_headers, json={"name": "  Harbor Clinic "}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["organization_name"] == "Harbor Clinic"
+    # Reflected everywhere the studio name is shown.
+    assert client.get("/api/v1/coach/profile", headers=admin_headers).json()["studio_name"] == (
+        "Harbor Clinic"
+    )
+
+
+def test_a_member_cannot_rename_the_organization(client, signed_up_coach, welcome_emails) -> None:
+    _coach, admin_headers = signed_up_coach
+    _add(client, admin_headers, "member@example.com")
+    member_headers = _login_as_new_member(client, welcome_emails, "member@example.com")
+    resp = client.patch(
+        "/api/v1/coach/team/organization", headers=member_headers, json={"name": "Mine now"}
+    )
+    assert resp.status_code == 403
+
+
+def test_a_blank_organization_name_is_rejected(client, signed_up_coach) -> None:
+    _coach, admin_headers = signed_up_coach
+    resp = client.patch("/api/v1/coach/team/organization", headers=admin_headers, json={"name": ""})
+    assert resp.status_code == 422
+
+
+def test_platform_admin_can_rename_an_organization_and_it_is_audited(
+    client, signed_up_coach, signed_up_user, db_session
+) -> None:
+    coach, _ = signed_up_coach
+    admin_headers = _platform_admin(client, signed_up_user, db_session)
+    org_id = _org_id(client, admin_headers, coach["email"])[0]["id"]
+
+    resp = client.patch(
+        f"/api/v1/admin/organizations/{org_id}", headers=admin_headers, json={"name": "Renamed"}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["name"] == "Renamed"
+    entries = [
+        e
+        for e in db_session.query(AdminAuditLog).filter_by(action="rename_organization")
+        if e.details["organization_id"] == org_id
+    ]
+    assert [e.details["to"] for e in entries] == ["Renamed"]
+
+
+# ---- adding an existing account to a team ----
+
+
+@pytest.fixture()
+def added_emails(monkeypatch):
+    sent: list[tuple] = []
+    monkeypatch.setattr(
+        "app.routers.admin.send_team_added_email",
+        lambda to, name, org, role: sent.append((to, name, org, role)),
+    )
+    return sent
+
+
+def _existing_url(org_id):
+    return f"/api/v1/admin/organizations/{org_id}/team/members/existing"
+
+
+def test_platform_admin_can_add_an_existing_vrotege_as_a_coach(
+    client, signed_up_coach, signed_up_user, db_session, added_emails
+) -> None:
+    coach, _ = signed_up_coach
+    admin_headers = _platform_admin(client, signed_up_user, db_session)
+    org_id = _org_id(client, admin_headers, coach["email"])[0]["id"]
+
+    # A separate, ordinary Vrotégé account.
+    singer_email = "existing.singer@example.com"
+    signup = client.post(
+        "/api/v1/auth/signup", json={"email": singer_email, "password": "correcthorse123"}
+    )
+    assert signup.status_code == 201
+    singer_headers = {"Authorization": f"Bearer {signup.json()['access_token']}"}
+
+    resp = client.post(
+        _existing_url(org_id),
+        headers=admin_headers,
+        json={"email": singer_email, "display_name": "Sam Singer", "org_role": "member"},
+    )
+    assert resp.status_code == 201, resp.text
+    member = next(m for m in resp.json()["members"] if m["email"] == singer_email)
+    assert member["org_role"] == "member"
+    assert member["also_singer"] is False  # no UserProfile yet in this test account
+    assert added_emails == [(singer_email, "Sam Singer", "Test Studio", "member")]
+
+    # Same login, now also a coach in that organization -- no new password involved.
+    team = client.get("/api/v1/coach/team", headers=singer_headers)
+    assert team.status_code == 200, team.text
+    assert team.json()["my_role"] == "member"
+    assert {m["email"] for m in team.json()["members"]} >= {coach["email"], singer_email}
+    logged = [
+        e
+        for e in db_session.query(AdminAuditLog).filter_by(action="add_existing_org_member")
+        if e.details["email"] == singer_email
+    ]
+    assert len(logged) == 1
+
+
+def test_an_existing_account_with_a_vrotege_profile_is_flagged_also_singer(
+    client, signed_up_coach, signed_up_user, db_session, added_emails
+) -> None:
+    from app.models import UserProfile
+
+    coach, _ = signed_up_coach
+    singer, _ = signed_up_user
+    singer_row = db_session.query(User).filter_by(email=singer["email"]).one()
+    db_session.add(UserProfile(user_id=singer_row.id))
+    db_session.commit()
+
+    # A platform admin account is needed too; make the coach's own user one.
+    admin_user = db_session.query(User).filter_by(email=coach["email"]).one()
+    admin_user.is_admin = True
+    db_session.commit()
+    admin_headers = {"Authorization": f"Bearer {coach['access_token']}"}
+    org_id = _org_id(client, admin_headers, coach["email"])[0]["id"]
+
+    resp = client.post(
+        _existing_url(org_id),
+        headers=admin_headers,
+        json={"email": singer["email"], "display_name": "Dual Role"},
+    )
+    assert resp.status_code == 201, resp.text
+    member = next(m for m in resp.json()["members"] if m["email"] == singer["email"])
+    assert member["also_singer"] is True
+
+
+def test_existing_account_attach_refuses_coaches_unknown_and_deactivated(
+    client, signed_up_coach, signed_up_user, db_session, added_emails
+) -> None:
+    coach, _ = signed_up_coach
+    admin_headers = _platform_admin(client, signed_up_user, db_session)
+    org_id = _org_id(client, admin_headers, coach["email"])[0]["id"]
+
+    def attempt(email):
+        return client.post(
+            _existing_url(org_id),
+            headers=admin_headers,
+            json={"email": email, "display_name": "X"},
+        )
+
+    already = attempt(coach["email"])
+    assert already.status_code == 409
+    assert already.json()["error"]["code"] == "already_a_coach"
+
+    unknown = attempt("nobody.here@example.com")
+    assert unknown.status_code == 404
+    assert unknown.json()["error"]["code"] == "account_not_found"
+
+    gone = client.post(
+        "/api/v1/auth/signup", json={"email": "gone@example.com", "password": "correcthorse123"}
+    )
+    assert gone.status_code == 201
+    db_session.query(User).filter_by(email="gone@example.com").one().is_active = False
+    db_session.commit()
+    deactivated = attempt("gone@example.com")
+    assert deactivated.status_code == 409
+    assert deactivated.json()["error"]["code"] == "account_deactivated"
+    assert added_emails == []
+
+
+def test_org_admins_cannot_attach_existing_accounts_themselves(
+    client, signed_up_coach, signed_up_user
+) -> None:
+    """Only a platform admin can; an org admin adding someone else's existing account is the
+    thing the privacy rules rule out."""
+    coach, admin_headers = signed_up_coach
+    singer, _ = signed_up_user
+    team = _team(client, admin_headers)
+    resp = client.post(
+        f"/api/v1/admin/organizations/{team['organization_id']}/team/members/existing",
+        headers=admin_headers,
+        json={"email": singer["email"], "display_name": "X"},
+    )
+    assert resp.status_code == 403

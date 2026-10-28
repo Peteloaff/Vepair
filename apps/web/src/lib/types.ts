@@ -510,6 +510,7 @@ export interface TeamMember {
   status: "active" | "invited" | "deactivated";
   singer_count: number;
   is_me: boolean;
+  also_singer: boolean;
 }
 
 export interface Team {

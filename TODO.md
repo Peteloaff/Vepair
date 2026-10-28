@@ -22,17 +22,19 @@ Reference's "Live in production" list; the long-form decisions behind billing ar
 
 ## 2. Small, ready to build (S)
 
-- [ ] **Edit the organization name**: today a clinic's name is set once at signup and can't be
+All five items below were built on `feature/team-polish` (2026-10-28) and are ticked once that branch is deployed.
+
+- [x] **Edit the organization name**: today a clinic's name is set once at signup and can't be
       changed by its admin. Add it to the Team page (and the admin console).
-- [ ] **Nicer set-your-password page for new team members**: `/reset-password` still says "Enter
+- [x] **Nicer set-your-password page for new team members**: `/reset-password` still says "Enter
       the reset token" with a developer hint. Hide the token field and hint when the token is
       already in the link, and use "Choose your password" wording.
-- [ ] **Add an existing account to a team** (admin console only): today adding an email that
+- [x] **Add an existing account to a team** (admin console only): today adding an email that
       already has an account is refused. Needs a deliberate rule about what happens to that
       person's own data and singer connections.
-- [ ] **Refresh the Getting Started guide**: it predates Assigned exercises and Teams. Add a
+- [x] **Refresh the Getting Started guide**: it predates Assigned exercises and Teams. Add a
       screenshot and short section for each, rebuild the PDF and the shared page.
-- [ ] **Refresh stale docs**: `FEATURES.md` "Planned" table still lists built things (coach
+- [x] **Refresh stale docs**: `FEATURES.md` "Planned" table still lists built things (coach
       portal, recording deletion, reset emails); `ROADMAP.md` stage table and "Coach
       organizations" section describe the old one-coach-per-org design; `CHANGELOG.md` needs the
       post-Stage-12 work (redesign, equipment prompts, invites by email, demo data, teams,

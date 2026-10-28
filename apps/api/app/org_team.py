@@ -29,6 +29,7 @@ from app.models import (
     Organization,
     PasswordResetToken,
     User,
+    UserProfile,
 )
 from app.organizations import invites_used_this_period
 from app.schemas_team import OrgRole, TeamMemberOut, TeamOut
@@ -73,6 +74,9 @@ def build_team(db: Session, organization: Organization, my_user_id: uuid.UUID | 
     logged_in = set(
         db.scalars(select(LoginEvent.user_id).where(LoginEvent.user_id.in_(user_ids)).distinct())
     )
+    singer_ids = set(
+        db.scalars(select(UserProfile.user_id).where(UserProfile.user_id.in_(user_ids)))
+    )
 
     members = [
         TeamMemberOut(
@@ -85,6 +89,7 @@ def build_team(db: Session, organization: Organization, my_user_id: uuid.UUID | 
             status=_member_status(user, user.id in logged_in),
             singer_count=singer_counts.get(coach.id, 0),
             is_me=user.id == my_user_id,
+            also_singer=user.id in singer_ids,
         )
         for coach, user in rows
     ]
@@ -145,6 +150,42 @@ def add_member(
     db.add(coach)
     db.flush()
     return coach, user, issue_welcome_token(db, user)
+
+
+def rename_organization(organization: Organization, name: str) -> None:
+    organization.name = name.strip()
+
+
+def attach_existing_member(
+    db: Session, organization: Organization, email: str, display_name: str, org_role: OrgRole
+) -> tuple[CoachProfile, User]:
+    """Platform-admin only: turns an account that already exists (typically a Vrotégé) into a
+    coach on this team -- the same dual-role account set-coach makes, but joining an existing
+    organization instead of getting a new one. Their own Vrotégé data and any coaches they have
+    stay exactly as they are. Refused for an account that is already a coach (moving a coach
+    between organizations would orphan the quota and invites of the one they leave) and for a
+    deactivated account."""
+    user = db.scalar(select(User).where(User.email == email.lower()))
+    if user is None:
+        raise _error(
+            404,
+            "account_not_found",
+            "No VepAIr account has that email. Add them as a new coach instead.",
+        )
+    if not user.is_active:
+        raise _error(409, "account_deactivated", "That account is deactivated.")
+    if db.scalar(select(CoachProfile).where(CoachProfile.user_id == user.id)) is not None:
+        raise _error(409, "already_a_coach", "That account is already a coach.")
+
+    coach = CoachProfile(
+        user_id=user.id,
+        display_name=display_name.strip(),
+        organization_id=organization.id,
+        org_role=org_role,
+    )
+    db.add(coach)
+    db.flush()
+    return coach, user
 
 
 def _get_member(db: Session, organization: Organization, coach_id: uuid.UUID) -> CoachProfile:
