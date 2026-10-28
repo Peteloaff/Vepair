@@ -7,7 +7,8 @@ Two kinds of number, with different privacy treatment:
 - Vrotégé practice -- completed sessions and how many Vrotégés practiced. These come from a
   Vrotégé's exercise history, so they only count Vrotégés who have shared that category with
   the coach, and a coach's figures stay hidden until at least MIN_GROUP_SIZE of their Vrotégés
-  share it (with fewer, a count would effectively describe one identifiable person).
+  share it. At 1 that only hides coaches nobody shares with; raise it if a count that describes
+  a single identifiable Vrotégé ever becomes a concern.
 
 No names, emails or individual results leave this module. It doesn't commit anything."""
 
@@ -30,7 +31,7 @@ from app.models import (
 )
 from app.schemas_team import CoachReportRow, OrgReportOut, OrgReportTotals
 
-MIN_GROUP_SIZE = 3
+MIN_GROUP_SIZE = 1
 PERIODS = (7, 30, 90)
 
 

@@ -60,10 +60,10 @@ decline another):
    needs the singer's own acceptance. An organization admin also sees a Team activity report of
    counts per coach: the coach's own work (invites, notes, messages and assignments sent) and, for
    singers who have shared their *exercise history* with that coach, how many practice sessions
-   were completed and how many singers practiced. It names no one, covers only consenting
-   singers, and a coach's practice figures are hidden until at least 3 of their singers share
-   (team totals leave hidden coaches out, so they can't be worked out by subtraction). The singer
-   is told all of this on each invite. Removing a coach from
+   were completed and how many singers practiced. It names no one and covers only consenting
+   singers, but there is no minimum group size: if a coach has just one singer sharing exercise
+   history, the figures are that singer's alone (a coach with none shows a dash). The singer is
+   told this on each invite. Removing a coach from
    a team ends their connections but keeps the notes and messages written to the singer. One active coach
    per singer at a time (DB-enforced). Revoking is immediate for
    future access (the coach's next request is rejected) but forward-only for the past — already-

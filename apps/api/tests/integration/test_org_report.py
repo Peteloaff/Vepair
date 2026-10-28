@@ -53,7 +53,7 @@ def _connect_singers(client, coach_headers, count, categories):
     return ids
 
 
-def test_report_counts_a_coachs_own_work_and_hides_small_groups(
+def test_report_counts_a_coachs_own_work_and_one_sharing_vrotege(
     client, db_session, signed_up_coach, signed_up_user
 ) -> None:
     coach, headers = signed_up_coach
@@ -74,17 +74,17 @@ def test_report_counts_a_coachs_own_work_and_hides_small_groups(
     assert row["invites_sent"] == 1
     assert row["notes_written"] == 1
     assert row["sharing_vroteges"] == 1
-    # One sharing Vrotégé is fewer than the minimum, so their practice is not shown at all.
-    assert row["practice_sessions"] is None
-    assert row["practicing_vroteges"] is None
-    assert report["totals"]["practice_sessions"] == 0
+    # There is no minimum group size: one sharing Vrotégé's practice is counted.
+    assert row["practice_sessions"] == 1
+    assert row["practicing_vroteges"] == 1
+    assert report["totals"]["practice_sessions"] == 1
 
 
-def test_report_shows_practice_once_enough_vroteges_share(
+def test_report_sums_practice_across_sharing_vroteges_within_the_window(
     client, db_session, signed_up_coach
 ) -> None:
     _coach, headers = signed_up_coach
-    singer_ids = _connect_singers(client, headers, MIN_GROUP_SIZE, ["exercise_history"])
+    singer_ids = _connect_singers(client, headers, 3, ["exercise_history"])
     _practice(db_session, uuid.UUID(singer_ids[0]), days_ago=1)
     _practice(db_session, uuid.UUID(singer_ids[0]), days_ago=2)
     _practice(db_session, uuid.UUID(singer_ids[1]), days_ago=3)
@@ -93,10 +93,11 @@ def test_report_shows_practice_once_enough_vroteges_share(
 
     report = _report(client, headers, 30)
     row = report["coaches"][0]
-    assert row["sharing_vroteges"] == MIN_GROUP_SIZE
+    assert row["sharing_vroteges"] == 3
     assert row["practice_sessions"] == 3
     assert row["practicing_vroteges"] == 2
     assert report["totals"]["practice_sessions"] == 3
+    assert report["totals"]["practicing_vroteges"] == 2
 
     # A longer window picks up the older session.
     longer = _report(client, headers, 90)["coaches"][0]
@@ -108,36 +109,41 @@ def test_vroteges_who_do_not_share_exercise_history_are_not_counted(
     client, db_session, signed_up_coach
 ) -> None:
     _coach, headers = signed_up_coach
-    shared = _connect_singers(client, headers, MIN_GROUP_SIZE - 1, ["exercise_history"])
+    shared = _connect_singers(client, headers, 2, ["exercise_history"])
     private = _connect_singers(client, headers, 1, ["recovery_trends"])
     for user_id in shared + private:
         _practice(db_session, uuid.UUID(user_id), days_ago=1)
 
     row = _report(client, headers)["coaches"][0]
-    assert row["connected_vroteges"] == MIN_GROUP_SIZE
-    # Three are connected but only two share exercise history: still below the minimum.
-    assert row["sharing_vroteges"] == MIN_GROUP_SIZE - 1
-    assert row["practice_sessions"] is None
+    assert row["connected_vroteges"] == 3
+    # Three are connected but only two share exercise history, so only theirs are counted.
+    assert row["sharing_vroteges"] == 2
+    assert row["practice_sessions"] == 2
+    assert row["practicing_vroteges"] == 2
 
 
-def test_a_hidden_coach_cannot_be_worked_out_from_the_totals(
+def test_a_coach_nobody_shares_with_is_hidden_and_left_out_of_the_totals(
     client, db_session, signed_up_coach, welcome_emails
 ) -> None:
     _coach, admin_headers = signed_up_coach
     _add(client, admin_headers, "member@example.com", "Member Coach")
     member_headers = _login_as_new_member(client, welcome_emails, "member@example.com")
 
-    big = _connect_singers(client, admin_headers, MIN_GROUP_SIZE, ["exercise_history"])
-    small = _connect_singers(client, member_headers, 1, ["exercise_history"])
-    for user_id in big:
+    sharing = _connect_singers(client, admin_headers, 2, ["exercise_history"])
+    private = _connect_singers(client, member_headers, 1, ["recovery_trends"])
+    for user_id in sharing:
         _practice(db_session, uuid.UUID(user_id), days_ago=1)
     for _ in range(5):
-        _practice(db_session, uuid.UUID(small[0]), days_ago=1)
+        _practice(db_session, uuid.UUID(private[0]), days_ago=1)  # never shared
 
     report = _report(client, admin_headers)
-    assert _row(report, "Member Coach")["practice_sessions"] is None
-    # The total covers only the coach whose figures are shown.
-    assert report["totals"]["practice_sessions"] == MIN_GROUP_SIZE
+    member = _row(report, "Member Coach")
+    assert member["connected_vroteges"] == 1
+    assert member["sharing_vroteges"] == 0
+    assert member["practice_sessions"] is None
+    assert member["practicing_vroteges"] is None
+    # The total covers only the coach whose practice is shown, and never the unshared sessions.
+    assert report["totals"]["practice_sessions"] == 2
 
 
 def test_report_is_admin_only_and_validates_the_period(

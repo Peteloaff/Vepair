@@ -60,12 +60,13 @@ export function OrgReport() {
 
   if (!isAdmin) return null;
 
-  const minGroup = report?.min_group_size ?? 3;
+  const minGroup = report?.min_group_size ?? 1;
+  const vrotegesWord = minGroup === 1 ? "Vrotégé" : "Vrotégés";
   const shown = (value: number | null) =>
     value === null ? (
       <span
         className="text-text-faint"
-        title={`Shown once ${minGroup} Vrotégés share`}
+        title={`Shown once ${minGroup} ${vrotegesWord} shares`}
       >
         &ndash;
       </span>
@@ -104,6 +105,7 @@ export function OrgReport() {
         counts only. You never see names or voice data here. Practice covers
         only Vrotégés who share their exercise history with that coach, and a
         coach&apos;s practice figures appear once {minGroup} or more of them do.
+        If only one Vrotégé shares with a coach, the figures are theirs alone.
       </p>
 
       {error && (
@@ -192,9 +194,8 @@ export function OrgReport() {
         </div>
       )}
       <p className="mt-2 text-xs text-text-faint">
-        Last {days} days. A dash means fewer than {minGroup} Vrotégés share
-        their exercise history with that coach. Team totals leave those coaches
-        out.
+        Last {days} days. A dash means no Vrotégé shares their exercise history
+        with that coach. Team totals leave those coaches out.
       </p>
     </section>
   );

@@ -736,9 +736,10 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           messages sent, assignments sent) always shows. Vrotégé practice (completed
           <code>ExerciseSession</code>s in the window, and how many Vrotégés practiced) counts only
           active connections whose <code>exercise_history</code> grant is on, and is
-          <code>null</code> for a coach until <code>MIN_GROUP_SIZE</code> (3) of their Vrotégés
-          share; the team totals sum only the coaches shown, so a hidden coach can't be derived by
-          subtraction. Nothing in the response names or identifies a Vrotégé. The Team page's
+          <code>null</code> for a coach until <code>MIN_GROUP_SIZE</code> (1) of their Vrotégés
+          share; with one sharing Vrotégé the figures are that person's alone, which the invite
+          card says (raise the constant if that ever becomes a concern). The team totals sum only
+          the coaches shown. Nothing in the response names a Vrotégé. The Team page's
           <i>Team activity</i> table renders it, and the invite card tells Vrotégés about it.</p>
           <p><b>Privacy invariant:</b> sharing an organization shares nothing about Vrotégés'
           data. <code>CoachAccess</code> stays per (coach, singer), so

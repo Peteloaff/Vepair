@@ -50,8 +50,8 @@ All five items below were built and deployed on 2026-10-28.
       from-team, org-admin Vrotégé connections (invite for a coach, move, end connection).
       Deployed 2026-10-28.
 - [x] **Org-level reporting for admins**: built on `feature/org-reporting` (2026-10-28): a Team
-      activity table on the Team page, counts only, practice figures hidden below 3 sharing
-      Vrotégés. Ticked as deployed once that branch ships.
+      activity table on the Team page, counts only, practice limited to Vrotégés who share
+      exercise history (no minimum group size). Ticked as deployed once that branch ships.
 - [ ] **Google Play packaging**: wrap the PWA (TWA or Capacitor, to be confirmed), Play Console
       listing, store assets. Needs a Play developer account. The iPhone/App Store equivalent
       would be a separate decision.

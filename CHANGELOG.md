@@ -9,9 +9,9 @@ All notable changes to VepAIr are documented here, stage by stage.
   messages sent and exercises assigned, plus practice sessions completed and how many Vrotégés
   practiced. Counts only: it names no one and never shows voice data.
 - **Privacy rules built in.** Practice figures count only Vrotégés who share their exercise
-  history with that coach, and stay hidden (a dash) until at least 3 of a coach's Vrotégés do, so a
-  number can't describe one identifiable person. Team totals leave hidden coaches out. The
-  Vrotégé's invite card now says admins may see these combined totals.
+  history with that coach (a coach nobody shares with shows a dash). There is no minimum group
+  size: with one sharing Vrotégé the figures are theirs alone, and the Vrotégé's invite card says
+  so. The constant `MIN_GROUP_SIZE` in `app/org_report.py` can be raised later.
 - New endpoint `GET /api/v1/coach/team/report`; no database change. Code in `app/org_report.py`.
 
 ## Added — Organization admins manage coaches and Vrotégé connections (2026-10-28)
