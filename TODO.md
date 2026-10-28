@@ -42,12 +42,11 @@ All five items below were built and deployed on 2026-10-28.
 
 ## 3. Medium builds (M)
 
-- [ ] **Automate the backend deploy**: every deploy is a manual Cloud Shell command. Add a
-      GitHub Action that runs the tests and then deploys to Cloud Run on a merge to `main`,
-      using Workload Identity Federation (no keys in the repo or in chat). Needs Pete to enable
-      it in Google Cloud once.
-- [ ] **CI on every branch**: run pytest, `tsc`, `eslint` and `npm run build` on every push so a
-      broken branch is caught before "merge and deploy". Part of the same workflow as above.
+- [x] **Automate the backend deploy**: a GitHub Action (`.github/workflows/ci-cd.yml`) runs the
+      tests and then deploys to Cloud Run on a push to `main`, using Workload Identity Federation
+      (no keys in the repo). Set up and verified with a real deploy 2026-10-28.
+- [x] **CI on every branch**: pytest, ruff, `tsc`, `eslint`, vitest and `npm run build` run on
+      every push. Same workflow as above. Live 2026-10-28.
 - [x] **Coach leaves a team**: built on `feature/org-vrotege-management` (2026-10-28), with remove-
       from-team, org-admin Vrotégé connections (invite for a coach, move, end connection).
       Deployed 2026-10-28.
