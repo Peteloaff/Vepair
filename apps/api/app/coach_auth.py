@@ -45,7 +45,7 @@ def get_current_coach(
     that model's docstring) and stays blocked until an admin activates it via
     POST /api/v1/admin/organizations/{id}/set-coach-pro."""
     coach = db.scalar(select(CoachProfile).where(CoachProfile.user_id == current_user.id))
-    if coach is None:
+    if coach is None or coach.removed_at is not None:
         raise NOT_A_COACH
     if not coach.organization.is_coach_pro_active:
         raise COACH_PRO_REQUIRED

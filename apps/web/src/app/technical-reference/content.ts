@@ -705,10 +705,35 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           (<code>409 org_has_team</code>). Status on the team list is derived: <code>invited</code>
           until the user has a <code>LoginEvent</code>, <code>deactivated</code> when
           <code>User.is_active</code> is false.</p>
-          <p><b>Privacy invariant:</b> sharing an organization shares nothing about Vrotégés.
-          <code>CoachAccess</code> stays per (coach, singer), so <code>require_coach_access</code>
-          is unchanged and neither role can open a teammate's Vrotégé — the team view exposes only
-          a connected-singer count per coach. The invite quota already counted invites across every
+          <p><b>Removing a coach and managing Vrotégé connections.</b>
+          <code>DELETE /api/v1/coach/team/members/{coach_id}</code> (org admin; the platform-admin
+          equivalent is audited as <code>remove_org_member</code>) sets
+          <code>CoachProfile.removed_at</code> (migration <code>f6c3a8d1b2e7</code>) rather than
+          deleting the row, because <code>CoachProfile</code> cascades to the notes, messages and
+          assignments a Vrotégé keeps permanent read access to. A removed coach is rejected by
+          <code>get_current_coach</code> (<code>not_a_coach</code>), left out of every team list,
+          count and search, and keeps their login; their active <code>CoachAccess</code> rows are
+          ended with <code>revoked_by="org_admin"</code> (withdrawal rows are written to
+          <code>ConsentRecord</code>) and their pending invites are revoked. Guards:
+          <code>409 cannot_remove_self</code> and <code>409 last_admin</code>. Adding the same email
+          back restores the profile (no new password link, <code>send_team_added_email</code>); a
+          platform admin can also attach a removed coach to a different organization.
+          <code>app/coach_connections.py</code> holds the two actions every caller shares,
+          <code>new_invite</code> and <code>end_connection</code>.</p>
+          <p>For admins, <code>GET /api/v1/coach/team/vroteges</code> lists active connections and
+          pending invites across the organization's coaches as an identifier (username or email), the
+          coach and a date — never any measurement. <code>POST /vroteges/invite</code> invites on a
+          coach's behalf (from that coach, against the shared quota),
+          <code>POST /vroteges/{access_id}/move</code> ends one connection and invites the Vrotégé
+          from another coach, <code>DELETE /vroteges/{access_id}</code> ends a connection and
+          <code>DELETE /vroteges/invites/{invite_id}</code> cancels a pending invite. Every new
+          connection still goes through the Vrotégé's own accept-and-choose-categories step. The
+          Vrotégé's invite card says that administrators of the coach's organization can see the
+          connection (but not voice data).</p>
+          <p><b>Privacy invariant:</b> sharing an organization shares nothing about Vrotégés'
+          data. <code>CoachAccess</code> stays per (coach, singer), so
+          <code>require_coach_access</code> is unchanged and neither role can open a teammate's
+          Vrotégé; an admin sees only who is connected to whom. The invite quota already counted invites across every
           coach in the organization, so it is now genuinely shared.</p>
           <div class="callout info">
             <b>Not built yet:</b> the QuickBooks Online monthly sync job (draft-invoice creation,

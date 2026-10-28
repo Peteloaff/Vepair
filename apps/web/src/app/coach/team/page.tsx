@@ -1,11 +1,16 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { OrgVroteges } from "@/components/OrgVroteges";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireCoach } from "@/components/RequireCoach";
 import { TeamManager } from "@/components/TeamManager";
 
 export default function CoachTeamPage() {
+  // Bumped whenever the team changes (a coach added, removed, renamed...) so the Vrotégé section
+  // below, which lists coaches and their connections, reloads with it.
+  const [version, setVersion] = useState(0);
   return (
     <RequireAuth>
       <RequireCoach>
@@ -16,7 +21,12 @@ export default function CoachTeamPage() {
             invite allowance, but each coach&apos;s Vrotégés stay private to that coach — a
             Vrotégé chooses who sees their data, and that is one coach, not the whole team.
           </p>
-          <TeamManager basePath="/api/v1/coach/team" renamePath="/api/v1/coach/team/organization" />
+          <TeamManager
+            basePath="/api/v1/coach/team"
+            renamePath="/api/v1/coach/team/organization"
+            onChanged={() => setVersion((v) => v + 1)}
+          />
+          <OrgVroteges key={version} />
           <div className="mt-8">
             <Link href="/coach" className="text-xs text-text-faint hover:text-text-dim">
               &larr; Back to Coach Portal

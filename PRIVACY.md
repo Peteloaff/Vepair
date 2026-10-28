@@ -54,7 +54,11 @@ decline another):
    cancelled -- nothing about the invitee is shared with the coach either way. A clinic or
    studio can have several coaches under one organization, but a singer's consent is to one
    specific coach, never to the organization: teammates and organization admins cannot open each
-   other's singers, and the team view only ever shows how many singers each coach has. One active coach
+   other's singers. An organization admin can see who is connected to which coach (a name or
+   email and the connection date) and can invite on a coach's behalf, end a connection or move a
+   singer to another coach, but never any of a singer's voice data, and every new connection still
+   needs the singer's own acceptance. The singer is told this on each invite. Removing a coach from
+   a team ends their connections but keeps the notes and messages written to the singer. One active coach
    per singer at a time (DB-enforced). Revoking is immediate for
    future access (the coach's next request is rejected) but forward-only for the past — already-
    viewed data isn't retroactively unshown, and the revoke confirmation says so plainly.

@@ -48,9 +48,9 @@ All five items below were built and deployed on 2026-10-28.
       it in Google Cloud once.
 - [ ] **CI on every branch**: run pytest, `tsc`, `eslint` and `npm run build` on every push so a
       broken branch is caught before "merge and deploy". Part of the same workflow as above.
-- [ ] **Coach leaves a team**: when a member is deactivated their Vrotégés lose a coach. Add a
-      way for the org admin to see which Vrotégés are affected and send each one a fresh invite
-      from another coach (the Vrotégé still has to accept; consent can't be transferred).
+- [x] **Coach leaves a team**: built on `feature/org-vrotege-management` (2026-10-28), with remove-
+      from-team, org-admin Vrotégé connections (invite for a coach, move, end connection).
+      Ticked as deployed once that branch ships.
 - [ ] **Org-level reporting for admins**: per-coach practice and activity roll-ups on the Team
       page (counts only, no singer identities, in keeping with the privacy rule).
 - [ ] **Google Play packaging**: wrap the PWA (TWA or Capacitor, to be confirmed), Play Console

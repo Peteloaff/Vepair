@@ -44,6 +44,7 @@ from app.org_team import (
     attach_existing_member,
     build_team,
     issue_welcome_token,
+    remove_member,
     rename_organization,
     team_member_not_found,
     update_member,
@@ -70,6 +71,7 @@ from app.schemas_admin import (
 from app.schemas_auth import UserOut
 from app.schemas_team import (
     OrganizationRename,
+    RemoveMemberOut,
     TeamExistingMemberCreate,
     TeamMemberCreate,
     TeamMemberUpdate,
@@ -515,6 +517,18 @@ def set_coach(
                     organization_id=organization.id,
                 )
             )
+        elif existing.removed_at is not None:
+            # Removed from a team earlier: make them a coach again in a new organization of
+            # their own (adding them back to a team is the Team page's job).
+            organization = Organization()
+            activate_coach_pro(organization)
+            db.add(organization)
+            db.flush()
+            existing.organization_id = organization.id
+            existing.org_role = "admin"
+            existing.removed_at = None
+            if payload.display_name:
+                existing.display_name = payload.display_name
         elif payload.display_name:
             existing.display_name = payload.display_name
         log_admin_action(db, admin.id, "grant_coach", user.id, {"email": user.email})
@@ -526,6 +540,7 @@ def set_coach(
                 .where(
                     CoachProfile.organization_id == existing.organization_id,
                     CoachProfile.id != existing.id,
+                    CoachProfile.removed_at.is_(None),
                 )
             )
             if teammates:
@@ -556,7 +571,7 @@ def _organization_to_out(db: Session, organization: Organization) -> AdminOrgani
     # to the earliest member if an organization somehow has none.
     members = db.scalars(
         select(CoachProfile)
-        .where(CoachProfile.organization_id == organization.id)
+        .where(CoachProfile.organization_id == organization.id, CoachProfile.removed_at.is_(None))
         .order_by(CoachProfile.org_role, CoachProfile.created_at)
     ).all()
     coach = members[0] if members else None
@@ -585,13 +600,14 @@ def search_organizations(
     organization can have several coaches, so matching goes through a subquery of organization
     ids rather than a join (which would repeat an organization once per matching coach)."""
     stmt = select(Organization).order_by(Organization.created_at.desc()).limit(100)
-    has_coach = select(CoachProfile.organization_id)
+    has_coach = select(CoachProfile.organization_id).where(CoachProfile.removed_at.is_(None))
     if query:
         member_match = (
             select(CoachProfile.organization_id)
             .join(User, User.id == CoachProfile.user_id)
             .where(
-                (User.email.ilike(f"%{query}%")) | (CoachProfile.display_name.ilike(f"%{query}%"))
+                CoachProfile.removed_at.is_(None),
+                (User.email.ilike(f"%{query}%")) | (CoachProfile.display_name.ilike(f"%{query}%")),
             )
         )
         stmt = stmt.where(
@@ -720,15 +736,18 @@ def add_organization_team_member(
         {"organization_id": str(organization.id), "email": user.email, "org_role": coach.org_role},
     )
     db.commit()
-    send_team_welcome_email(
-        user.email,
-        coach.display_name,
-        organization.name,
-        "VepAIr support",
-        coach.org_role,
-        token,
-        WELCOME_TOKEN_DAYS,
-    )
+    if token is None:
+        send_team_added_email(user.email, coach.display_name, organization.name, coach.org_role)
+    else:
+        send_team_welcome_email(
+            user.email,
+            coach.display_name,
+            organization.name,
+            "VepAIr support",
+            coach.org_role,
+            token,
+            WELCOME_TOKEN_DAYS,
+        )
     return build_team(db, organization, None)
 
 
@@ -799,6 +818,38 @@ def update_organization_team_member(
     return build_team(db, organization, None)
 
 
+@router.delete(
+    "/organizations/{organization_id}/team/members/{coach_id}", response_model=RemoveMemberOut
+)
+def remove_organization_team_member(
+    organization_id: uuid.UUID,
+    coach_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_full_admin),
+) -> RemoveMemberOut:
+    """Takes a coach off an organization's team (see app/org_team.py's remove_member): the login
+    survives, history is kept, their Vrotégés' connections end and their pending invites are
+    cancelled."""
+    organization = db.get(Organization, organization_id)
+    if organization is None:
+        raise _organization_not_found()
+    _coach, user, ended, cancelled = remove_member(db, organization, coach_id, acting_user_id=None)
+    log_admin_action(
+        db,
+        admin.id,
+        "remove_org_member",
+        user.id,
+        {
+            "organization_id": str(organization.id),
+            "email": user.email,
+            "ended_connections": ended,
+            "cancelled_invites": cancelled,
+        },
+    )
+    db.commit()
+    return RemoveMemberOut(ended_connections=ended, cancelled_invites=cancelled)
+
+
 @router.post(
     "/organizations/{organization_id}/team/members/{coach_id}/resend-welcome",
     status_code=202,
@@ -813,7 +864,7 @@ def resend_organization_member_welcome(
     if organization is None:
         raise _organization_not_found()
     target = db.get(CoachProfile, coach_id)
-    if target is None or target.organization_id != organization.id:
+    if target is None or target.organization_id != organization.id or target.removed_at is not None:
         raise team_member_not_found()
     user = db.get(User, target.user_id)
     token = issue_welcome_token(db, user)

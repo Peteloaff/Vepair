@@ -11,19 +11,6 @@ from tests.integration.test_admin import _make_admin
 from tests.integration.test_coach_assignments import _connect
 
 
-@pytest.fixture()
-def welcome_emails(monkeypatch):
-    """Captures the set-your-password emails instead of sending them."""
-    sent: list[dict] = []
-
-    def fake(to_email, display_name, organization_name, added_by, org_role, token, token_days):
-        sent.append({"to": to_email, "name": display_name, "role": org_role, "token": token})
-
-    monkeypatch.setattr("app.routers.coach_team.send_team_welcome_email", fake)
-    monkeypatch.setattr("app.routers.admin.send_team_welcome_email", fake)
-    return sent
-
-
 def _add(client, headers, email, name="New Coach", role="member"):
     return client.post(
         "/api/v1/coach/team/members",

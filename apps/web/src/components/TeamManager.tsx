@@ -24,12 +24,12 @@ export function TeamManager({
   basePath,
   renamePath,
   allowExisting = false,
-  onRenamed,
+  onChanged,
 }: {
   basePath: string;
   renamePath: string;
   allowExisting?: boolean;
-  onRenamed?: () => void;
+  onChanged?: () => void;
 }) {
   const { apiFetch } = useAuth();
   const [team, setTeam] = useState<Team | null>(null);
@@ -70,6 +70,7 @@ export function TeamManager({
       await action();
       setNotice(done);
       await load();
+      onChanged?.();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -96,6 +97,7 @@ export function TeamManager({
       setEmail("");
       setRole("member");
       await load();
+      onChanged?.();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -112,9 +114,37 @@ export function TeamManager({
       setRenaming(false);
       setNotice("Organization name updated.");
       await load();
-      onRenamed?.();
+      onChanged?.();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
+    }
+  }
+
+  async function removeMember(m: TeamMember) {
+    if (
+      !window.confirm(
+        `Remove ${m.display_name} from the team? Their login stays, but they will no longer be a coach. Their Vrotégés' connections end (you can invite those Vrotégés again from another coach), and their pending invites are cancelled. Notes and history they wrote are kept.`
+      )
+    ) {
+      return;
+    }
+    setBusyId(m.coach_id);
+    setError(null);
+    setNotice(null);
+    try {
+      const r = await apiFetch<{ ended_connections: number; cancelled_invites: number }>(
+        `${basePath}/members/${m.coach_id}`,
+        { method: "DELETE" }
+      );
+      setNotice(
+        `${m.display_name} was removed from the team. ${r.ended_connections} connection${r.ended_connections === 1 ? "" : "s"} ended, ${r.cancelled_invites} pending invite${r.cancelled_invites === 1 ? "" : "s"} cancelled.`
+      );
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -292,6 +322,16 @@ export function TeamManager({
                         Reactivate
                       </button>
                     ))}
+                  {!m.is_me && !(m.org_role === "admin" && m.is_active && activeAdmins <= 1) && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void removeMember(m)}
+                      className="rounded-lg border border-danger px-3 py-1.5 text-danger hover:bg-danger-faint disabled:opacity-50"
+                    >
+                      Remove from team
+                    </button>
+                  )}
                 </div>
               )}
             </li>

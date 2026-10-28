@@ -20,10 +20,12 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.coach_connections import end_connection
 from app.coach_invites import attach_pending_invites
 from app.models import (
     AuthCredential,
     CoachAccess,
+    CoachInvite,
     CoachProfile,
     LoginEvent,
     Organization,
@@ -32,7 +34,14 @@ from app.models import (
     UserProfile,
 )
 from app.organizations import invites_used_this_period
-from app.schemas_team import OrgRole, TeamMemberOut, TeamOut
+from app.schemas_team import (
+    OrgPendingInviteOut,
+    OrgRole,
+    OrgVrotegeConnectionOut,
+    OrgVrotegesOut,
+    TeamMemberOut,
+    TeamOut,
+)
 from app.security import generate_opaque_token, hash_password
 
 # A new member's set-your-password link outlives the usual one-hour reset link: it arrives in
@@ -58,7 +67,7 @@ def build_team(db: Session, organization: Organization, my_user_id: uuid.UUID | 
     rows = db.execute(
         select(CoachProfile, User)
         .join(User, User.id == CoachProfile.user_id)
-        .where(CoachProfile.organization_id == organization.id)
+        .where(CoachProfile.organization_id == organization.id, CoachProfile.removed_at.is_(None))
         .order_by(CoachProfile.created_at, CoachProfile.id)
     ).all()
     coach_ids = [c.id for c, _ in rows]
@@ -120,11 +129,32 @@ def issue_welcome_token(db: Session, user: User) -> str:
 
 def add_member(
     db: Session, organization: Organization, email: str, display_name: str, org_role: OrgRole
-) -> tuple[CoachProfile, User, str]:
+) -> tuple[CoachProfile, User, str | None]:
     """Creates a brand-new account and attaches it to the organization. Returns the coach, the
-    user and the raw welcome token. An email that already has an account is refused -- turning
-    an existing person (and their data) into a team member is an admin-console job (set-coach),
-    not something another organization's admin should be able to do to them."""
+    user and the raw welcome token (None when it is someone this organization removed earlier
+    and is bringing back, who already has a login). Any other email that already has an account
+    is refused -- turning an existing person (and their data) into a team member is an
+    admin-console job (set-coach), not something another organization's admin should be able to
+    do to them."""
+    returning = db.execute(
+        select(CoachProfile, User)
+        .join(User, User.id == CoachProfile.user_id)
+        .where(
+            User.email == email.lower(),
+            CoachProfile.organization_id == organization.id,
+            CoachProfile.removed_at.is_not(None),
+        )
+    ).first()
+    if returning is not None:
+        # Someone this organization removed earlier: bring them back instead of making a second
+        # account. They already have a login, so no set-your-password token is needed.
+        coach, user = returning
+        coach.removed_at = None
+        coach.org_role = org_role
+        coach.display_name = display_name.strip()
+        db.flush()
+        return coach, user, None
+
     user = User(email=email.lower())
     db.add(user)
     try:
@@ -174,8 +204,18 @@ def attach_existing_member(
         )
     if not user.is_active:
         raise _error(409, "account_deactivated", "That account is deactivated.")
-    if db.scalar(select(CoachProfile).where(CoachProfile.user_id == user.id)) is not None:
+    profile = db.scalar(select(CoachProfile).where(CoachProfile.user_id == user.id))
+    if profile is not None and profile.removed_at is None:
         raise _error(409, "already_a_coach", "That account is already a coach.")
+    if profile is not None:
+        # Removed from a team earlier: join this organization (their old connections ended when
+        # they were removed; their notes and authored exercises come along).
+        profile.organization_id = organization.id
+        profile.removed_at = None
+        profile.org_role = org_role
+        profile.display_name = display_name.strip()
+        db.flush()
+        return profile, user
 
     coach = CoachProfile(
         user_id=user.id,
@@ -191,7 +231,9 @@ def attach_existing_member(
 def _get_member(db: Session, organization: Organization, coach_id: uuid.UUID) -> CoachProfile:
     coach = db.scalar(
         select(CoachProfile).where(
-            CoachProfile.id == coach_id, CoachProfile.organization_id == organization.id
+            CoachProfile.id == coach_id,
+            CoachProfile.organization_id == organization.id,
+            CoachProfile.removed_at.is_(None),
         )
     )
     if coach is None:
@@ -208,6 +250,7 @@ def _active_admin_count(db: Session, organization: Organization) -> int:
             .where(
                 CoachProfile.organization_id == organization.id,
                 CoachProfile.org_role == "admin",
+                CoachProfile.removed_at.is_(None),
                 User.is_active.is_(True),
             )
         )
@@ -246,3 +289,122 @@ def update_member(
     if display_name is not None:
         coach.display_name = display_name.strip()
     return coach, user
+
+
+def remove_member(
+    db: Session,
+    organization: Organization,
+    coach_id: uuid.UUID,
+    *,
+    acting_user_id: uuid.UUID | None,
+    revoked_by: str = "org_admin",
+) -> tuple[CoachProfile, User, int, int]:
+    """Takes a coach off the team. Their login survives (it just stops being a coach), every note,
+    message and assignment they wrote is kept, and their Vrotégés' connections end -- those
+    Vrotégés can be re-invited by another coach on the team (the Vrotégé still has to accept).
+    Pending invites from this coach are cancelled. Returns (coach, user, connections_ended,
+    invites_cancelled)."""
+    coach = _get_member(db, organization, coach_id)
+    user = db.get(User, coach.user_id)
+
+    if acting_user_id is not None and user.id == acting_user_id:
+        raise _error(
+            409,
+            "cannot_remove_self",
+            "You can't remove yourself. Ask another admin, or make someone else an admin first.",
+        )
+    if coach.org_role == "admin" and user.is_active and _active_admin_count(db, organization) <= 1:
+        raise _error(
+            409,
+            "last_admin",
+            "An organization needs at least one active admin. Make someone else an admin first.",
+        )
+
+    accesses = db.scalars(
+        select(CoachAccess).where(CoachAccess.coach_id == coach.id, CoachAccess.status == "active")
+    ).all()
+    for access in accesses:
+        end_connection(db, access, revoked_by)
+
+    pending = db.scalars(
+        select(CoachInvite).where(CoachInvite.coach_id == coach.id, CoachInvite.status == "pending")
+    ).all()
+    for invite in pending:
+        invite.status = "revoked"
+
+    coach.removed_at = datetime.now(UTC)
+    return coach, user, len(accesses), len(pending)
+
+
+def build_vroteges(db: Session, organization: Organization) -> OrgVrotegesOut:
+    """Who is connected to which coach in this organization. An identifier and a date only --
+    never any of a Vrotégé's voice data, which stays between them and the coach they chose."""
+    connection_rows = db.execute(
+        select(CoachAccess, CoachProfile, User)
+        .join(CoachProfile, CoachProfile.id == CoachAccess.coach_id)
+        .join(User, User.id == CoachAccess.singer_user_id)
+        .where(
+            CoachProfile.organization_id == organization.id,
+            CoachProfile.removed_at.is_(None),
+            CoachAccess.status == "active",
+        )
+        .order_by(CoachProfile.display_name, CoachAccess.granted_at)
+    ).all()
+    invite_rows = db.execute(
+        select(CoachInvite, CoachProfile)
+        .join(CoachProfile, CoachProfile.id == CoachInvite.coach_id)
+        .where(
+            CoachProfile.organization_id == organization.id,
+            CoachProfile.removed_at.is_(None),
+            CoachInvite.status == "pending",
+        )
+        .order_by(CoachInvite.created_at.desc())
+    ).all()
+    return OrgVrotegesOut(
+        connections=[
+            OrgVrotegeConnectionOut(
+                access_id=access.id,
+                singer_label=singer.username or singer.email,
+                singer_email=singer.email,
+                coach_id=coach.id,
+                coach_name=coach.display_name,
+                connected_since=access.granted_at,
+            )
+            for access, coach, singer in connection_rows
+        ],
+        pending_invites=[
+            OrgPendingInviteOut(
+                invite_id=invite.id,
+                singer_email=invite.singer_email,
+                coach_id=coach.id,
+                coach_name=coach.display_name,
+                sent_at=invite.created_at,
+            )
+            for invite, coach in invite_rows
+        ],
+    )
+
+
+def org_access(db: Session, organization: Organization, access_id: uuid.UUID) -> CoachAccess:
+    """An active connection that belongs to one of this organization's coaches, or 404."""
+    access = db.scalar(
+        select(CoachAccess)
+        .join(CoachProfile, CoachProfile.id == CoachAccess.coach_id)
+        .where(
+            CoachAccess.id == access_id,
+            CoachAccess.status == "active",
+            CoachProfile.organization_id == organization.id,
+            CoachProfile.removed_at.is_(None),
+        )
+    )
+    if access is None:
+        raise _error(404, "connection_not_found", "No such connection in this organization.")
+    return access
+
+
+def org_coach(db: Session, organization: Organization, coach_id: uuid.UUID) -> CoachProfile:
+    """An active, enabled coach on this team -- the only kind who can be given a Vrotégé."""
+    coach = _get_member(db, organization, coach_id)
+    if not db.get(User, coach.user_id).is_active:
+        raise _error(409, "coach_deactivated", "That coach is deactivated.")
+    return coach
