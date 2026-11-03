@@ -242,11 +242,15 @@ async def log_exercise_result(
     acoustic_measurement = None
     if audio is not None:
         audio_bytes = await audio.read()
+        # Closing the upload deletes the spooled temp file a large upload may have been written
+        # to, so the only copy left is audio_bytes, which is dropped as soon as it's measured.
+        await audio.close()
         # The analysis is seconds of CPU work; run it in a worker thread so this async handler
         # doesn't freeze the event loop (and every other request on the instance) while it runs.
         acoustic_measurement = await run_in_threadpool(
             analyze_exercise_attempt, audio_bytes, exercise.category
         )
+        del audio_bytes
 
     measured_result = None
     if live_telemetry is not None or acoustic_measurement is not None:
