@@ -2,6 +2,16 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Fixed — Faster moves between exercises (2026-11-02)
+
+- **No more waiting after Mark done.** The exercise screen used to hold on "Saving..." until the
+  result, including the recorded audio and its server-side analysis, had finished uploading, which
+  took seconds. It now moves to the next exercise immediately and saves each result in the
+  background, in order. Only the last exercise waits (for its own save) so the finished screen's
+  trends include every result.
+- The server now runs the audio analysis in a worker thread, so it no longer freezes other
+  requests while it works. The audio is still analyzed in memory and never stored.
+
 ## Added — Organization reporting for admins (2026-10-28)
 
 - **Team activity.** A new section on the Team page (admins only) shows, per coach and for the
