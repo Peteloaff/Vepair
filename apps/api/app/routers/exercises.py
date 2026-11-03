@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -241,7 +242,15 @@ async def log_exercise_result(
     acoustic_measurement = None
     if audio is not None:
         audio_bytes = await audio.read()
-        acoustic_measurement = analyze_exercise_attempt(audio_bytes, exercise.category)
+        # Closing the upload deletes the spooled temp file a large upload may have been written
+        # to, so the only copy left is audio_bytes, which is dropped as soon as it's measured.
+        await audio.close()
+        # The analysis is seconds of CPU work; run it in a worker thread so this async handler
+        # doesn't freeze the event loop (and every other request on the instance) while it runs.
+        acoustic_measurement = await run_in_threadpool(
+            analyze_exercise_attempt, audio_bytes, exercise.category
+        )
+        del audio_bytes
 
     measured_result = None
     if live_telemetry is not None or acoustic_measurement is not None:

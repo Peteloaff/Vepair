@@ -91,6 +91,8 @@ export function ExerciseRunner({
   // Guards the exercise-phase mount effect below from re-firing the first exercise's timer/
   // coaching a second time in dev's Strict Mode double-invoke.
   const startedRef = useRef(false);
+  // The chain of in-flight result uploads; see queueResultLog.
+  const pendingLogsRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     return () => {
@@ -170,10 +172,31 @@ export function ExerciseRunner({
     setPhase("exercise");
   }
 
+  // Sends one exercise's result in the background, one at a time and in order. Uploading the
+  // attempt's audio and having the server analyze it takes seconds, so the singer moves straight
+  // on to the next exercise instead of waiting for it; finishing the session waits for the queue
+  // (see logCurrentExercise). A failed upload is swallowed: losing one result must never block
+  // the routine.
+  function queueResultLog(form: FormData) {
+    pendingLogsRef.current = pendingLogsRef.current
+      .then(() =>
+        apiFetch(`/api/v1/exercise-sessions/${session.id}/results`, {
+          method: "POST",
+          body: form,
+        })
+      )
+      .then(
+        () => undefined,
+        () => undefined
+      );
+  }
+
   async function logCurrentExercise(completed: boolean, difficulty: number | null) {
     if (submitting) return;
-    setSubmitting(true);
     const exercise = items[stepIndex];
+    const isLast = stepIndex + 1 >= items.length;
+    // Only the last exercise has anything to wait for, so only it shows "Saving...".
+    if (isLast) setSubmitting(true);
     let summary: LiveCoachSummary | null = null;
     try {
       summary = stopCoaching();
@@ -181,32 +204,25 @@ export function ExerciseRunner({
       // The recorder can throw if it was never fully started (e.g. mic permission still
       // resolving) -- losing the live-measured summary shouldn't block marking the step done.
     }
-    try {
-      const form = new FormData();
-      form.append("exercise_id", exercise.id);
-      form.append("order_index", String(stepIndex));
-      form.append("completed", String(completed));
-      if (difficulty !== null) form.append("self_reported_difficulty", String(difficulty));
-      if (summary) {
-        form.append(
-          "live_measured_result",
-          JSON.stringify({
-            voiced_ratio: summary.voicedRatio,
-            frame_count: summary.frameCount,
-            average_analysis_latency_ms: summary.averageAnalysisLatencyMs,
-          })
-        );
-        if (exercise.target_measurement) {
-          form.append("audio", new Blob([summary.wavBytes], { type: "audio/wav" }), "attempt.wav");
-        }
+    const form = new FormData();
+    form.append("exercise_id", exercise.id);
+    form.append("order_index", String(stepIndex));
+    form.append("completed", String(completed));
+    if (difficulty !== null) form.append("self_reported_difficulty", String(difficulty));
+    if (summary) {
+      form.append(
+        "live_measured_result",
+        JSON.stringify({
+          voiced_ratio: summary.voicedRatio,
+          frame_count: summary.frameCount,
+          average_analysis_latency_ms: summary.averageAnalysisLatencyMs,
+        })
+      );
+      if (exercise.target_measurement) {
+        form.append("audio", new Blob([summary.wavBytes], { type: "audio/wav" }), "attempt.wav");
       }
-      await apiFetch(`/api/v1/exercise-sessions/${session.id}/results`, {
-        method: "POST",
-        body: form,
-      });
-    } catch {
-      // Logging a single result failing shouldn't block the user from finishing their routine.
     }
+    queueResultLog(form);
     const nextLogged = [
       ...logged,
       {
@@ -230,6 +246,9 @@ export function ExerciseRunner({
     } else {
       if (timerRef.current !== null) window.clearInterval(timerRef.current);
       coachRef.current?.release();
+      // Every result must be saved before the session is marked complete and the caller shows
+      // trends built from them.
+      await pendingLogsRef.current;
       try {
         await apiFetch(`/api/v1/exercise-sessions/${session.id}/complete`, { method: "PATCH" });
       } catch {
