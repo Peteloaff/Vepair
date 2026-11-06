@@ -19,9 +19,16 @@ COPY apps/api/alembic.ini ./
 
 RUN pip install --no-cache-dir .
 
+# Two things done once at build time so a cold start doesn't pay for them: the current migration
+# head is recorded (app/startup.py compares it with the database to skip alembic when there is
+# nothing to apply), and the app and migration code is compiled to bytecode instead of being
+# compiled again by every new container.
+RUN alembic heads | cut -d' ' -f1 > /app/alembic_head && python -m compileall -q app migrations
+
 EXPOSE 8000
 
 # Applies any pending migration against DATABASE_URL before the app starts serving traffic —
 # previously this was only assumed to happen (see TECHNICAL_GUIDE.md), but nothing in the image
-# actually ran it, so schema changes never reached production until run manually.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# actually ran it, so schema changes never reached production until run manually. app/startup.py
+# runs `alembic upgrade head` only when the database is behind, then starts uvicorn.
+CMD ["python", "-m", "app.startup"]

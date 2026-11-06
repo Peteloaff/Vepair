@@ -2,6 +2,17 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Changed — Less work when the server cold-starts (2026-11-06)
+
+- After the API has been idle, Cloud Run starts a new server and the first request waits for it
+  (measured at about 13 seconds). Two things that happened on every start no longer do: the app
+  and migration code is compiled once when the image is built instead of by every new container,
+  and `alembic upgrade head` is skipped when the database is already at the latest migration (a
+  small check in `app/startup.py` compares it with the head recorded in the image; any doubt
+  falls back to the normal migration run). Cold starts still take several seconds; keeping a
+  server warm (`CLOUD_RUN_MIN_INSTANCES`) is the only thing that removes them, and is off by
+  choice because it costs money.
+
 ## Changed — A shorter daily check-in that starts your exercises (2026-11-06)
 
 - **Short check-in.** The Home check-in now asks only how your voice feels (1-10), throat

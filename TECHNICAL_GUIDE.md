@@ -460,6 +460,11 @@ that waits for a new server to start (measured at about 13 seconds on 2026-11-06
 applied by the deploy step:
 
 - `--cpu-boost` (always on) gives a starting server extra CPU, which shortens the start.
+- The container's entrypoint (`python -m app.startup`) skips `alembic upgrade head` when the
+  database is already at the head revision recorded in the image at build time, and the code is
+  precompiled in the Dockerfile. If the check can't be sure (no recorded head, no
+  `alembic_version` table, an error, a mismatch) it runs the full `alembic upgrade head`, so a
+  pending migration is never skipped.
 - The repository variable `CLOUD_RUN_MIN_INSTANCES` (for example `1`) keeps that many servers
   running at all times, which removes cold starts. It is billed even when nobody is using the app,
   so it is a deliberate choice: set it under *Settings → Secrets and variables → Actions →
