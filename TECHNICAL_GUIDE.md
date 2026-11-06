@@ -452,6 +452,20 @@ another branch cannot deploy. The repository is public, which is why that restri
 Optional: in *Settings → Environments → production* you can add **required reviewers**, which makes
 every deploy wait for a click before it runs.
 
+### Slow first load (cold starts)
+
+Cloud Run shuts the API down when nobody has used it for a while, and the first request after
+that waits for a new server to start (measured at about 13 seconds on 2026-11-06, against about
+0.2 seconds once warm; the website itself loads in under half a second). Two settings help, both
+applied by the deploy step:
+
+- `--cpu-boost` (always on) gives a starting server extra CPU, which shortens the start.
+- The repository variable `CLOUD_RUN_MIN_INSTANCES` (for example `1`) keeps that many servers
+  running at all times, which removes cold starts. It is billed even when nobody is using the app,
+  so it is a deliberate choice: set it under *Settings → Secrets and variables → Actions →
+  Variables* and run the workflow once (*Actions → CI / CD → Run workflow*) to apply it. Unset, the
+  service keeps whatever minimum it already has.
+
 ### Day to day
 
 Merge to `main` and push. Watch the run in the *Actions* tab. If the *Deploy* job is green, the new

@@ -365,17 +365,18 @@ export const USER_GUIDE_HTML = `<!doctype html><html lang="en"><meta charset="ut
         <div class="card">
           <p>Home base — reach Progress, Vocal plan, Vocal range, Voice exercises, Tone Match, and Record voice sample from here.</p>
           <h3>Daily check-in</h3>
-          <p>A quick, entirely optional journal — every field can be skipped individually.</p>
+          <p>A short check-in that starts your day's training. Tell VepAIr how your voice feels and how much you used it, tap <b>Check in and start my routine</b>, and your exercises begin straight away: your coach's assigned exercises if you have a plan that is safe to run today, otherwise VepAIr's own routine at the length you used last (10 minutes the first time). If a rest day is recommended, you see that warning first instead. Everything below the first five rows is optional and tucked under <b>Add more detail</b>.</p>
           <table class="ref">
             <tr><th>Field</th><th>Captures</th></tr>
-            <tr><td>Voice quality / Fatigue</td><td>1–10, your own judgment</td></tr>
-            <tr><td>Throat discomfort</td><td>0–10</td></tr>
-            <tr><td>Speaking / singing load</td><td>None / Low / Moderate / High</td></tr>
+            <tr><td>How your voice feels</td><td>1–10, your own judgment (required)</td></tr>
+            <tr><td>Throat discomfort</td><td>0–10 (required)</td></tr>
+            <tr><td>Fatigue</td><td>1–10 (optional)</td></tr>
+            <tr><td>Speaking / singing load yesterday</td><td>None / Low / Moderate / High (required)</td></tr>
             <tr><td>Sleep</td><td>Hours</td></tr>
             <tr><td>Hydration, alcohol, smoke/vape</td><td>None / Low / Moderate / High</td></tr>
             <tr><td>Illness, reflux, notes</td><td>Free text — private to you, never shared with a coach</td></tr>
           </table>
-          <p>Once submitted it's a read-only summary with an <b>Edit</b> link. Feeds your VepAIr Score and your exercise routine.</p>
+          <p>Once submitted it's a read-only summary with an <b>Edit</b> link (editing doesn't start another routine). Feeds your VepAIr Score and your exercise routine. To pick a different routine length, open <b>Today's routine</b> from Home instead.</p>
           <h3>VepAIr Score</h3>
           <p>A daily 0–100 score with a GREEN / YELLOW / RED status. Tap <b>"why did I get this score?"</b> for the actual breakdown. A training/recovery indicator, not a medical score — fully explainable by design.</p>
         </div>

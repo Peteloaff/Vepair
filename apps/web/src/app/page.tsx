@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AssignedExercisesCard } from "@/components/AssignedExercisesCard";
 import { Card } from "@/components/Card";
@@ -17,6 +18,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/apiClient";
 import { daysAgoLocalDate, lastNDates, todayLocalDate } from "@/lib/date";
 import type {
+  AssignedExercises,
   BaselineSummary,
   CheckIn,
   CheckInInput,
@@ -142,6 +144,7 @@ function Dashboard({
   showCoachPortalLink?: boolean;
 }) {
   const { apiFetch, user } = useAuth();
+  const router = useRouter();
   const [history, setHistory] = useState<CheckIn[] | null>(null);
   const [baseline, setBaseline] = useState<BaselineSummary | null>(null);
   const [baselineError, setBaselineError] = useState(false);
@@ -255,12 +258,23 @@ function Dashboard({
     [history, dates]
   );
 
+  // Checking in is the start of the day's training: a coach's assignment if there is one that is
+  // safe to run today, otherwise the AI routine (which starts by itself, see exercises/page.tsx).
   async function handleCreate(values: Omit<CheckInInput, "checkin_date">) {
     await apiFetch<CheckIn>("/api/v1/checkins", {
       method: "POST",
       body: { checkin_date: today, ...values },
     });
-    await Promise.all([loadHistory(), loadRecoveryScore()]);
+    let destination = "/exercises?start=1";
+    try {
+      const assigned = await apiFetch<AssignedExercises>("/api/v1/assigned-exercises", {
+        searchParams: { date: today },
+      });
+      if (assigned.has_assignment && assigned.items.length > 0) destination = "/assigned";
+    } catch {
+      // No way to tell -- the AI routine is always available.
+    }
+    router.push(destination);
   }
 
   async function handleUpdate(values: Omit<CheckInInput, "checkin_date">) {
@@ -548,7 +562,7 @@ function Dashboard({
               <CheckInForm
                 initial={todaysCheckIn}
                 onSubmit={todaysCheckIn ? handleUpdate : handleCreate}
-                submitLabel={todaysCheckIn ? "Save changes" : "Save today's check-in"}
+                submitLabel={todaysCheckIn ? "Save changes" : "Check in and start my routine"}
               />
             </>
           )}
