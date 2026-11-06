@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ExerciseRunner, type FeedbackFrequency, type LoggedResult } from "@/components/ExerciseRunner";
 import { useAuth } from "@/lib/auth-context";
@@ -18,9 +19,37 @@ import {
 
 type Phase = "choose-length" | "loading" | "runner" | "complete" | "error";
 
+const LENGTH_STORAGE_KEY = "vepair.routineLength";
+const DEFAULT_LENGTH: RoutineLengthMinutes = 10;
+
+// Opened right after the daily check-in with ?start=1: skip the length picker and build the
+// routine at the length the singer last chose (10 minutes the first time).
+function rememberedLength(): RoutineLengthMinutes {
+  try {
+    const saved = Number(window.localStorage.getItem(LENGTH_STORAGE_KEY));
+    return ROUTINE_LENGTHS_MINUTES.find((m) => m === saved) ?? DEFAULT_LENGTH;
+  } catch {
+    return DEFAULT_LENGTH;
+  }
+}
+
+function rememberLength(minutes: RoutineLengthMinutes) {
+  try {
+    window.localStorage.setItem(LENGTH_STORAGE_KEY, String(minutes));
+  } catch {
+    // Private mode or blocked storage: the picker just won't remember it.
+  }
+}
+
 function ExercisesFlow() {
   const { apiFetch } = useAuth();
-  const [phase, setPhase] = useState<Phase>("choose-length");
+  // useSearchParams, not window.location: during a client-side navigation (the check-in's
+  // router.push) the address bar still shows the previous URL when this first renders.
+  const wantsAutoStart = useSearchParams().get("start") === "1";
+  const [phase, setPhase] = useState<Phase>(wantsAutoStart ? "loading" : "choose-length");
+  // Guards the auto-start against dev Strict Mode's double-invoked mount effect, which would
+  // otherwise create two exercise sessions.
+  const autoStartRef = useRef(wantsAutoStart);
   const [routine, setRoutine] = useState<Routine | null>(null);
   const [session, setSession] = useState<ExerciseSessionRecord | null>(null);
   const [logged, setLogged] = useState<LoggedResult[]>([]);
@@ -39,14 +68,26 @@ function ExercisesFlow() {
     apiFetch<RestCheck>("/api/v1/routine/rest-check", {
       searchParams: { date: todayLocalDate() },
     })
-      .then(setRestCheck)
+      .then((rest) => {
+        setRestCheck(rest);
+        if (!autoStartRef.current) return;
+        autoStartRef.current = false;
+        // On a recommended rest day the singer sees the warning and picks for themselves.
+        if (rest.rest_day_recommended) setPhase("choose-length");
+        else void chooseLength(rememberedLength());
+      })
       .catch(() => {
-        // Best-effort — the length-picker screen still works without this banner.
+        // Best-effort — the length-picker screen still works without this banner, and an
+        // unknown rest status must not stop the routine the singer just checked in for.
+        if (!autoStartRef.current) return;
+        autoStartRef.current = false;
+        void chooseLength(rememberedLength());
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function chooseLength(lengthMinutes: RoutineLengthMinutes) {
+    rememberLength(lengthMinutes);
     setPhase("loading");
     setError(null);
     try {
@@ -246,7 +287,9 @@ export default function ExercisesPage() {
   return (
     <RequireAuth>
       <main className="flex flex-1 flex-col px-6 py-10">
-        <ExercisesFlow />
+        <Suspense fallback={null}>
+          <ExercisesFlow />
+        </Suspense>
       </main>
     </RequireAuth>
   );

@@ -86,10 +86,13 @@ function LoadSelect({
   label,
   value,
   onChange,
+  required = false,
 }: {
   label: string;
   value: string | null | undefined;
   onChange: (v: string | undefined) => void;
+  // A required select has no "Skip": its empty option is a prompt to choose.
+  required?: boolean;
 }) {
   return (
     <div>
@@ -100,7 +103,7 @@ function LoadSelect({
         onChange={(e) => onChange(e.target.value || undefined)}
         className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
       >
-        <option value="">Skip</option>
+        <option value="">{required ? "Choose..." : "Skip"}</option>
         <option value="none">None</option>
         <option value="low">Low</option>
         <option value="moderate">Moderate</option>
@@ -108,6 +111,24 @@ function LoadSelect({
       </select>
     </div>
   );
+}
+
+// The fields a new check-in must have: how the voice feels, and how much it was used.
+const REQUIRED_MESSAGE =
+  "Please set your voice quality and throat discomfort, and choose yesterday's speaking and singing load.";
+
+function hasDetail(c: CheckIn | null): boolean {
+  if (!c) return false;
+  return [
+    c.rehearsal_or_performance_yesterday,
+    c.sleep_hours,
+    c.hydration_estimate,
+    c.alcohol_exposure,
+    c.smoke_vape_exposure,
+    c.illness_symptoms,
+    c.reflux_symptoms,
+    c.notes,
+  ].some((v) => v !== null && v !== undefined && v !== "");
 }
 
 export function CheckInForm({
@@ -129,6 +150,17 @@ export function CheckInForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Required for a new check-in only: editing an older one that skipped these must still save.
+    if (
+      !initial &&
+      (values.voice_quality == null ||
+        values.throat_discomfort == null ||
+        !values.speaking_load ||
+        !values.singing_load)
+    ) {
+      setError(REQUIRED_MESSAGE);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -143,18 +175,11 @@ export function CheckInForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <ScaleInput
-        label="Perceived voice quality (1-10)"
+        label="How your voice feels (1-10)"
         min={1}
         max={10}
         value={values.voice_quality}
         onChange={(v) => set("voice_quality", v)}
-      />
-      <ScaleInput
-        label="Fatigue (1-10)"
-        min={1}
-        max={10}
-        value={values.fatigue}
-        onChange={(v) => set("fatigue", v)}
       />
       <ScaleInput
         label="Throat discomfort (0-10)"
@@ -163,114 +188,130 @@ export function CheckInForm({
         value={values.throat_discomfort}
         onChange={(v) => set("throat_discomfort", v)}
       />
+      <ScaleInput
+        label="Fatigue (1-10, optional)"
+        min={1}
+        max={10}
+        value={values.fatigue}
+        onChange={(v) => set("fatigue", v)}
+      />
 
       <div className="grid grid-cols-2 gap-3">
         <LoadSelect
+          required
           label="Speaking load yesterday"
           value={values.speaking_load}
           onChange={(v) => set("speaking_load", v)}
         />
         <LoadSelect
+          required
           label="Singing load yesterday"
           value={values.singing_load}
           onChange={(v) => set("singing_load", v)}
         />
       </div>
 
-      <div>
-        <span className="mb-1 block text-xs text-text-dim">
-          Rehearsal or performance yesterday?
-        </span>
-        <div className="flex gap-2">
-          {(
-            [
-              ["Yes", true],
-              ["No", false],
-              ["Skip", undefined],
-            ] as const
-          ).map(([text, val]) => (
-            <button
-              key={text}
-              type="button"
-              onClick={() => set("rehearsal_or_performance_yesterday", val)}
-              className={`rounded-lg border px-3 py-1.5 text-xs ${
-                values.rehearsal_or_performance_yesterday === val
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border-strong text-text-dim hover:bg-surface-2"
-              }`}
-            >
-              {text}
-            </button>
-          ))}
+      <details open={hasDetail(initial)} className="rounded-lg border border-border px-3 py-2">
+        <summary className="cursor-pointer text-xs text-text-dim hover:text-text">
+          Add more detail (optional)
+        </summary>
+        <div className="mt-4 space-y-5">
+          <div>
+            <span className="mb-1 block text-xs text-text-dim">
+              Rehearsal or performance yesterday?
+            </span>
+            <div className="flex gap-2">
+              {(
+                [
+                  ["Yes", true],
+                  ["No", false],
+                  ["Skip", undefined],
+                ] as const
+              ).map(([text, val]) => (
+                <button
+                  key={text}
+                  type="button"
+                  onClick={() => set("rehearsal_or_performance_yesterday", val)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs ${
+                    values.rehearsal_or_performance_yesterday === val
+                      ? "border-accent bg-accent/10 text-accent"
+                      : "border-border-strong text-text-dim hover:bg-surface-2"
+                  }`}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-text-dim">Sleep last night (hours)</label>
+            <input
+              type="number"
+              min={0}
+              max={24}
+              step={0.5}
+              value={values.sleep_hours ?? ""}
+              onChange={(e) =>
+                set("sleep_hours", e.target.value === "" ? undefined : Number(e.target.value))
+              }
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <LoadSelect
+              label="Hydration"
+              value={values.hydration_estimate}
+              onChange={(v) => set("hydration_estimate", v)}
+            />
+            <LoadSelect
+              label="Alcohol exposure"
+              value={values.alcohol_exposure}
+              onChange={(v) => set("alcohol_exposure", v)}
+            />
+            <LoadSelect
+              label="Smoke/vape exposure"
+              value={values.smoke_vape_exposure}
+              onChange={(v) => set("smoke_vape_exposure", v)}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-text-dim">
+              Illness symptoms (optional)
+            </label>
+            <textarea
+              value={values.illness_symptoms ?? ""}
+              onChange={(e) => set("illness_symptoms", e.target.value || undefined)}
+              rows={2}
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-text-dim">
+              Reflux symptoms (optional)
+            </label>
+            <textarea
+              value={values.reflux_symptoms ?? ""}
+              onChange={(e) => set("reflux_symptoms", e.target.value || undefined)}
+              rows={2}
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs text-text-dim">Notes</label>
+            <textarea
+              value={values.notes ?? ""}
+              onChange={(e) => set("notes", e.target.value || undefined)}
+              rows={2}
+              className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </div>
         </div>
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs text-text-dim">Sleep last night (hours)</label>
-        <input
-          type="number"
-          min={0}
-          max={24}
-          step={0.5}
-          value={values.sleep_hours ?? ""}
-          onChange={(e) =>
-            set("sleep_hours", e.target.value === "" ? undefined : Number(e.target.value))
-          }
-          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <LoadSelect
-          label="Hydration"
-          value={values.hydration_estimate}
-          onChange={(v) => set("hydration_estimate", v)}
-        />
-        <LoadSelect
-          label="Alcohol exposure"
-          value={values.alcohol_exposure}
-          onChange={(v) => set("alcohol_exposure", v)}
-        />
-        <LoadSelect
-          label="Smoke/vape exposure"
-          value={values.smoke_vape_exposure}
-          onChange={(v) => set("smoke_vape_exposure", v)}
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs text-text-dim">
-          Illness symptoms (optional)
-        </label>
-        <textarea
-          value={values.illness_symptoms ?? ""}
-          onChange={(e) => set("illness_symptoms", e.target.value || undefined)}
-          rows={2}
-          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs text-text-dim">
-          Reflux symptoms (optional)
-        </label>
-        <textarea
-          value={values.reflux_symptoms ?? ""}
-          onChange={(e) => set("reflux_symptoms", e.target.value || undefined)}
-          rows={2}
-          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs text-text-dim">Notes</label>
-        <textarea
-          value={values.notes ?? ""}
-          onChange={(e) => set("notes", e.target.value || undefined)}
-          rows={2}
-          className="w-full rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-      </div>
+      </details>
 
       {error && (
         <p className="rounded-lg bg-danger-faint px-3 py-2 text-xs text-danger">{error}</p>

@@ -184,12 +184,24 @@ jobs:
         # No --env-vars-file and no --allow-unauthenticated: the service keeps the environment
         # variables and the public access it already has. The container applies pending database
         # migrations itself when it starts (see Dockerfile).
+        #
+        # Cold starts: --cpu-boost gives a starting instance extra CPU, which shortens the long
+        # first request after the service has been idle. Setting the repository variable
+        # CLOUD_RUN_MIN_INSTANCES (for example 1) keeps that many instances warm at all times,
+        # which removes cold starts but is billed even when nobody is using the app. When the
+        # variable is unset the service's existing minimum is left alone.
+        env:
+          MIN_INSTANCES: ${{ vars.CLOUD_RUN_MIN_INSTANCES }}
         run: |
+          extra=""
+          if [ -n "$MIN_INSTANCES" ]; then extra="--min-instances=$MIN_INSTANCES"; fi
           gcloud run deploy vepair-api \
             --project "${{ vars.GCP_PROJECT_ID }}" \
             --source . \
             --region us-west1 \
             --port 8000 \
+            --cpu-boost \
+            $extra \
             --quiet
 
       - name: Smoke test the new revision

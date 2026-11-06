@@ -2,6 +2,22 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Changed — A shorter daily check-in that starts your exercises (2026-11-06)
+
+- **Short check-in.** The Home check-in now asks only how your voice feels (1-10), throat
+  discomfort (0-10), fatigue (optional) and yesterday's speaking and singing load. Sleep,
+  hydration, alcohol, smoke, rehearsal, illness, reflux and notes are still there, tucked under
+  "Add more detail (optional)". A new check-in needs voice quality, throat discomfort and both
+  loads; editing an older one doesn't.
+- **It launches your plan.** Saving a new check-in opens today's exercises straight away: your
+  coach's assigned exercises if you have a plan that is safe to run today, otherwise the AI
+  routine at the length you used last (10 minutes the first time, remembered in the browser).
+  On a recommended rest day you see the rest warning and the length picker instead. Editing a
+  check-in doesn't start anything, and "Today's routine" still lets you pick a different length.
+- **Deploy.** The Cloud Run deploy now passes `--cpu-boost` (extra CPU while a server starts, to
+  shorten cold starts) and supports an optional repository variable `CLOUD_RUN_MIN_INSTANCES` to
+  keep servers warm. See `TECHNICAL_GUIDE.md` section 13.
+
 ## Fixed — Faster moves between exercises (2026-11-02)
 
 - **No more waiting after Mark done.** The exercise screen used to hold on "Saving..." until the
