@@ -8,12 +8,41 @@ import { useAuth } from "@/lib/auth-context";
 import { todayLocalDate } from "@/lib/date";
 import type { AssignedExercises } from "@/lib/types";
 
+const OPEN_STORAGE_KEY = "vepair.assignedCardOpen";
+
+// Collapsed unless the singer has opened it before on this device.
+function savedOpenState(): boolean {
+  try {
+    return window.localStorage.getItem(OPEN_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveOpenState(open: boolean) {
+  try {
+    window.localStorage.setItem(OPEN_STORAGE_KEY, open ? "1" : "0");
+  } catch {
+    // Private mode or blocked storage: it just starts collapsed next time.
+  }
+}
+
 // "Assigned by your coach" -- the singer's own, always-visible view of what a coach assigned,
 // with a Start button. Renders nothing when there is no active assignment, so it can sit on any
-// page (the home page, Coach Access) without leaving an empty box.
-export function AssignedExercisesCard({ className = "" }: { className?: string }) {
+// page (the home page, Coach Access) without leaving an empty box. With `collapsible` (the home
+// page) it can be shrunk to a single line and starts that way.
+export function AssignedExercisesCard({
+  className = "",
+  collapsible = false,
+}: {
+  className?: string;
+  collapsible?: boolean;
+}) {
   const { apiFetch } = useAuth();
   const [assigned, setAssigned] = useState<AssignedExercises | null>(null);
+  // The card renders nothing until the fetch below finishes, so reading storage here can't
+  // differ between the server render and the first client render.
+  const [open, setOpen] = useState(() => !collapsible || savedOpenState());
 
   useEffect(() => {
     apiFetch<AssignedExercises>("/api/v1/assigned-exercises", {
@@ -30,18 +59,15 @@ export function AssignedExercisesCard({ className = "" }: { className?: string }
 
   const minutes = Math.max(1, Math.round(assigned.total_duration_seconds / 60));
   const canStart = assigned.items.length > 0;
+  const coachLine = (
+    <>
+      {assigned.coach_display_name}
+      {assigned.coach_studio_name ? ` · ${assigned.coach_studio_name}` : ""}
+    </>
+  );
 
-  return (
-    <Card
-      title="Assigned by your coach"
-      meta={
-        <>
-          {assigned.coach_display_name}
-          {assigned.coach_studio_name ? ` · ${assigned.coach_studio_name}` : ""}
-        </>
-      }
-      className={className}
-    >
+  const body = (
+    <>
       {assigned.note_to_singer && (
         <p className="mb-4 rounded-2xl bg-violet-faint px-4 py-3 text-sm text-text-dim">
           <span className="font-semibold text-violet">Note from your coach:</span>{" "}
@@ -107,6 +133,58 @@ export function AssignedExercisesCard({ className = "" }: { className?: string }
         <p className="text-sm text-text-dim">
           Nothing in this assignment is safe to run today. Rest up, and check back tomorrow.
         </p>
+      )}
+    </>
+  );
+
+  if (!collapsible) {
+    return (
+      <Card title="Assigned by your coach" meta={coachLine} className={className}>
+        {body}
+      </Card>
+    );
+  }
+
+  const count = assigned.items.length;
+  const summary = canStart
+    ? `${count} ${count === 1 ? "exercise" : "exercises"} · about ${minutes} min`
+    : "Nothing safe to run today";
+
+  return (
+    <Card className={className}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="assigned-exercises-body"
+        onClick={() => {
+          setOpen(!open);
+          saveOpenState(!open);
+        }}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <span className="min-w-0">
+          <span className="block text-lg font-medium tracking-tight">Assigned by your coach</span>
+          <span className="block truncate text-xs text-text-faint">
+            {coachLine} &middot; {summary}
+          </span>
+        </span>
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className={`h-5 w-5 shrink-0 text-text-dim transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M5 8l5 5 5-5" />
+        </svg>
+      </button>
+      {open && (
+        <div id="assigned-exercises-body" className="mt-4">
+          {body}
+        </div>
       )}
     </Card>
   );

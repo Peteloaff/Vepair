@@ -402,8 +402,6 @@ function Dashboard({
         <p className="mb-4 rounded-xl bg-danger-faint px-3 py-2 text-xs text-danger">{loadError}</p>
       )}
 
-      <AssignedExercisesCard className="mb-4" />
-
       <nav
         aria-label="Shortcuts"
         className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6"
@@ -626,6 +624,8 @@ function Dashboard({
       <div className="mt-4">
         <ToneGameTrendCard />
       </div>
+
+      <AssignedExercisesCard collapsible className="mt-4" />
     </main>
   );
 }
