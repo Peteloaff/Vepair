@@ -527,7 +527,8 @@ export const TECHNICAL_REFERENCE_HTML = `<!doctype html><html lang="en"><meta ch
           intensity cap, listed but never launchable). It reuses
           <code>get_active_assignment</code> (same active-assignment-and-active-access gate as the
           routine) and the same <code>build_signals_for_user</code>/<code>propose_intensity_caps</code>,
-          so the safety guarantee is unchanged. The home page and Coach Access render an
+          so the safety guarantee is unchanged. The home page (at the bottom, collapsible and collapsed by default, the choice kept in
+          localStorage) and Coach Access render an
           <code class="path">AssignedExercisesCard</code>; its Start button opens
           <code class="path">/assigned</code>, which runs <code>items</code> through the shared
           <code>ExerciseRunner</code> as an <code>ExerciseSession</code> with

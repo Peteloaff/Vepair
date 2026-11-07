@@ -2,6 +2,12 @@
 
 All notable changes to VepAIr are documented here, stage by stage.
 
+## Changed — "Assigned by your coach" moves to the bottom of Home, collapsed (2026-11-07)
+
+- On the Home page the card now sits at the very bottom and starts collapsed to one line (coach,
+  number of exercises, minutes). Tap it to open it; Home remembers whether you left it open or
+  closed on that device. Coach Access still shows it in full at the top.
+
 ## Changed — Less work when the server cold-starts (2026-11-06)
 
 - After the API has been idle, Cloud Run starts a new server and the first request waits for it
